@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="auto">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BSU Admission Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-left">
+        <div class="logo">
+          <span class="logo-icon">🎓</span>
+          <span class="logo-text">BSU Tracker</span>
+        </div>
+        <div class="live-badge">
+          <span class="live-dot"></span>
+          <span>LIVE</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="refresh-info">
+          <span class="refresh-label">Обновление через</span>
+          <span id="refresh-countdown" class="refresh-countdown">15:00</span>
+        </div>
+        <button id="refresh-btn" class="refresh-btn" title="Обновить сейчас">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M13.65 2.35A7.958 7.958 0 008 0C3.58 0 0 3.58 0 8s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 018 14c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L9 7h7V0l-2.35 2.35z" fill="currentColor"/>
+          </svg>
+        </button>
+        <button id="theme-toggle" class="theme-btn" title="Тема">
+          <span class="theme-icon-sun">☀️</span>
+          <span class="theme-icon-moon">🌙</span>
+        </button>
+      </div>
+    </div>
+    <div class="header-meta">
+      <span id="last-updated">Загрузка данных...</span>
+    </div>
+  </header>
+
+  <section class="score-panel">
+    <div class="score-panel-inner">
+      <label class="score-label" for="my-score">Мой балл</label>
+      <div class="score-input-wrap">
+        <input type="number" id="my-score" class="score-input" placeholder="Введи сумму баллов" min="0" max="500" />
+        <button id="score-apply-btn" class="score-apply-btn">Применить</button>
+      </div>
+      <p class="score-hint">Введи свой итоговый балл, чтобы видеть шансы по каждой специальности</p>
+    </div>
+  </section>
+
+  <nav class="faculty-tabs" id="faculty-tabs"></nav>
+
+  <main class="main-content" id="main-content">
+    <div class="loading-screen" id="loading-screen">
+      <div class="spinner"></div>
+      <p>Загружаем данные с abit.bsu.by...</p>
+    </div>
+    <div id="error-screen" class="error-screen hidden">
+      <div class="error-icon">⚠️</div>
+      <h2>Не удалось получить данные</h2>
+      <p id="error-message">Проверь соединение и попробуй снова</p>
+      <button id="retry-btn" class="retry-btn">Попробовать снова</button>
+    </div>
+    <div id="cards-container" class="cards-container hidden"></div>
+  </main>
+
+  <footer class="site-footer">
+    <p>Данные получены с <a href="https://abit.bsu.by" target="_blank" rel="noopener">abit.bsu.by</a> · Обновляется каждые 15 минут</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
