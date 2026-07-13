@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Проход — живой радар конкурса: введи балл, выбери вуз и факультет, увидь свои шансы." />
-  <title>Проход — радар конкурса</title>
+  <meta name="description" content="Проход — радар конкурса для Института бизнеса БГУ. Введи балл и увидь шансы по специальностям." />
+  <title>Проход — Институт бизнеса БГУ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./css/tokens.css" />
   <link rel="stylesheet" href="./css/layout.css" />
   <link rel="stylesheet" href="./css/components.css" />
@@ -16,106 +16,105 @@
   <div class="site">
     <header class="topbar">
       <div class="wrap topbar-inner">
-        <a class="brand-mark" href="#top">
-          <strong>Проход</strong>
-          <span>радар конкурса</span>
-        </a>
-        <div class="topbar-actions">
-          <button class="icon-btn" id="refresh-btn" type="button" title="Обновить данные" aria-label="Обновить данные">
-            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M13.65 2.35A7.96 7.96 0 0 0 8 0C3.58 0 0 3.58 0 8s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 8 14c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L9 7h7V0l-2.35 2.35z"/></svg>
-          </button>
-          <button class="icon-btn" id="theme-btn" type="button" title="Тема" aria-label="Переключить тему">Тема</button>
+        <a class="brand-mini" href="#top">Проход <span>// SB BSU</span></a>
+        <div class="live-pill" aria-live="polite">
+          <span class="live-dot" aria-hidden="true"></span>
+          Live
         </div>
       </div>
     </header>
 
     <main id="top">
       <section class="hero">
-        <div class="wrap hero-inner">
+        <div class="wrap hero-grid">
           <h1 class="hero-brand">Проход</h1>
-          <p class="hero-line">Твой балл. Живой конкурс. Сразу видно, сколько человек выше тебя относительно мест.</p>
+          <p class="hero-sub">Институт бизнеса БГУ · твой балл против живого конкурса</p>
           <form class="score-form" id="score-form">
-            <div class="field">
-              <label for="score-input">Сумма баллов</label>
-              <input
-                class="score-input"
-                id="score-input"
-                name="score"
-                type="number"
-                inputmode="numeric"
-                min="0"
-                max="500"
-                step="1"
-                placeholder="320"
-                required
-              />
-            </div>
-            <button class="btn" type="submit">Смотреть шансы</button>
+            <input
+              class="score-input"
+              id="score-input"
+              name="score"
+              type="number"
+              inputmode="numeric"
+              min="0"
+              max="500"
+              step="1"
+              placeholder="Сумма баллов"
+              aria-label="Сумма баллов"
+              required
+            />
+            <button class="btn-mint" type="submit">Смотреть шансы</button>
           </form>
         </div>
       </section>
 
-      <section class="section" id="board">
+      <div class="ticker" aria-hidden="true">
+        <div class="ticker-track" id="ticker-track">
+          <span>Институт бизнеса БГУ</span>
+          <span>Дневная / заочная</span>
+          <span id="ticker-updated">Ожидание данных</span>
+          <span>Расчётный проходной — не приказ</span>
+          <span>Институт бизнеса БГУ</span>
+          <span>Дневная / заочная</span>
+          <span id="ticker-updated-dup">Ожидание данных</span>
+          <span>Расчётный проходной — не приказ</span>
+        </div>
+      </div>
+
+      <section class="board" id="board">
         <div class="wrap">
-          <div class="section-head">
+          <div class="board-head">
             <div>
-              <h2>Выбор вуза</h2>
-              <p>Данные читаются из снимков официальных таблиц мониторинга — без CORS-прокси.</p>
+              <h2>Специальности</h2>
+              <p>Сколько человек выше тебя относительно мест</p>
             </div>
             <div class="meta-line" id="updated-meta"></div>
           </div>
 
-          <div id="data-banner" class="offline-banner hidden" role="status"></div>
+          <div id="data-banner" class="banner hidden" role="status"></div>
 
-          <div class="panel selector">
-            <div>
-              <div class="selector-label">Университет</div>
-              <div class="chip-row" id="uni-chips"></div>
-            </div>
-            <div id="faculty-group" class="hidden">
-              <div class="selector-label">Факультет / форма</div>
-              <div class="chip-row" id="faculty-chips"></div>
-            </div>
+          <div class="form-toggle" role="group" aria-label="Форма обучения">
+            <button type="button" class="form-btn active" data-form="7" id="form-day">Дневная</button>
+            <button type="button" class="form-btn" data-form="8" id="form-zaoch">Заочная</button>
           </div>
 
-          <div id="toolbar" class="toolbar hidden" style="margin-top: 1.5rem">
-            <input class="search-input" id="search-input" type="search" placeholder="Поиск специальности" />
-            <div class="filter-group" role="group" aria-label="Фильтр статуса">
-              <button type="button" class="filter-btn active" data-filter="all">Все</button>
-              <button type="button" class="filter-btn" data-filter="safe">В зоне</button>
-              <button type="button" class="filter-btn" data-filter="risk">На грани</button>
-              <button type="button" class="filter-btn" data-filter="below">Ниже</button>
-            </div>
-          </div>
+          <input
+            class="toolbar-search hidden"
+            id="search-input"
+            type="search"
+            placeholder="Поиск специальности"
+            autocomplete="off"
+          />
 
-          <div id="state-loading" class="skeleton-list hidden" style="margin-top: 1.5rem">
+          <div id="state-loading" class="skeleton-list hidden">
             <div class="skeleton-row"></div>
             <div class="skeleton-row"></div>
             <div class="skeleton-row"></div>
           </div>
 
-          <div id="state-empty" class="state-box panel hidden" style="margin-top: 1.5rem">
-            <h3>Выбери университет и факультет</h3>
-            <p>После ввода балла откроется радар: дорожка конкурса, сколько человек выше тебя и расчётный проходной.</p>
+          <div id="state-empty" class="state-box frame hidden">
+            <h3>Введи балл выше</h3>
+            <p>После этого появится радар по специальностям выбранной формы обучения.</p>
           </div>
 
-          <div id="state-error" class="state-box panel hidden" style="margin-top: 1.5rem">
-            <h3>Не удалось загрузить данные</h3>
+          <div id="state-error" class="state-box frame hidden">
+            <h3>Данные не загрузились</h3>
             <p id="error-msg"></p>
-            <button class="btn" id="retry-btn" type="button" style="margin-top: 1rem">Повторить</button>
+            <button class="btn-mint" id="retry-btn" type="button" style="margin-top: 1rem">Повторить</button>
           </div>
 
-          <div id="results" class="hidden" style="margin-top: 1.5rem"></div>
+          <div id="results" class="hidden"></div>
         </div>
       </section>
     </main>
 
-    <aside id="compare-tray" class="compare-tray hidden" aria-label="Сравнение специальностей"></aside>
-
     <footer class="site-footer">
       <div class="wrap">
-        <span>Источники: официальные таблицы вузов · обновление через GitHub Actions</span>
-        <span>Проходной на сайте — расчётный по текущему распределению, не приказ о зачислении</span>
+        <span>
+          Источник:
+          <a href="https://abit.bsu.by/formk1?id=7" id="source-link" target="_blank" rel="noopener">abit.bsu.by</a>
+        </span>
+        <span>Расчётный проходной — оценка по таблице, не приказ о зачислении</span>
       </div>
     </footer>
   </div>

@@ -3,12 +3,16 @@ import { el, fmtNum, fmtTime } from './dom.js';
 
 /**
  * @param {HTMLElement} trackEl
- * @param {import('../compute.js').enrichSpec extends Function ? any : never} row
+ * @param {object} row
  */
 export function renderChanceTrack(trackEl, row) {
   const chance = row.chance;
   trackEl.innerHTML = '';
-  const track = el('div', { className: 'chance-track', role: 'img', 'aria-label': 'Дорожка конкурса' });
+  const track = el('div', {
+    className: 'chance-track',
+    role: 'img',
+    'aria-label': 'Дорожка конкурса',
+  });
 
   const denom = Math.max(chance.totalInBuckets, chance.plan, 1);
   for (const seg of chance.segments) {
@@ -18,7 +22,6 @@ export function renderChanceTrack(trackEl, row) {
       title: `${seg.label}: ${seg.count}`,
       style: `width:${Math.max(width, seg.count > 0 ? 0.4 : 0)}%`,
     });
-    // mark segments fully above user
     if (row.score != null && seg.lo != null && seg.lo > row.score) {
       segEl.classList.add('above-me');
     }
@@ -46,8 +49,8 @@ export function renderChanceTrack(trackEl, row) {
   }
 
   const labels = el('div', { className: 'chance-labels' }, [
-    document.createTextNode('Выше баллы'),
-    document.createTextNode('Ниже баллы'),
+    document.createTextNode('Выше'),
+    document.createTextNode('Ниже'),
   ]);
 
   trackEl.append(labels, track);
@@ -55,7 +58,7 @@ export function renderChanceTrack(trackEl, row) {
 
 /**
  * @param {object} row
- * @param {{ compared: boolean, onToggle: () => void, score: number | null }} opts
+ * @param {{ score: number | null }} opts
  */
 export function buildRadarRow(row, opts) {
   const article = el('article', {
@@ -76,9 +79,9 @@ export function buildRadarRow(row, opts) {
         ? `+${fmtNum(row.delta)}`
         : fmtNum(row.delta);
 
-  const badge =
+  const statusEl =
     row.statusLabel
-      ? el('span', { className: `badge ${row.status}`, text: row.statusLabel })
+      ? el('span', { className: `status-word ${row.status}`, text: row.statusLabel })
       : null;
 
   const metrics = el('div', { className: 'radar-metrics' }, [
@@ -94,7 +97,7 @@ export function buildRadarRow(row, opts) {
       }),
     ]),
   ]);
-  if (badge) metrics.append(badge);
+  if (statusEl) metrics.append(statusEl);
 
   const chanceBlock = el('div', { className: 'chance-block' });
   renderChanceTrack(chanceBlock, { ...row, score: opts.score });
@@ -109,56 +112,52 @@ export function buildRadarRow(row, opts) {
       }),
     ]),
     el('div', { className: 'pressure-meta' }, [
-      document.createTextNode(`Конкурс ${row.pressure == null ? '—' : `${row.pressure.toFixed(1)}×`}`),
+      document.createTextNode(
+        `Конкурс ${row.pressure == null ? '—' : `${row.pressure.toFixed(1)}×`}`,
+      ),
       document.createTextNode(`${fmtNum(row.inCompetition || row.totalApps)} заявлений`),
     ]),
   );
-
-  const pinBtn = el('button', {
-    className: `btn-ghost${opts.compared ? ' active' : ''}`,
-    type: 'button',
-    text: opts.compared ? 'В сравнении' : 'Сравнить',
-  });
-  pinBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    opts.onToggle();
-  });
 
   const main = el('div', { className: 'radar-main' }, [
     el('div', { className: 'radar-top' }, [
       el('div', { className: 'radar-title' }, [
         row.groupName ? el('div', { className: 'radar-tag', text: row.groupName }) : '',
         el('div', { className: 'radar-name', text: row.specName }),
-        el('div', { className: 'radar-tag', text: row.facultyName || '' }),
+        el('div', {
+          className: 'radar-tag',
+          text: row.facultyName || '',
+        }),
       ].filter(Boolean)),
       metrics,
     ]),
     chanceBlock,
     pressure,
-    el('div', { className: 'radar-actions' }, [
-      pinBtn,
-      el('span', {
-        className: 'meta-line',
-        text: 'Нажми строку — распределение баллов',
-      }),
-    ]),
+    el('div', {
+      className: 'radar-hint',
+      text: 'Нажми — распределение баллов',
+    }),
   ]);
 
   const detail = el('div', { className: 'radar-detail' }, [
-    el('div', { className: 'detail-note', text: 'Распределение заявлений по интервалам баллов. Подсветка — твой интервал; тёмная отметка — граница расчётного проходного.' }),
+    el('div', {
+      className: 'detail-note',
+      text: 'Распределение заявлений по интервалам. Подсветка — твой интервал; светлая отметка — граница расчётного проходного.',
+    }),
     buildHistogram(row, opts.score),
     el('p', {
       className: 'meta-line',
-      text: `Источник обновлён: ${fmtTime(row.updatedAt)} · расчётный проходной — оценка по текущей таблице, не официальный приказ`,
+      text: `Источник · ${fmtTime(row.updatedAt)}`,
     }),
   ]);
+
   if (row.sourceUrl) {
     detail.append(
       el('a', {
         href: row.sourceUrl,
         target: '_blank',
         rel: 'noopener',
-        text: 'Открыть исходную таблицу',
+        text: 'Открыть таблицу abit.bsu.by',
       }),
     );
   }
@@ -189,46 +188,44 @@ function buildHistogram(row, score) {
   (row.ranges || []).forEach((label, i) => {
     const count = row.buckets[i] || 0;
     const mine = score != null && row.chance?.segments?.[i]?.isMine;
-    const fillClass = [
-      'hist-fill',
-      i === cutIdx ? 'cut' : '',
-      mine ? 'mine' : '',
-    ]
+    const fillClass = ['hist-fill', i === cutIdx ? 'cut' : '', mine ? 'mine' : '']
       .filter(Boolean)
       .join(' ');
 
-    const rowEl = el('div', { className: `hist-row${mine ? ' my-row' : ''}` }, [
-      el('div', { className: 'hist-lbl', text: label }),
-      el('div', { className: 'hist-track' }, [
-        el('div', {
-          className: fillClass,
-          style: `width:${Math.round((count / max) * 100)}%`,
-        }),
+    wrap.append(
+      el('div', { className: `hist-row${mine ? ' my-row' : ''}` }, [
+        el('div', { className: 'hist-lbl', text: label }),
+        el('div', { className: 'hist-track' }, [
+          el('div', {
+            className: fillClass,
+            style: `width:${Math.round((count / max) * 100)}%`,
+          }),
+        ]),
+        el('div', { className: 'hist-count', text: String(count) }),
       ]),
-      el('div', { className: 'hist-count', text: String(count) }),
-    ]);
-    wrap.append(rowEl);
+    );
   });
   return wrap;
 }
 
 /**
+ * @param {HTMLElement} container
  * @param {object[]} specialties
  * @param {number | null} score
- * @param {{ filter: string, query: string, compareIds: string[], onToggleCompare: (id: string) => void }} opts
+ * @param {{ query: string }} opts
  */
 export function renderRadarList(container, specialties, score, opts) {
   container.innerHTML = '';
   const rows = prepareSpecs(specialties, score, {
-    filter: opts.filter,
+    filter: 'all',
     query: opts.query,
   }).map((row) => ({ ...row, score }));
 
   if (!rows.length) {
     container.append(
-      el('div', { className: 'state-box panel' }, [
+      el('div', { className: 'state-box frame' }, [
         el('h3', { text: 'Ничего не найдено' }),
-        el('p', { text: 'Попробуй сменить факультет, фильтр или поисковый запрос.' }),
+        el('p', { text: 'Смени форму обучения или поисковый запрос.' }),
       ]),
     );
     return rows;
@@ -236,62 +233,8 @@ export function renderRadarList(container, specialties, score, opts) {
 
   const list = el('div', { className: 'radar-list' });
   for (const row of rows) {
-    list.append(
-      buildRadarRow(row, {
-        score,
-        compared: opts.compareIds.includes(row.id),
-        onToggle: () => opts.onToggleCompare(row.id),
-      }),
-    );
+    list.append(buildRadarRow(row, { score }));
   }
   container.append(list);
   return rows;
-}
-
-/**
- * @param {HTMLElement} root
- * @param {object[]} enrichedRows
- * @param {string[]} compareIds
- * @param {{ onClear: () => void }} handlers
- */
-export function renderCompareTray(root, enrichedRows, compareIds, handlers) {
-  if (!compareIds.length) {
-    root.classList.add('hidden');
-    root.innerHTML = '';
-    return;
-  }
-  root.classList.remove('hidden');
-  const picked = compareIds
-    .map((id) => enrichedRows.find((r) => r.id === id))
-    .filter(Boolean);
-
-  const grid = el('div', { className: 'compare-grid' });
-  for (const row of picked) {
-    const card = el('div', { className: 'compare-card' }, [
-      el('h4', { text: row.specName }),
-      el('div', {
-        className: 'metric-val',
-        text: row.peopleAbove == null ? '—' : `${fmtNum(row.peopleAbove)} / ${fmtNum(row.plan)}`,
-      }),
-      el('div', { className: 'metric-lbl', text: 'Над тобой / мест' }),
-    ]);
-    const track = el('div', { className: 'chance-block' });
-    renderChanceTrack(track, row);
-    card.append(track);
-    if (row.statusLabel) {
-      card.append(el('span', { className: `badge ${row.status}`, text: row.statusLabel }));
-    }
-    grid.append(card);
-  }
-
-  root.innerHTML = '';
-  const inner = el('div', { className: 'compare-inner wrap' }, [
-    el('div', { className: 'compare-head' }, [
-      el('strong', { text: `Сравнение · ${picked.length}/3` }),
-      el('button', { className: 'btn-ghost', type: 'button', text: 'Очистить' }),
-    ]),
-    grid,
-  ]);
-  inner.querySelector('button')?.addEventListener('click', handlers.onClear);
-  root.append(inner);
 }

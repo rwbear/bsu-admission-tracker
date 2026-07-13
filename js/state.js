@@ -1,35 +1,26 @@
 const KEYS = {
-  score: 'prohod-score',
-  uni: 'prohod-uni',
-  faculty: 'prohod-faculty',
-  theme: 'prohod-theme',
-  compare: 'prohod-compare',
-  filter: 'prohod-filter',
+  score: 'prohod-sb-score',
+  form: 'prohod-sb-form',
+  query: 'prohod-sb-query',
 };
 
 /** @type {{
  *  score: number | null,
- *  universityId: string | null,
- *  facultyId: string | null,
- *  filter: 'all' | 'safe' | 'risk' | 'below',
+ *  formId: '7' | '8',
  *  query: string,
- *  compareIds: string[],
- *  index: object | null,
  *  uniData: object | null,
  *  loading: boolean,
- *  error: string | null
+ *  error: string | null,
+ *  scoreSubmitted: boolean
  * }} */
 export const state = {
   score: null,
-  universityId: null,
-  facultyId: null,
-  filter: 'all',
+  formId: '7',
   query: '',
-  compareIds: [],
-  index: null,
   uniData: null,
   loading: false,
   error: null,
+  scoreSubmitted: false,
 };
 
 const listeners = new Set();
@@ -45,86 +36,41 @@ export function emit() {
 
 export function loadPrefs() {
   const score = localStorage.getItem(KEYS.score);
-  if (score != null && score !== '') state.score = Number(score);
-
-  state.universityId = localStorage.getItem(KEYS.uni);
-  state.facultyId = localStorage.getItem(KEYS.faculty);
-
-  const filter = localStorage.getItem(KEYS.filter);
-  if (filter === 'all' || filter === 'safe' || filter === 'risk' || filter === 'below') {
-    state.filter = filter;
+  if (score != null && score !== '') {
+    state.score = Number(score);
+    state.scoreSubmitted = true;
   }
 
-  try {
-    state.compareIds = JSON.parse(localStorage.getItem(KEYS.compare) || '[]');
-  } catch {
-    state.compareIds = [];
-  }
+  const form = localStorage.getItem(KEYS.form);
+  if (form === '7' || form === '8') state.formId = form;
 
-  const theme = localStorage.getItem(KEYS.theme);
-  if (theme === 'light' || theme === 'dark') {
-    document.documentElement.setAttribute('data-theme', theme);
-  }
+  state.query = localStorage.getItem(KEYS.query) || '';
 }
 
 export function setScore(value) {
   if (value == null || value === '') {
     state.score = null;
+    state.scoreSubmitted = false;
     localStorage.removeItem(KEYS.score);
   } else {
     state.score = Number(value);
+    state.scoreSubmitted = true;
     localStorage.setItem(KEYS.score, String(state.score));
   }
   emit();
 }
 
-export function setUniversity(id) {
-  state.universityId = id;
-  state.facultyId = null;
-  localStorage.setItem(KEYS.uni, id || '');
-  localStorage.removeItem(KEYS.faculty);
-  emit();
-}
-
-export function setFaculty(id) {
-  state.facultyId = id;
-  if (id) localStorage.setItem(KEYS.faculty, id);
-  else localStorage.removeItem(KEYS.faculty);
-  emit();
-}
-
-export function setFilter(filter) {
-  state.filter = filter;
-  localStorage.setItem(KEYS.filter, filter);
+/**
+ * @param {'7' | '8'} formId
+ */
+export function setForm(formId) {
+  state.formId = formId;
+  localStorage.setItem(KEYS.form, formId);
   emit();
 }
 
 export function setQuery(query) {
   state.query = query;
+  localStorage.setItem(KEYS.query, query);
   emit();
-}
-
-export function toggleCompare(id) {
-  if (state.compareIds.includes(id)) {
-    state.compareIds = state.compareIds.filter((x) => x !== id);
-  } else if (state.compareIds.length < 3) {
-    state.compareIds = [...state.compareIds, id];
-  }
-  localStorage.setItem(KEYS.compare, JSON.stringify(state.compareIds));
-  emit();
-}
-
-export function clearCompare() {
-  state.compareIds = [];
-  localStorage.removeItem(KEYS.compare);
-  emit();
-}
-
-export function toggleTheme() {
-  const cur = document.documentElement.getAttribute('data-theme');
-  const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
-  const isDark = cur === 'dark' || (!cur && prefersDark);
-  const next = isDark ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', next);
-  localStorage.setItem(KEYS.theme, next);
 }

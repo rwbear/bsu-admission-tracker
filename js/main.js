@@ -3,27 +3,17 @@ import {
   loadPrefs,
   subscribe,
   setScore,
-  setUniversity,
-  setFaculty,
-  setFilter,
+  setForm,
   setQuery,
-  toggleCompare,
-  clearCompare,
-  toggleTheme,
-  emit,
 } from './state.js';
-import { loadIndex, loadUniversity } from './load-data.js';
-import { prepareSpecs } from './compute.js';
+import { loadUniversity } from './load-data.js';
 import { $, fmtTime } from './ui/dom.js';
-import { renderRadarList, renderCompareTray } from './ui/radar.js';
+import { renderRadarList } from './ui/radar.js';
+
+const UNI_ID = 'sb-bsu';
 
 const $scoreInput = /** @type {HTMLInputElement} */ ($('#score-input'));
 const $scoreForm = $('#score-form');
-const $uniChips = $('#uni-chips');
-const $facGroup = $('#faculty-group');
-const $facChips = $('#faculty-chips');
-const $board = $('#board');
-const $toolbar = $('#toolbar');
 const $search = /** @type {HTMLInputElement} */ ($('#search-input'));
 const $updated = $('#updated-meta');
 const $loading = $('#state-loading');
@@ -31,128 +21,94 @@ const $empty = $('#state-empty');
 const $error = $('#state-error');
 const $errorMsg = $('#error-msg');
 const $results = $('#results');
-const $compare = $('#compare-tray');
-const $themeBtn = $('#theme-btn');
-const $refreshBtn = $('#refresh-btn');
 const $banner = $('#data-banner');
-
-let lastRows = [];
+const $sourceLink = /** @type {HTMLAnchorElement} */ ($('#source-link'));
+const $tickerUpdated = $('#ticker-updated');
+const $tickerUpdatedDup = $('#ticker-updated-dup');
 
 function showOnly(which) {
-  for (const el of [$loading, $empty, $error, $results, $toolbar]) {
-    el.classList.add('hidden');
+  for (const node of [$loading, $empty, $error, $results, $search]) {
+    node.classList.add('hidden');
   }
   if (which === 'loading') $loading.classList.remove('hidden');
   if (which === 'empty') $empty.classList.remove('hidden');
   if (which === 'error') $error.classList.remove('hidden');
   if (which === 'results') {
-    $toolbar.classList.remove('hidden');
+    $search.classList.remove('hidden');
     $results.classList.remove('hidden');
   }
 }
 
-function renderUniChips() {
-  $uniChips.innerHTML = '';
-  const unis = state.index?.universities || [];
-  for (const uni of unis) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `chip${state.universityId === uni.id ? ' active' : ''}`;
-    btn.innerHTML = `${uni.name}<span class="count">${uni.specialtyCount || 0}</span>`;
-    btn.title = uni.fullName || uni.name;
-    btn.addEventListener('click', async () => {
-      setUniversity(uni.id);
-      await fetchUniversity(uni.id);
-      // auto-select first faculty with data
-      const first = state.uniData?.faculties?.find((f) => f.specialtyCount > 0)
-        || state.uniData?.faculties?.[0];
-      if (first) setFaculty(first.id);
-      else renderBoard();
-    });
-    $uniChips.append(btn);
-  }
-}
-
-function renderFacultyChips() {
-  const faculties = state.uniData?.faculties || [];
-  if (!state.universityId || !faculties.length) {
-    $facGroup.classList.add('hidden');
-    return;
-  }
-  $facGroup.classList.remove('hidden');
-  $facChips.innerHTML = '';
-  for (const fac of faculties) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = `chip${state.facultyId === fac.id ? ' active' : ''}`;
-    btn.innerHTML = `${fac.name}<span class="count">${fac.specialtyCount || 0}</span>`;
-    btn.addEventListener('click', () => setFaculty(fac.id));
-    $facChips.append(btn);
-  }
+function syncFormButtons() {
+  document.querySelectorAll('.form-btn').forEach((btn) => {
+    const id = btn.getAttribute('data-form');
+    btn.classList.toggle('active', id === state.formId);
+  });
+  $sourceLink.href = `https://abit.bsu.by/formk1?id=${state.formId}`;
 }
 
 function currentSpecialties() {
   const all = state.uniData?.specialties || [];
-  if (!state.facultyId) return [];
-  return all.filter((s) => String(s.facultyId) === String(state.facultyId));
+  return all.filter((s) => String(s.facultyId) === String(state.formId));
+}
+
+function updateTicker(count) {
+  const formName = state.formId === '8' ? 'Заочная' : 'Дневная';
+  const stamp = state.uniData ? fmtTime(state.uniData.updatedAt) : 'нет данных';
+  const text = `Обновлено ${stamp} · ${formName} · ${count} спец.`;
+  $tickerUpdated.textContent = text;
+  $tickerUpdatedDup.textContent = text;
+  $updated.textContent = text;
 }
 
 function renderBoard() {
-  renderFacultyChips();
-  $updated.textContent = state.uniData
-    ? `Данные: ${fmtTime(state.uniData.updatedAt)}`
-    : '';
+  syncFormButtons();
 
   if (state.loading) {
     showOnly('loading');
     return;
   }
+
   if (state.error) {
     $errorMsg.textContent = state.error;
     showOnly('error');
     return;
   }
-  if (!state.universityId || !state.facultyId) {
+
+  if (!state.scoreSubmitted || state.score == null) {
     showOnly('empty');
-    $empty.querySelector('h3').textContent = 'Выбери университет и факультет';
+    $empty.querySelector('h3').textContent = 'Введи балл выше';
     $empty.querySelector('p').textContent =
-      'После ввода балла откроется радар: дорожка конкурса, сколько человек выше тебя и расчётный проходной.';
-    renderCompareTray($compare, lastRows, state.compareIds, { onClear: clearCompare });
+      'После этого появится радар по специальностям выбранной формы обучения.';
+    updateTicker(currentSpecialties().length);
     return;
   }
 
   const specs = currentSpecialties();
+  updateTicker(specs.length);
+
   if (!specs.length) {
     showOnly('empty');
-    $empty.querySelector('h3').textContent = 'Нет строк по этому факультету';
+    $empty.querySelector('h3').textContent = 'Нет строк по этой форме';
     $empty.querySelector('p').textContent =
-      'Таблица могла быть пустой вне приёмной кампании, или парсер не нашёл распределение баллов.';
+      'Таблица могла быть пустой вне кампании, или снимок ещё не обновился.';
     return;
   }
 
   showOnly('results');
-  lastRows = renderRadarList($results, specs, state.score, {
-    filter: state.filter,
-    query: state.query,
-    compareIds: state.compareIds,
-    onToggleCompare: (id) => toggleCompare(id),
-  });
-
-  // Keep compare tray based on currently enriched universe for selected faculty + pinned leftovers
-  const enriched = prepareSpecs(specs, state.score).map((r) => ({ ...r, score: state.score }));
-  renderCompareTray($compare, enriched, state.compareIds, { onClear: clearCompare });
+  renderRadarList($results, specs, state.score, { query: state.query });
 }
 
-async function fetchUniversity(id) {
+async function fetchData() {
   state.loading = true;
   state.error = null;
   emit();
   try {
-    state.uniData = await loadUniversity(id);
+    state.uniData = await loadUniversity(UNI_ID);
     if (state.uniData?.scrapeMeta?.fixture) {
       $banner.classList.remove('hidden');
       $banner.textContent =
-        'Показаны демонстрационные данные (кампания / источник временно без свежей таблицы). Обновление подтянется автоматически через GitHub Actions.';
+        'Демо-снимок: live-таблица БГУ сейчас недоступна сборщику. После успешного Actions данные подтянутся сами.';
     } else if (state.uniData?.scrapeMeta?.retainedPrevious) {
       $banner.classList.remove('hidden');
       $banner.textContent = 'Не удалось обновить источник — показан последний успешный снимок.';
@@ -172,26 +128,8 @@ async function bootstrap() {
   loadPrefs();
   if (state.score != null) $scoreInput.value = String(state.score);
   $search.value = state.query || '';
-
-  document.querySelectorAll('.filter-btn').forEach((btn) => {
-    btn.classList.toggle('active', btn.getAttribute('data-filter') === state.filter);
-  });
-
-  showOnly('loading');
-  try {
-    state.index = await loadIndex();
-    renderUniChips();
-    if (state.universityId) {
-      await fetchUniversity(state.universityId);
-      if (state.facultyId) renderBoard();
-    } else {
-      showOnly('empty');
-    }
-  } catch (err) {
-    state.error = err.message || String(err);
-    showOnly('error');
-    $errorMsg.textContent = state.error;
-  }
+  syncFormButtons();
+  await fetchData();
 }
 
 $scoreForm.addEventListener('submit', (e) => {
@@ -206,37 +144,17 @@ $scoreForm.addEventListener('submit', (e) => {
   document.getElementById('board')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 
-document.querySelectorAll('.filter-btn').forEach((btn) => {
+document.querySelectorAll('.form-btn').forEach((btn) => {
   btn.addEventListener('click', () => {
-    const filter = btn.getAttribute('data-filter') || 'all';
-    setFilter(/** @type {any} */ (filter));
-    document.querySelectorAll('.filter-btn').forEach((b) => {
-      b.classList.toggle('active', b === btn);
-    });
+    const id = /** @type {'7' | '8'} */ (btn.getAttribute('data-form') || '7');
+    setForm(id);
   });
 });
 
 $search.addEventListener('input', () => setQuery($search.value));
 
-$themeBtn.addEventListener('click', () => toggleTheme());
+$('#retry-btn').addEventListener('click', () => fetchData());
 
-$refreshBtn.addEventListener('click', async () => {
-  $refreshBtn.classList.add('spin');
-  try {
-    state.index = await loadIndex();
-    renderUniChips();
-    if (state.universityId) await fetchUniversity(state.universityId);
-    else emit();
-  } finally {
-    $refreshBtn.classList.remove('spin');
-  }
-});
-
-$('#retry-btn').addEventListener('click', () => bootstrap());
-
-subscribe(() => {
-  renderUniChips();
-  renderBoard();
-});
+subscribe(() => renderBoard());
 
 bootstrap();

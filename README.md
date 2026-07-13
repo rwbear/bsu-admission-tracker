@@ -1,31 +1,22 @@
-# Проход — радар конкурса
+# Проход — Институт бизнеса БГУ
 
-Живой трекер шансов поступления: вводишь балл → выбираешь вуз и факультет → видишь, сколько заявлений выше тебя относительно мест.
+Радар конкурса для **Института бизнеса БГУ**: вводишь сумму баллов → выбираешь дневную или заочную → видишь, сколько заявлений выше тебя относительно мест.
 
-Сайт: GitHub Pages (static). Данные: JSON-снимки официальных таблиц мониторинга, которые обновляет GitHub Actions.
+## Данные
 
-## Как пользоваться
+Официальные таблицы мониторинга:
 
-1. Введи сумму баллов (ЦЭ/ЦТ + аттестат).
-2. Выбери университет и факультет / форму.
-3. Смотри **дорожку конкурса**, счётчик «над тобой / мест» и расчётный проходной.
-4. Раскрой строку — полное распределение по интервалам.
+- Дневная: https://abit.bsu.by/formk1?id=7
+- Заочная: https://abit.bsu.by/formk1?id=8
 
-Расчётный проходной — оценка по текущей таблице, не официальный приказ о зачислении.
+GitHub Actions скрейпит эти страницы в `data/sb-bsu.json`. Сайт на GitHub Pages читает только локальный JSON — без CORS-прокси.
 
-## Стек
-
-- Frontend: HTML / CSS / ES modules (без сборки)
-- Данные: `data/*.json`
-- Скрейпер: Node 20 (`scripts/scrape`)
-- Автообновление: `.github/workflows/scrape.yml` (cron + manual)
-
-## Локальный запуск
+## Локально
 
 ```bash
 npm test
-npm run fixtures   # демо-данные, если нужно
-npm run scrape     # живой сбор (нужен доступ к сайтам вузов)
+npm run fixtures   # демо-снимок, если БГУ недоступен
+npm run scrape     # живой сбор id=7 и id=8
 python3 -m http.server 8080
 ```
 
@@ -33,32 +24,16 @@ python3 -m http.server 8080
 
 ## GitHub Pages
 
-1. Settings → Pages → Source: **Deploy from a branch**
-2. Branch: `main` / folder: `/ (root)`
-3. Дождись Actions scrape или запусти workflow вручную
+1. Settings → Pages → Deploy from a branch
+2. Branch: `main` или `cursor/admission-tracker-rebuild-be86`, folder `/ (root)`
+3. Actions → **Scrape admission tables** → Run workflow
 
-## Добавить вуз
+## Дизайн
 
-1. Запись в [`sources/universities.json`](sources/universities.json)
-2. Адаптер в `scripts/scrape/adapters/` (если формат HTML новый)
-3. Зарегистрировать адаптер в `scripts/scrape/run.mjs`
+**Portal CRT** — cream ink on charcoal, grain, hairline frames, mono metrics. Один институт, без мульти-вузового меню.
 
-Каталог ссылок мониторинга: [kudapostupat.by/index/monitor](https://kudapostupat.by/index/monitor)
+## Стек
 
-### Адаптеры сейчас
-
-| Адаптер | Вузы |
-|--------|------|
-| `formk1` | БГУ, БГПУ, БГТУ |
-| `bsuir` | БГУИР |
-| `bntu` | БНТУ |
-| `grsu` | ГрГУ |
-
-## Команды
-
-```bash
-npm test
-npm run scrape
-npm run scrape -- --only bsuir --limit 2
-npm run fixtures
-```
+- Static HTML / CSS / ES modules
+- Node 20 scraper (`scripts/scrape`)
+- Chance math in `js/compute.js`
