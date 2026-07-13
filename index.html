@@ -1,95 +1,125 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="auto">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admission Tracker — BSU & БГТУ</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="description" content="Проход — живой радар конкурса: введи балл, выбери вуз и факультет, увидь свои шансы." />
+  <title>Проход — радар конкурса</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Onest:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/tokens.css" />
+  <link rel="stylesheet" href="./css/layout.css" />
+  <link rel="stylesheet" href="./css/components.css" />
 </head>
 <body>
-
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="header-left">
-        <span class="logo-icon">🎓</span>
-        <span class="logo-text">Admission Tracker</span>
-        <div class="live-badge"><span class="live-dot"></span>LIVE</div>
-      </div>
-      <div class="header-right">
-        <span class="refresh-label">Обновление через</span>
-        <span id="refresh-countdown" class="refresh-countdown">15:00</span>
-        <button id="refresh-btn" class="icon-btn" title="Обновить">
-          <svg id="refresh-icon" width="15" height="15" viewBox="0 0 16 16"><path d="M13.65 2.35A7.958 7.958 0 008 0C3.58 0 0 3.58 0 8s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 018 14c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L9 7h7V0l-2.35 2.35z" fill="currentColor"/></svg>
-        </button>
-        <button id="theme-btn" class="icon-btn" title="Тема">
-          <span class="sun">☀</span><span class="moon">☽</span>
-        </button>
-      </div>
-    </div>
-    <div class="header-sub">
-      <span id="last-updated">Загрузка...</span>
-    </div>
-  </header>
-
-  <div class="score-bar">
-    <div class="score-bar-inner">
-      <span class="score-bar-label">Мой балл:</span>
-      <input type="number" id="score-input" class="score-input" placeholder="напр. 320" min="0" max="500"/>
-      <button id="score-btn" class="apply-btn">Применить</button>
-      <span class="score-bar-hint">Введи сумму баллов — увидишь шансы по каждой специальности</span>
-    </div>
-  </div>
-
-  <div class="selector-panel" id="selector-panel">
-    <div class="selector-inner">
-
-      <div class="selector-group">
-        <div class="selector-label">Учреждение</div>
-        <div class="univ-grid" id="univ-grid"></div>
-      </div>
-
-      <div class="selector-group" id="faculty-group" style="display:none">
-        <div class="selector-label">Факультет / Институт</div>
-        <div class="faculty-grid" id="faculty-grid"></div>
-      </div>
-
-      <div class="selector-group">
-        <div class="selector-label">Или введи ссылку вручную</div>
-        <div class="custom-url-row">
-          <input type="text" id="custom-url" class="custom-url-input" placeholder="https://abit.bsu.by/formk1?id=7"/>
-          <button id="custom-url-btn" class="apply-btn">Добавить</button>
+  <div class="site">
+    <header class="topbar">
+      <div class="wrap topbar-inner">
+        <a class="brand-mark" href="#top">
+          <strong>Проход</strong>
+          <span>радар конкурса</span>
+        </a>
+        <div class="topbar-actions">
+          <button class="icon-btn" id="refresh-btn" type="button" title="Обновить данные" aria-label="Обновить данные">
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M13.65 2.35A7.96 7.96 0 0 0 8 0C3.58 0 0 3.58 0 8s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 0 1 8 14c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L9 7h7V0l-2.35 2.35z"/></svg>
+          </button>
+          <button class="icon-btn" id="theme-btn" type="button" title="Тема" aria-label="Переключить тему">Тема</button>
         </div>
-        <div class="custom-tags" id="custom-tags"></div>
       </div>
+    </header>
 
-    </div>
+    <main id="top">
+      <section class="hero">
+        <div class="wrap hero-inner">
+          <h1 class="hero-brand">Проход</h1>
+          <p class="hero-line">Твой балл. Живой конкурс. Сразу видно, сколько человек выше тебя относительно мест.</p>
+          <form class="score-form" id="score-form">
+            <div class="field">
+              <label for="score-input">Сумма баллов</label>
+              <input
+                class="score-input"
+                id="score-input"
+                name="score"
+                type="number"
+                inputmode="numeric"
+                min="0"
+                max="500"
+                step="1"
+                placeholder="320"
+                required
+              />
+            </div>
+            <button class="btn" type="submit">Смотреть шансы</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="section" id="board">
+        <div class="wrap">
+          <div class="section-head">
+            <div>
+              <h2>Выбор вуза</h2>
+              <p>Данные читаются из снимков официальных таблиц мониторинга — без CORS-прокси.</p>
+            </div>
+            <div class="meta-line" id="updated-meta"></div>
+          </div>
+
+          <div id="data-banner" class="offline-banner hidden" role="status"></div>
+
+          <div class="panel selector">
+            <div>
+              <div class="selector-label">Университет</div>
+              <div class="chip-row" id="uni-chips"></div>
+            </div>
+            <div id="faculty-group" class="hidden">
+              <div class="selector-label">Факультет / форма</div>
+              <div class="chip-row" id="faculty-chips"></div>
+            </div>
+          </div>
+
+          <div id="toolbar" class="toolbar hidden" style="margin-top: 1.5rem">
+            <input class="search-input" id="search-input" type="search" placeholder="Поиск специальности" />
+            <div class="filter-group" role="group" aria-label="Фильтр статуса">
+              <button type="button" class="filter-btn active" data-filter="all">Все</button>
+              <button type="button" class="filter-btn" data-filter="safe">В зоне</button>
+              <button type="button" class="filter-btn" data-filter="risk">На грани</button>
+              <button type="button" class="filter-btn" data-filter="below">Ниже</button>
+            </div>
+          </div>
+
+          <div id="state-loading" class="skeleton-list hidden" style="margin-top: 1.5rem">
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+            <div class="skeleton-row"></div>
+          </div>
+
+          <div id="state-empty" class="state-box panel hidden" style="margin-top: 1.5rem">
+            <h3>Выбери университет и факультет</h3>
+            <p>После ввода балла откроется радар: дорожка конкурса, сколько человек выше тебя и расчётный проходной.</p>
+          </div>
+
+          <div id="state-error" class="state-box panel hidden" style="margin-top: 1.5rem">
+            <h3>Не удалось загрузить данные</h3>
+            <p id="error-msg"></p>
+            <button class="btn" id="retry-btn" type="button" style="margin-top: 1rem">Повторить</button>
+          </div>
+
+          <div id="results" class="hidden" style="margin-top: 1.5rem"></div>
+        </div>
+      </section>
+    </main>
+
+    <aside id="compare-tray" class="compare-tray hidden" aria-label="Сравнение специальностей"></aside>
+
+    <footer class="site-footer">
+      <div class="wrap">
+        <span>Источники: официальные таблицы вузов · обновление через GitHub Actions</span>
+        <span>Проходной на сайте — расчётный по текущему распределению, не приказ о зачислении</span>
+      </div>
+    </footer>
   </div>
 
-  <main class="main-wrap">
-    <div id="loading" class="state-screen">
-      <div class="spinner"></div>
-      <p>Загружаем данные...</p>
-    </div>
-    <div id="error-screen" class="state-screen hidden">
-      <div class="state-icon">⚠️</div>
-      <h3>Не удалось загрузить данные</h3>
-      <p id="error-msg">Попробуй снова или добавь ссылку вручную</p>
-      <button id="retry-btn" class="apply-btn" style="margin-top:12px">Повторить</button>
-    </div>
-    <div id="empty-screen" class="state-screen hidden">
-      <div class="state-icon">📋</div>
-      <h3>Выбери университет и факультет выше</h3>
-      <p>Или добавь ссылку вручную</p>
-    </div>
-    <div id="cards" class="cards-wrap hidden"></div>
-  </main>
-
-  <footer class="site-footer">
-    Данные: <a href="https://abit.bsu.by" target="_blank" rel="noopener">abit.bsu.by</a> &amp;
-    <a href="https://abiturient.bspu.by" target="_blank" rel="noopener">bspu.by</a> ·
-    Обновление каждые 15 мин
-  </footer>
-
-  <script src="app.js"></script>
+  <script type="module" src="./js/main.js"></script>
 </body>
 </html>

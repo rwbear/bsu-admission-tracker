@@ -1,0 +1,121 @@
+{
+  "universityId": "belstu",
+  "name": "БГТУ",
+  "fullName": "Белорусский государственный технологический университет",
+  "hubUrl": "https://abiturient.belstu.by/monitoring-vstupitelnoj-kampanii/",
+  "updatedAt": "2026-07-13T12:00:00.000Z",
+  "specialtyCount": 1,
+  "faculties": [
+    {
+      "id": "1",
+      "name": "Факультет 1",
+      "specialtyCount": 1
+    }
+  ],
+  "specialties": [
+    {
+      "id": "belstu:1:chemtech:20",
+      "universityId": "belstu",
+      "facultyId": "1",
+      "facultyName": "Факультет 1",
+      "form": "",
+      "formName": "",
+      "groupName": "",
+      "specName": "химическая технология",
+      "plan": 20,
+      "totalApps": 22,
+      "inCompetition": 22,
+      "ranges": [
+        "391 и более",
+        "390 - 386",
+        "385 - 381",
+        "380 - 376",
+        "375 - 371",
+        "370 - 366",
+        "365 - 361",
+        "360 - 356",
+        "355 - 351",
+        "350 - 346",
+        "345 - 341",
+        "340 - 336",
+        "335 - 331",
+        "330 - 326",
+        "325 - 321",
+        "320 - 316",
+        "315 - 311",
+        "310 - 306",
+        "305 - 301",
+        "300 - 296",
+        "295 - 291",
+        "290 - 286",
+        "285 и менее"
+      ],
+      "buckets": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        2,
+        2,
+        3,
+        4,
+        3,
+        2,
+        2,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "estimatedPassing": 321,
+      "sourceUrl": "https://lk.belstu.by/formk1?id=1",
+      "updatedAt": "2026-07-13T12:00:00.000Z"
+    }
+  ],
+  "scrapeErrors": [
+    {
+      "facultyId": "1",
+      "url": "https://lk.belstu.by/formk1?id=1",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "2",
+      "url": "https://lk.belstu.by/formk1?id=2",
+      "status": 200,
+      "message": "no score-bucket rows"
+    },
+    {
+      "facultyId": "3",
+      "url": "https://lk.belstu.by/formk1?id=3",
+      "status": 200,
+      "message": "no score-bucket rows"
+    },
+    {
+      "facultyId": "4",
+      "url": "https://lk.belstu.by/formk1?id=4",
+      "status": 200,
+      "message": "no score-bucket rows"
+    },
+    {
+      "facultyId": "5",
+      "url": "https://lk.belstu.by/formk1?id=5",
+      "status": 200,
+      "message": "no score-bucket rows"
+    }
+  ],
+  "scrapeMeta": {
+    "discoveredFacultyIds": [],
+    "fetchedFaculties": 5,
+    "retainedPrevious": true
+  },
+  "lastAttemptAt": "2026-07-13T21:56:59.253Z"
+}

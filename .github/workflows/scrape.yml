@@ -1,0 +1,58 @@
+name: Scrape admission tables
+
+on:
+  schedule:
+    # Around university update hours (UTC): ~09:00, 12:00, 15:00 BY time ≈ UTC+3
+    - cron: "15 9,12,15 * * *"
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/scrape/**"
+      - "sources/universities.json"
+      - ".github/workflows/scrape.yml"
+      - "js/compute.js"
+
+permissions:
+  contents: write
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run tests
+        run: npm test
+
+      - name: Scrape universities
+        run: npm run scrape
+
+      - name: Detect changes
+        id: changes
+        run: |
+          if [ -f data/.changed ] && [ "$(cat data/.changed)" = "1" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+          rm -f data/.changed
+
+      - name: Commit updated data
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "prohod-bot"
+          git config user.email "prohod-bot@users.noreply.github.com"
+          git add data/*.json
+          if git diff --staged --quiet; then
+            echo "Nothing to commit"
+            exit 0
+          fi
+          git commit -m "data: refresh admission snapshots"
+          git push
