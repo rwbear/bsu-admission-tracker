@@ -1,318 +1,497 @@
-const CORS_PROXY = 'https://corsproxy.io/?url=';
-const BSU_BASE   = 'https://abit.bsu.by/formk1?id=';
-const FACULTIES = [
-  { id: 7,  label: 'Биологический',      short: 'Биол.' },
-  { id: 22, label: 'Социокультурных',    short: 'Соц.' },
-  { id: 32, label: 'Факультет 32',       short: 'Ф32'  },
-  { id: 34, label: 'Факультет 34',       short: 'Ф34'  },
+const PROXY = 'https://corsproxy.io/?url=';
+const REFRESH_MS = 15 * 60 * 1000;
+
+const UNIVERSITIES = [
+  {
+    id: 'bsu',
+    name: 'БГУ',
+    fullName: 'Белорусский государственный университет',
+    icon: '🏛',
+    base: 'https://abit.bsu.by/formk1?id=',
+    faculties: [
+      { id: 1,  name: 'Механико-математический' },
+      { id: 2,  name: 'Физический' },
+      { id: 3,  name: 'Химический' },
+      { id: 4,  name: 'Географический' },
+      { id: 5,  name: 'Геологический' },
+      { id: 6,  name: 'Прикладной математики' },
+      { id: 7,  name: 'Биологический' },
+      { id: 8,  name: 'Исторический' },
+      { id: 9,  name: 'Философии и социальных наук' },
+      { id: 10, name: 'Экономический' },
+      { id: 11, name: 'Юридический' },
+      { id: 12, name: 'Международных отношений' },
+      { id: 13, name: 'Журналистики' },
+      { id: 14, name: 'Филологический' },
+      { id: 15, name: 'Белорусской и русской филологии' },
+      { id: 16, name: 'Романо-германской филологии' },
+      { id: 17, name: 'Педагогический' },
+      { id: 18, name: 'Психологический' },
+      { id: 19, name: 'Социокультурных коммуникаций' },
+      { id: 20, name: 'Военный факультет' },
+      { id: 21, name: 'Государственного управления' },
+      { id: 22, name: 'Социокультурных коммуникаций (2)' },
+      { id: 23, name: 'Институт бизнеса БГУ' },
+      { id: 24, name: 'Институт журналистики' },
+      { id: 25, name: 'ФФСН' },
+      { id: 26, name: 'Экологический' },
+      { id: 27, name: 'Прикладной лингвистики' },
+      { id: 28, name: 'ИПК' },
+      { id: 29, name: 'Радиофизики и компьютерных технологий' },
+      { id: 30, name: 'Спортивный' },
+      { id: 31, name: 'Естественных наук' },
+      { id: 32, name: 'Факультет 32' },
+      { id: 33, name: 'Факультет 33' },
+      { id: 34, name: 'Факультет 34' },
+    ]
+  },
+  {
+    id: 'bspu',
+    name: 'БГПУ',
+    fullName: 'Белорусский государственный педагогический университет',
+    icon: '📚',
+    base: 'https://abiturient.bspu.by/formk1?id=',
+    faculties: [
+      { id: 1, name: 'Математический' },
+      { id: 2, name: 'Физический' },
+      { id: 3, name: 'Естественный' },
+      { id: 4, name: 'Исторический' },
+      { id: 5, name: 'Филологический' },
+      { id: 6, name: 'Иностранных языков' },
+      { id: 7, name: 'Психологии' },
+      { id: 8, name: 'Специального образования' },
+      { id: 9, name: 'Дошкольного образования' },
+      { id: 10, name: 'Начального образования' },
+      { id: 11, name: 'Социальной педагогики' },
+    ]
+  },
 ];
-const REFRESH_INTERVAL_MS = 15 * 60 * 1000;
-let allData = {};
+
 let myScore = null;
-let activeTab = FACULTIES[0].id;
-let countdown = REFRESH_INTERVAL_MS / 1000;
-let countdownTimer = null;
-let themeOverride = null;
-const $loadingScreen = document.getElementById('loading-screen');
-const $errorScreen = document.getElementById('error-screen');
-const $cardsContainer = document.getElementById('cards-container');
-const $lastUpdated = document.getElementById('last-updated');
-const $refreshBtn = document.getElementById('refresh-btn');
-const $retryBtn = document.getElementById('retry-btn');
-const $myScoreInput = document.getElementById('my-score');
-const $applyBtn = document.getElementById('score-apply-btn');
-const $facultyTabs = document.getElementById('faculty-tabs');
+let activeUniv = null;
+let activeFacIds = new Set();
+let customUrls = [];
+let dataCache = {};
+let countdown = REFRESH_MS / 1000;
+let timer = null;
+
+const $univGrid = document.getElementById('univ-grid');
+const $facGroup  = document.getElementById('faculty-group');
+const $facGrid   = document.getElementById('faculty-grid');
+const $cards     = document.getElementById('cards');
+const $loading   = document.getElementById('loading');
+const $errorScr  = document.getElementById('error-screen');
+const $emptySCr  = document.getElementById('empty-screen');
 const $countdown = document.getElementById('refresh-countdown');
-const $themeBtn = document.getElementById('theme-toggle');
-(async function init() {
+const $lastUpd   = document.getElementById('last-updated');
+const $scoreInp  = document.getElementById('score-input');
+const $scoreBtn  = document.getElementById('score-btn');
+const $refBtn    = document.getElementById('refresh-btn');
+const $retryBtn  = document.getElementById('retry-btn');
+const $themeBtn  = document.getElementById('theme-btn');
+const $customIn  = document.getElementById('custom-url');
+const $customBtn = document.getElementById('custom-url-btn');
+const $customTags= document.getElementById('custom-tags');
+
+(function init() {
   loadPrefs();
-  buildTabs();
-  await fetchAllFaculties();
-  renderActiveTab();
-  startCountdown();
+  buildUnivGrid();
+  startTimer();
+  showEmpty();
 })();
+
 function loadPrefs() {
-  const saved = localStorage.getItem('bsu-tracker-score');
-  if (saved) {
-    myScore = parseInt(saved, 10);
-    $myScoreInput.value = myScore;
-  }
-  const savedTheme = localStorage.getItem('bsu-tracker-theme');
-  if (savedTheme) {
-    themeOverride = savedTheme;
-    document.documentElement.setAttribute('data-theme', savedTheme);
-  }
+  const s = localStorage.getItem('at-score');
+  if (s) { myScore = +s; $scoreInp.value = s; }
+  const t = localStorage.getItem('at-theme');
+  if (t) document.documentElement.setAttribute('data-theme', t);
+  const cu = localStorage.getItem('at-custom-urls');
+  if (cu) try { customUrls = JSON.parse(cu); renderCustomTags(); } catch(e) {}
 }
-function saveScore() {
-  if (myScore !== null) localStorage.setItem('bsu-tracker-score', myScore);
+function savePrefs() {
+  if (myScore !== null) localStorage.setItem('at-score', myScore);
+  localStorage.setItem('at-custom-urls', JSON.stringify(customUrls));
 }
+
 $themeBtn.addEventListener('click', () => {
   const html = document.documentElement;
-  const current = html.getAttribute('data-theme');
-  const isDark = current === 'dark' || (!current && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  const next = isDark ? 'light' : 'dark';
+  const cur = html.getAttribute('data-theme');
+  const dark = cur === 'dark' || (!cur && matchMedia('(prefers-color-scheme:dark)').matches);
+  const next = dark ? 'light' : 'dark';
   html.setAttribute('data-theme', next);
-  localStorage.setItem('bsu-tracker-theme', next);
+  localStorage.setItem('at-theme', next);
 });
-function buildTabs() {
-  FACULTIES.forEach(f => {
-    const btn = document.createElement('button');
-    btn.className = 'tab-btn' + (f.id === activeTab ? ' active' : '');
-    btn.textContent = f.label;
-    btn.dataset.id = f.id;
-    btn.addEventListener('click', () => {
-      activeTab = f.id;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', parseInt(b.dataset.id) === activeTab));
-      renderActiveTab();
+
+$scoreBtn.addEventListener('click', applyScore);
+$scoreInp.addEventListener('keydown', e => e.key === 'Enter' && applyScore());
+function applyScore() {
+  const v = parseInt($scoreInp.value);
+  if (!isNaN(v) && v >= 0 && v <= 500) {
+    myScore = v; savePrefs(); renderCards();
+  }
+}
+
+function buildUnivGrid() {
+  UNIVERSITIES.forEach(u => {
+    const p = document.createElement('div');
+    p.className = 'univ-pill';
+    p.innerHTML = `<span class="pill-icon">${u.icon}</span><span>${u.name}</span><span style="font-size:11px;color:var(--text3)">${u.fullName}</span>`;
+    p.addEventListener('click', () => selectUniv(u.id));
+    p.dataset.uid = u.id;
+    $univGrid.appendChild(p);
+  });
+}
+
+function selectUniv(uid) {
+  activeUniv = uid;
+  activeFacIds = new Set();
+  dataCache = {};
+  document.querySelectorAll('.univ-pill').forEach(p => p.classList.toggle('active', p.dataset.uid === uid));
+  buildFacGrid();
+  $facGroup.style.display = 'block';
+  showEmpty();
+}
+
+function buildFacGrid() {
+  $facGrid.innerHTML = '';
+  const univ = UNIVERSITIES.find(u => u.id === activeUniv);
+  if (!univ) return;
+
+  const all = document.createElement('div');
+  all.className = 'fac-chip all';
+  all.textContent = 'Все факультеты';
+  all.addEventListener('click', () => {
+    activeFacIds = new Set(univ.faculties.map(f => f.id));
+    document.querySelectorAll('.fac-chip').forEach(c => c.classList.remove('active','multi-active'));
+    all.classList.add('active');
+    dataCache = {};
+    loadAndRender();
+  });
+  $facGrid.appendChild(all);
+
+  univ.faculties.forEach(f => {
+    const c = document.createElement('div');
+    c.className = 'fac-chip';
+    c.textContent = f.name;
+    c.dataset.fid = f.id;
+    c.addEventListener('click', () => toggleFac(f.id, c, all));
+    $facGrid.appendChild(c);
+  });
+}
+
+function toggleFac(fid, chip, allChip) {
+  allChip.classList.remove('active');
+  if (activeFacIds.has(fid)) {
+    activeFacIds.delete(fid);
+    chip.classList.remove('active','multi-active');
+    delete dataCache[activeUniv + '_' + fid];
+  } else {
+    activeFacIds.add(fid);
+    chip.classList.add('active');
+    if (activeFacIds.size > 1) {
+      document.querySelectorAll('.fac-chip.active:not(.all)').forEach(c => {
+        c.classList.remove('active'); c.classList.add('multi-active');
+      });
+    }
+  }
+  if (activeFacIds.size > 0) loadAndRender();
+  else { renderCards(); }
+}
+
+$customBtn.addEventListener('click', addCustomUrl);
+$customIn.addEventListener('keydown', e => e.key === 'Enter' && addCustomUrl());
+function addCustomUrl() {
+  const raw = $customIn.value.trim();
+  if (!raw) return;
+  const url = raw.startsWith('http') ? raw : 'https://' + raw;
+  try { new URL(url); } catch(e) { alert('Неверный URL'); return; }
+  const id = new URL(url).searchParams.get('id') || url;
+  if (!customUrls.find(c => c.url === url)) {
+    customUrls.push({ label: 'Ссылка ID=' + id, url });
+    savePrefs(); renderCustomTags();
+    loadAndRender();
+  }
+  $customIn.value = '';
+}
+
+function renderCustomTags() {
+  $customTags.innerHTML = '';
+  customUrls.forEach((cu, i) => {
+    const t = document.createElement('div');
+    t.className = 'custom-tag';
+    t.innerHTML = `<span>${cu.label}</span><button title="Удалить">✕</button>`;
+    t.querySelector('button').addEventListener('click', () => {
+      customUrls.splice(i, 1);
+      delete dataCache['custom_' + i];
+      savePrefs(); renderCustomTags(); renderCards();
     });
-    $facultyTabs.appendChild(btn);
+    $customTags.appendChild(t);
   });
 }
-async function fetchAllFaculties() {
+
+async function loadAndRender() {
   showLoading();
-  const results = await Promise.all(FACULTIES.map(f => fetchFaculty(f.id)));
-  let anySuccess = false;
-  FACULTIES.forEach((f, i) => {
-    if (results[i] !== null) { allData[f.id] = results[i]; anySuccess = true; }
-  });
-  if (!anySuccess) { showError('Не удалось загрузить ни одного факультета.'); return; }
-  const now = new Date();
-  $lastUpdated.textContent = `Последнее обновление: ${now.toLocaleTimeString('ru-RU')}`;
-  hideLoading();
+  const keys = getActiveKeys();
+  if (keys.length === 0) { showEmpty(); return; }
+  await Promise.all(keys.map(k => loadKey(k)));
+  renderCards();
+  $lastUpd.textContent = 'Обновлено: ' + new Date().toLocaleTimeString('ru-RU');
 }
-async function fetchFaculty(id) {
-  const url = CORS_PROXY + encodeURIComponent(BSU_BASE + id);
+
+function getActiveKeys() {
+  const keys = [];
+  if (activeUniv && activeFacIds.size > 0) {
+    const univ = UNIVERSITIES.find(u => u.id === activeUniv);
+    activeFacIds.forEach(fid => {
+      keys.push({ key: activeUniv + '_' + fid, url: univ.base + fid });
+    });
+  }
+  customUrls.forEach((cu, i) => keys.push({ key: 'custom_' + i, url: cu.url }));
+  return keys;
+}
+
+async function loadKey({ key, url }) {
+  if (dataCache[key]) return;
+  const proxyUrl = PROXY + encodeURIComponent(url);
   try {
-    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const res = await fetch(proxyUrl);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const html = await res.text();
-    return parseHTML(html, id);
-  } catch (e) {
-    console.warn('Fetch failed for id=' + id, e);
-    return null;
+    const parsed = parseTable(html, key);
+    if (parsed && parsed.length > 0) dataCache[key] = parsed;
+    else dataCache[key] = null;
+  } catch(e) {
+    console.warn('Fetch error', key, e);
+    dataCache[key] = null;
   }
 }
-function parseHTML(html, facultyId) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const specialties = [];
-  const tables = doc.querySelectorAll('table');
-  tables.forEach(table => {
-    const headerCells = Array.from(table.querySelectorAll('th, thead td'));
-    let scoreRanges = [];
-    headerCells.forEach(th => {
-      const t = th.textContent.trim();
-      if (/\d+\s*(и более|[-–]\s*\d+)/.test(t)) scoreRanges.push(t.replace(/\s+/g, ' ').trim());
-    });
+
+function parseTable(html, key) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const results = [];
+  doc.querySelectorAll('table').forEach(table => {
+    const ths = [...table.querySelectorAll('th, thead td')];
+    const scoreRanges = ths
+      .map(th => th.textContent.trim())
+      .filter(t => /\d+\s*(и более|и менее|[-–]\s*\d+)/.test(t))
+      .map(t => t.replace(/\s+/g,' ').trim());
     if (scoreRanges.length === 0) return;
-    const rows = table.querySelectorAll('tbody tr');
-    rows.forEach(row => {
-      const cells = Array.from(row.querySelectorAll('td'));
-      if (cells.length < 4) return;
-      let specialtyName = '';
-      let groupName = '';
-      let planTotal = 0;
-      let totalApplicants = 0;
-      let bucketCounts = [];
-      let withinCompetition = 0;
-      const cellTexts = cells.map(c => c.textContent.trim());
-      const numCols = cells.length;
-      if (numCols >= scoreRanges.length + 3) {
-        bucketCounts = cellTexts.slice(numCols - scoreRanges.length).map(v => parseInt(v) || 0);
-        planTotal = parseInt(cellTexts[2]) || parseInt(cellTexts[3]) || 0;
-        totalApplicants = parseInt(cellTexts[numCols - scoreRanges.length - 1]) || 0;
-        withinCompetition = parseInt(cellTexts[numCols - scoreRanges.length - 2]) || totalApplicants;
-        groupName = cellTexts[0];
-        specialtyName = cellTexts[1] || cellTexts[0];
-      } else {
-        return;
-      }
-      if (!specialtyName || bucketCounts.length === 0) return;
-      if (bucketCounts.every(v => v === 0) && totalApplicants === 0) return;
-      const passingScore = estimatePassingScore(scoreRanges, bucketCounts, planTotal, withinCompetition);
-      specialties.push({ facultyId, groupName: groupName !== specialtyName ? groupName : '', specialtyName, planTotal, totalApplicants, withinCompetition, scoreRanges, bucketCounts, passingScore });
+    table.querySelectorAll('tbody tr').forEach(row => {
+      const cells = [...row.querySelectorAll('td')].map(c => c.textContent.trim());
+      const n = cells.length;
+      if (n < scoreRanges.length + 3) return;
+      const buckets = cells.slice(n - scoreRanges.length).map(v => parseInt(v) || 0);
+      const plan = parseInt(cells[2]) || 0;
+      const totalApps = parseInt(cells[n - scoreRanges.length - 1]) || 0;
+      const inComp = parseInt(cells[n - scoreRanges.length - 2]) || totalApps;
+      const groupName = cells[0];
+      const specName = cells[1] || cells[0];
+      if (!specName || buckets.every(v => v === 0)) return;
+      const passing = calcPassing(scoreRanges, buckets, inComp || plan);
+      results.push({ key, groupName: groupName !== specName ? groupName : '', specName, plan, totalApps, inComp, scoreRanges, buckets, passing });
     });
   });
-  return specialties.length > 0 ? specialties : null;
+  return results;
 }
-function estimatePassingScore(ranges, counts, plan, inCompetition) {
-  if (!plan || plan === 0) return null;
-  let cumulative = 0;
+
+function calcPassing(ranges, counts, plan) {
+  if (!plan) return null;
+  let cum = 0;
   for (let i = 0; i < ranges.length; i++) {
-    cumulative += counts[i];
-    if (cumulative >= plan) return parseBucketLow(ranges[i]);
+    cum += counts[i];
+    if (cum >= plan) return bucketLow(ranges[i]);
   }
   return null;
 }
-function parseBucketLow(rangeStr) {
-  const moreMatch = rangeStr.match(/^(\d+)\s*(и более|и выше)/i);
-  if (moreMatch) return parseInt(moreMatch[1]);
-  const rangeMatch = rangeStr.match(/(\d+)\s*[-–]\s*(\d+)/);
-  if (rangeMatch) return Math.min(parseInt(rangeMatch[1]), parseInt(rangeMatch[2]));
+function bucketLow(s) {
+  const m = s.match(/^(\d+)\s*(и более|и выше)/i);
+  if (m) return +m[1];
+  const r = s.match(/(\d+)\s*[-–]\s*(\d+)/);
+  if (r) return Math.min(+r[1], +r[2]);
   return null;
 }
-function parseBucketHigh(rangeStr) {
-  const moreMatch = rangeStr.match(/^(\d+)\s*(и более|и выше)/i);
-  if (moreMatch) return parseInt(moreMatch[1]) + 10;
-  const rangeMatch = rangeStr.match(/(\d+)\s*[-–]\s*(\d+)/);
-  if (rangeMatch) return Math.max(parseInt(rangeMatch[1]), parseInt(rangeMatch[2]));
+function bucketHigh(s) {
+  const m = s.match(/^(\d+)\s*(и более|и выше)/i);
+  if (m) return +m[1] + 15;
+  const r = s.match(/(\d+)\s*[-–]\s*(\d+)/);
+  if (r) return Math.max(+r[1], +r[2]);
   return null;
 }
-function renderActiveTab() {
-  $cardsContainer.innerHTML = '';
-  const data = allData[activeTab];
-  if (!data || data.length === 0) {
-    $cardsContainer.innerHTML = `<p style="color:var(--text-2);padding:40px 0;text-align:center;">Нет данных для этого факультета. Возможно, страница не загрузилась.</p>`;
-    $cardsContainer.classList.remove('hidden');
+
+function renderCards() {
+  $cards.innerHTML = '';
+  const allSpecs = [];
+  Object.values(dataCache).forEach(arr => { if (arr) allSpecs.push(...arr); });
+  if (allSpecs.length === 0) {
+    const hasKeys = getActiveKeys().length > 0;
+    if (hasKeys) {
+      $cards.innerHTML = '<p style="color:var(--text2);text-align:center;padding:40px">Нет данных. Попробуй обновить или проверь ID факультета.</p>';
+      showCards();
+    } else {
+      showEmpty();
+    }
     return;
   }
-  data.forEach((spec, idx) => {
-    const card = buildCard(spec, idx);
-    $cardsContainer.appendChild(card);
+  const grouped = {};
+  allSpecs.forEach(s => {
+    if (!grouped[s.key]) grouped[s.key] = [];
+    grouped[s.key].push(s);
   });
-  $cardsContainer.classList.remove('hidden');
+  Object.entries(grouped).forEach(([key, specs]) => {
+    const sec = document.createElement('div');
+    sec.className = 'section-title';
+    sec.textContent = getSectionTitle(key);
+    $cards.appendChild(sec);
+    specs.forEach((spec, idx) => $cards.appendChild(buildCard(spec, key + '_' + idx)));
+  });
+  showCards();
 }
-function buildCard(spec, idx) {
-  const { status, statusText } = getStatus(spec.passingScore);
-  const card = document.createElement('div');
-  card.className = `spec-card status-${status}`;
-  const totalFmt = spec.totalApplicants || '—';
-  const planFmt = spec.planTotal || '—';
-  const compFmt = spec.withinCompetition || '—';
-  const passFmt = spec.passingScore ? spec.passingScore : '—';
-  const compRatio = spec.planTotal && spec.withinCompetition ? (spec.withinCompetition / spec.planTotal).toFixed(1) : '—';
-  card.innerHTML = `
-    <div class="card-header" id="header-${idx}">
-      <div class="card-title-area">
-        <div class="card-faculty-tag">${FACULTIES.find(f=>f.id===spec.facultyId)?.label || 'BSU'}</div>
-        <div class="card-specialty-name">${spec.specialtyName}</div>
-        ${spec.groupName ? `<div class="card-group-name">${spec.groupName}</div>` : ''}
+
+function getSectionTitle(key) {
+  if (key.startsWith('custom_')) {
+    const i = parseInt(key.replace('custom_',''));
+    return customUrls[i]?.label || key;
+  }
+  const parts = key.split('_');
+  const uid = parts[0], fid = +parts[1];
+  const univ = UNIVERSITIES.find(u => u.id === uid);
+  const fac = univ?.faculties.find(f => f.id === fid);
+  return [univ?.name, fac?.name].filter(Boolean).join(' — ');
+}
+
+function buildCard(spec, uid) {
+  const status = getStatus(spec.passing);
+  const div = document.createElement('div');
+  div.className = 'card ' + status;
+  const passStr = spec.passing ?? '—';
+  const ratio = spec.plan && spec.inComp ? (spec.inComp / spec.plan).toFixed(1) + 'x' : '—';
+  const badgeHtml = myScore !== null && spec.passing ? `<span class="badge ${status}">${statusLabel(status)}</span>` : '';
+  div.innerHTML = `
+    <div class="card-head">
+      <div class="card-title-block">
+        ${spec.groupName ? `<div class="card-tag">${spec.groupName}</div>` : ''}
+        <div class="card-name">${spec.specName}</div>
       </div>
-      <div class="card-header-right">
-        <div class="card-passing-score">
-          <div class="passing-score-value">${passFmt}</div>
-          <div class="passing-score-label">Проходной</div>
+      <div class="card-right">
+        <div>
+          <div class="pass-score-val">${passStr}</div>
+          <div class="pass-score-lbl">Проходной</div>
         </div>
-        ${myScore !== null ? `<span class="status-badge ${status}">${statusText}</span>` : ''}
-        <div class="card-collapse-icon" id="icon-${idx}">▾</div>
+        ${badgeHtml}
+        <div class="chevron">▾</div>
       </div>
     </div>
     <div class="card-stats">
-      <div class="stat-item"><div class="stat-value">${planFmt}</div><div class="stat-label">Мест (план)</div></div>
-      <div class="stat-item"><div class="stat-value">${totalFmt}</div><div class="stat-label">Заявлений</div></div>
-      <div class="stat-item"><div class="stat-value">${compRatio}x</div><div class="stat-label">Конкурс</div></div>
-      <div class="stat-item"><div class="stat-value">${compFmt}</div><div class="stat-label">По конкурсу</div></div>
+      <div class="stat"><div class="stat-val">${spec.plan||'—'}</div><div class="stat-lbl">Мест</div></div>
+      <div class="stat"><div class="stat-val">${spec.totalApps||'—'}</div><div class="stat-lbl">Заявлений</div></div>
+      <div class="stat"><div class="stat-val">${ratio}</div><div class="stat-lbl">Конкурс</div></div>
+      <div class="stat"><div class="stat-val">${spec.inComp||'—'}</div><div class="stat-lbl">По конкурсу</div></div>
     </div>
-    <div class="card-body" id="body-${idx}">
+    <div class="card-body">
       <div class="card-body-inner">
-        <div class="chart-section-title">Распределение баллов</div>
-        ${buildHistogram(spec, idx)}
-        ${buildPassingIndicator(spec)}
+        <div class="hist-title">Распределение баллов</div>
+        ${buildHist(spec)}
+        ${buildNote(spec)}
       </div>
     </div>`;
-  card.querySelector(`#header-${idx}`).addEventListener('click', () => {
-    const body = card.querySelector(`#body-${idx}`);
-    const icon = card.querySelector(`#icon-${idx}`);
-    const isOpen = body.classList.toggle('expanded');
-    icon.classList.toggle('open', isOpen);
+  div.querySelector('.card-head').addEventListener('click', () => {
+    const body = div.querySelector('.card-body');
+    const chev = div.querySelector('.chevron');
+    body.classList.toggle('open');
+    chev.classList.toggle('open');
   });
-  return card;
+  return div;
 }
-function buildHistogram(spec, idx) {
-  const { scoreRanges, bucketCounts, passingScore, planTotal } = spec;
-  if (!scoreRanges || scoreRanges.length === 0) return '<p style="color:var(--text-3);font-size:12px;">Нет данных гистограммы</p>';
-  const maxCount = Math.max(...bucketCounts, 1);
-  let cumulative = 0;
-  let passingBucketIdx = -1;
-  for (let i = 0; i < scoreRanges.length; i++) {
-    cumulative += bucketCounts[i];
-    if (passingBucketIdx === -1 && cumulative >= (planTotal || Infinity)) passingBucketIdx = i;
+
+function buildHist(spec) {
+  if (!spec.scoreRanges?.length) return '<p style="color:var(--text3);font-size:12px">Нет данных</p>';
+  const max = Math.max(...spec.buckets, 1);
+  let cum = 0, cutIdx = -1;
+  for (let i = 0; i < spec.buckets.length; i++) {
+    cum += spec.buckets[i];
+    if (cutIdx === -1 && cum >= (spec.inComp || spec.plan || Infinity)) cutIdx = i;
   }
-  let rows = '';
-  scoreRanges.forEach((range, i) => {
-    const count = bucketCounts[i];
-    const pct = Math.round((count / maxCount) * 100);
-    const isHighlight = i === passingBucketIdx;
-    const isTop = i < passingBucketIdx;
-    const barClass = count === 0 ? 'zero' : isHighlight ? 'highlight' : isTop ? 'top' : '';
-    const low = parseBucketLow(range);
-    const high = parseBucketHigh(range);
-    const myScoreInBucket = myScore !== null && myScore >= low && myScore <= high;
-    rows += `<div class="hist-row" style="${myScoreInBucket ? 'background:var(--warn-dim);border-radius:4px;' : ''}"><div class="hist-label">${range}</div><div class="hist-bar-wrap"><div class="hist-bar ${barClass}" style="width:${pct}%"></div></div><div class="hist-count">${count}</div></div>`;
-  });
-  return `<div class="histogram">${rows}</div>`;
+  return '<div class="histogram">' + spec.scoreRanges.map((r, i) => {
+    const cnt = spec.buckets[i];
+    const pct = Math.round(cnt / max * 100);
+    const cls = cnt === 0 ? 'zero' : i === cutIdx ? 'cut' : i < cutIdx ? 'top' : '';
+    const lo = bucketLow(r), hi = bucketHigh(r);
+    const mine = myScore !== null && lo !== null && hi !== null && myScore >= lo && myScore <= hi;
+    return `<div class="hist-row${mine?' my-row':''}">
+      <div class="hist-lbl">${r}</div>
+      <div class="hist-track"><div class="hist-fill ${cls}" style="width:${pct}%"></div></div>
+      <div class="hist-count">${cnt}</div>
+    </div>`;
+  }).join('') + '</div>';
 }
-function buildPassingIndicator(spec) {
-  if (!spec.passingScore) return '';
+
+function buildNote(spec) {
+  if (!spec.passing) return '';
   let extra = '';
   if (myScore !== null) {
-    const diff = myScore - spec.passingScore;
-    if (diff >= 0) extra = ` · Ты выше на <strong style="color:var(--accent)">+${diff}</strong>`;
-    else extra = ` · Тебе не хватает <strong style="color:var(--danger)">${Math.abs(diff)}</strong>`;
+    const d = myScore - spec.passing;
+    extra = d >= 0
+      ? ` · выше на <strong style="color:var(--accent)">+${d}</strong>`
+      : ` · не хватает <strong style="color:var(--danger)">${-d}</strong>`;
   }
-  return `<div class="passing-indicator"><div class="passing-indicator-dot"></div><div class="passing-indicator-text">Расчётный проходной: <strong>${spec.passingScore}</strong>${extra}</div></div>`;
+  return `<div class="pass-note"><div class="pass-dot"></div><span>Расчётный проходной: <strong>${spec.passing}</strong>${extra}</span></div>`;
 }
-function getStatus(passingScore) {
-  if (myScore === null || passingScore === null) return { status: 'neutral', statusText: '' };
-  const diff = myScore - passingScore;
-  if (diff >= 10) return { status: 'safe', statusText: '✅ В зоне' };
-  if (diff >= 0) return { status: 'risk', statusText: '⚠️ Риск' };
-  return { status: 'below', statusText: '❌ Ниже' };
+
+function getStatus(p) {
+  if (myScore === null || p === null) return 'neutral';
+  const d = myScore - p;
+  if (d >= 10) return 'safe';
+  if (d >= 0) return 'risk';
+  return 'below';
 }
-$applyBtn.addEventListener('click', applyScore);
-$myScoreInput.addEventListener('keydown', e => { if (e.key === 'Enter') applyScore(); });
-function applyScore() {
-  const val = parseInt($myScoreInput.value, 10);
-  if (!isNaN(val) && val >= 0 && val <= 500) {
-    myScore = val;
-    saveScore();
-    renderActiveTab();
-  }
+function statusLabel(s) {
+  return {safe:'✅ В зоне', risk:'⚠️ Риск', below:'❌ Ниже', neutral:''}[s] || '';
 }
-$refreshBtn.addEventListener('click', async () => {
-  $refreshBtn.classList.add('spinning');
-  await fetchAllFaculties();
-  renderActiveTab();
-  resetCountdown();
-  $refreshBtn.classList.remove('spinning');
+
+$refBtn.addEventListener('click', async () => {
+  $refBtn.classList.add('spin');
+  dataCache = {};
+  await loadAndRender();
+  resetTimer();
+  $refBtn.classList.remove('spin');
 });
-$retryBtn.addEventListener('click', async () => {
-  hideError();
-  await fetchAllFaculties();
-  renderActiveTab();
-});
-function startCountdown() {
-  countdown = REFRESH_INTERVAL_MS / 1000;
-  if (countdownTimer) clearInterval(countdownTimer);
-  countdownTimer = setInterval(async () => {
+$retryBtn.addEventListener('click', () => { $errorScr.classList.add('hidden'); loadAndRender(); });
+
+function startTimer() {
+  countdown = REFRESH_MS / 1000;
+  if (timer) clearInterval(timer);
+  timer = setInterval(async () => {
     countdown--;
-    updateCountdownDisplay();
+    updateCD();
     if (countdown <= 0) {
-      await fetchAllFaculties();
-      renderActiveTab();
-      resetCountdown();
+      dataCache = {};
+      if (getActiveKeys().length > 0) await loadAndRender();
+      resetTimer();
     }
   }, 1000);
 }
-function resetCountdown() {
-  countdown = REFRESH_INTERVAL_MS / 1000;
-  updateCountdownDisplay();
+function resetTimer() { countdown = REFRESH_MS / 1000; updateCD(); }
+function updateCD() {
+  const m = String(Math.floor(countdown / 60)).padStart(2,'0');
+  const s = String(countdown % 60).padStart(2,'0');
+  $countdown.textContent = m + ':' + s;
 }
-function updateCountdownDisplay() {
-  const m = Math.floor(countdown / 60).toString().padStart(2, '0');
-  const s = (countdown % 60).toString().padStart(2, '0');
-  $countdown.textContent = `${m}:${s}`;
-}
+
 function showLoading() {
-  $loadingScreen.classList.remove('hidden');
-  $errorScreen.classList.add('hidden');
-  $cardsContainer.classList.add('hidden');
+  $loading.classList.remove('hidden');
+  $cards.classList.add('hidden');
+  $errorScr.classList.add('hidden');
+  $emptySCr.classList.add('hidden');
 }
-function hideLoading() { $loadingScreen.classList.add('hidden'); }
-function showError(msg) {
-  document.getElementById('error-message').textContent = msg;
-  $errorScreen.classList.remove('hidden');
-  $loadingScreen.classList.add('hidden');
-  $cardsContainer.classList.add('hidden');
+function showCards() {
+  $cards.classList.remove('hidden');
+  $loading.classList.add('hidden');
+  $errorScr.classList.add('hidden');
+  $emptySCr.classList.add('hidden');
 }
-function hideError() { $errorScreen.classList.add('hidden'); }
+function showEmpty() {
+  $emptySCr.classList.remove('hidden');
+  $loading.classList.add('hidden');
+  $cards.classList.add('hidden');
+  $errorScr.classList.add('hidden');
+}
