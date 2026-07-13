@@ -5,6 +5,7 @@ import {
   setScore,
   setForm,
   setQuery,
+  emit,
 } from './state.js';
 import { loadUniversity } from './load-data.js';
 import { $, fmtTime } from './ui/dom.js';
