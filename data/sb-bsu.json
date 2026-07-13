@@ -547,8 +547,24 @@
       "updatedAt": "2026-07-13T22:24:19.693Z"
     }
   ],
-  "scrapeErrors": [],
+  "scrapeErrors": [
+    {
+      "facultyId": "7",
+      "url": "https://abit.bsu.by/formk1?id=7",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "8",
+      "url": "https://abit.bsu.by/formk1?id=8",
+      "status": 0,
+      "message": "fetch failed"
+    }
+  ],
   "scrapeMeta": {
-    "fixture": true
-  }
+    "discoveredFacultyIds": [],
+    "fetchedFaculties": 2,
+    "retainedPrevious": true
+  },
+  "lastAttemptAt": "2026-07-13T22:24:35.353Z"
 }
