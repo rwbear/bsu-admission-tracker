@@ -289,12 +289,108 @@
       "url": "https://abit.bsu.by/formk1?id=1",
       "status": 0,
       "message": "fetch failed"
+    },
+    {
+      "facultyId": "2",
+      "url": "https://abit.bsu.by/formk1?id=2",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "3",
+      "url": "https://abit.bsu.by/formk1?id=3",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "4",
+      "url": "https://abit.bsu.by/formk1?id=4",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "5",
+      "url": "https://abit.bsu.by/formk1?id=5",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "6",
+      "url": "https://abit.bsu.by/formk1?id=6",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "7",
+      "url": "https://abit.bsu.by/formk1?id=7",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "8",
+      "url": "https://abit.bsu.by/formk1?id=8",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "9",
+      "url": "https://abit.bsu.by/formk1?id=9",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "10",
+      "url": "https://abit.bsu.by/formk1?id=10",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "11",
+      "url": "https://abit.bsu.by/formk1?id=11",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "12",
+      "url": "https://abit.bsu.by/formk1?id=12",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "13",
+      "url": "https://abit.bsu.by/formk1?id=13",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "14",
+      "url": "https://abit.bsu.by/formk1?id=14",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "29",
+      "url": "https://abit.bsu.by/formk1?id=29",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "26",
+      "url": "https://abit.bsu.by/formk1?id=26",
+      "status": 0,
+      "message": "fetch failed"
+    },
+    {
+      "facultyId": "23",
+      "url": "https://abit.bsu.by/formk1?id=23",
+      "status": 0,
+      "message": "fetch failed"
     }
   ],
   "scrapeMeta": {
     "discoveredFacultyIds": [],
-    "fetchedFaculties": 1,
+    "fetchedFaculties": 17,
     "retainedPrevious": true
   },
-  "lastAttemptAt": "2026-07-13T21:57:40.389Z"
+  "lastAttemptAt": "2026-07-13T21:59:19.704Z"
 }

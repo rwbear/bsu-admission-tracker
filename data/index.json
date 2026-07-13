@@ -1,19 +1,14 @@
 {
-  "generatedAt": "2026-07-13T21:58:51.485Z",
+  "generatedAt": "2026-07-13T21:59:19.700Z",
   "universities": [
     {
       "id": "bspu",
       "name": "БГПУ",
       "fullName": "Белорусский государственный педагогический университет им. М. Танка",
-      "specialtyCount": 16,
-      "updatedAt": "2026-07-13T21:53:58.917Z",
+      "specialtyCount": 54,
+      "updatedAt": "2026-07-13T22:08:55.783Z",
       "available": true,
       "faculties": [
-        {
-          "id": "34",
-          "name": "Дошкольного образования",
-          "specialtyCount": 0
-        },
         {
           "id": "2",
           "name": "Институт инклюзивного образования",
@@ -25,24 +20,14 @@
           "specialtyCount": 9
         },
         {
+          "id": "8",
+          "name": "Институт инклюзивного образования",
+          "specialtyCount": 7
+        },
+        {
           "id": "32",
           "name": "Институт инклюзивного образования",
-          "specialtyCount": 0
-        },
-        {
-          "id": "35",
-          "name": "Начального образования",
-          "specialtyCount": 0
-        },
-        {
-          "id": "17",
-          "name": "Психологии",
-          "specialtyCount": 0
-        },
-        {
-          "id": "36",
-          "name": "Социальной педагогики",
-          "specialtyCount": 0
+          "specialtyCount": 12
         },
         {
           "id": "6",
@@ -50,9 +35,24 @@
           "specialtyCount": 2
         },
         {
-          "id": "8",
-          "name": "Филологический",
-          "specialtyCount": 0
+          "id": "17",
+          "name": "Факультет дошкольного образования",
+          "specialtyCount": 4
+        },
+        {
+          "id": "34",
+          "name": "Факультет физического воспитания",
+          "specialtyCount": 8
+        },
+        {
+          "id": "35",
+          "name": "Факультет физического воспитания",
+          "specialtyCount": 5
+        },
+        {
+          "id": "36",
+          "name": "Факультет физического воспитания",
+          "specialtyCount": 2
         }
       ]
     },
@@ -60,14 +60,64 @@
       "id": "belstu",
       "name": "БГТУ",
       "fullName": "Белорусский государственный технологический университет",
-      "specialtyCount": 1,
-      "updatedAt": "2026-07-13T12:00:00.000Z",
+      "specialtyCount": 65,
+      "updatedAt": "2026-07-13T22:09:10.010Z",
       "available": true,
       "faculties": [
         {
+          "id": "32",
+          "name": "Лесохозяйственный факультет",
+          "specialtyCount": 32
+        },
+        {
           "id": "1",
           "name": "Факультет 1",
-          "specialtyCount": 1
+          "specialtyCount": 0
+        },
+        {
+          "id": "10",
+          "name": "Факультет 10",
+          "specialtyCount": 0
+        },
+        {
+          "id": "2",
+          "name": "Факультет 2",
+          "specialtyCount": 0
+        },
+        {
+          "id": "3",
+          "name": "Факультет 3",
+          "specialtyCount": 0
+        },
+        {
+          "id": "4",
+          "name": "Факультет 4",
+          "specialtyCount": 0
+        },
+        {
+          "id": "5",
+          "name": "Факультет 5",
+          "specialtyCount": 0
+        },
+        {
+          "id": "9",
+          "name": "Факультет 9",
+          "specialtyCount": 0
+        },
+        {
+          "id": "6",
+          "name": "Факультет заочного образования",
+          "specialtyCount": 11
+        },
+        {
+          "id": "8",
+          "name": "Факультет заочного образования",
+          "specialtyCount": 3
+        },
+        {
+          "id": "7",
+          "name": "Факультет информационных технологий, Факультет принттехнологий и медиакоммуникаций",
+          "specialtyCount": 19
         }
       ]
     },
@@ -95,24 +145,24 @@
       "id": "bsuir",
       "name": "БГУИР",
       "fullName": "Белорусский государственный университет информатики и радиоэлектроники",
-      "specialtyCount": 27,
-      "updatedAt": "2026-07-13T21:54:03.987Z",
+      "specialtyCount": 142,
+      "updatedAt": "2026-07-13T22:08:59.272Z",
       "available": true,
       "faculties": [
         {
           "id": "vf",
           "name": "Вечерняя",
-          "specialtyCount": 0
+          "specialtyCount": 11
         },
         {
           "id": "dist",
           "name": "Дистанционная бюджетная",
-          "specialtyCount": 0
+          "specialtyCount": 5
         },
         {
           "id": "dist_pl",
           "name": "Дистанционная платная",
-          "specialtyCount": 0
+          "specialtyCount": 9
         },
         {
           "id": "dn_budjet",
@@ -122,12 +172,37 @@
         {
           "id": "dn_budjet_celev",
           "name": "Дневная бюджетная (целевой)",
-          "specialtyCount": 0
+          "specialtyCount": 41
         },
         {
           "id": "dn_platn",
           "name": "Дневная платная",
-          "specialtyCount": 0
+          "specialtyCount": 22
+        },
+        {
+          "id": "rf_entrants",
+          "name": "rf_entrants",
+          "specialtyCount": 5
+        },
+        {
+          "id": "zaoch_sokr_budj_5",
+          "name": "zaoch_sokr_budj_5",
+          "specialtyCount": 5
+        },
+        {
+          "id": "zaoch_sokr_plat_5",
+          "name": "zaoch_sokr_plat_5",
+          "specialtyCount": 6
+        },
+        {
+          "id": "zaoch_sokr_plat_6",
+          "name": "zaoch_sokr_plat_6",
+          "specialtyCount": 6
+        },
+        {
+          "id": "zaoch_srok_budj_6",
+          "name": "zaoch_srok_budj_6",
+          "specialtyCount": 5
         }
       ]
     },
@@ -135,8 +210,8 @@
       "id": "bntu",
       "name": "БНТУ",
       "fullName": "Белорусский национальный технический университет",
-      "specialtyCount": 19,
-      "updatedAt": "2026-07-13T21:54:01.229Z",
+      "specialtyCount": 129,
+      "updatedAt": "2026-07-13T22:09:02.158Z",
       "available": true,
       "faculties": [
         {
@@ -155,14 +230,39 @@
           "specialtyCount": 1
         },
         {
+          "id": "1:f1_b0",
+          "name": "Автотракторный · Форма 1/0",
+          "specialtyCount": 1
+        },
+        {
+          "id": "1:f2_b0",
+          "name": "Автотракторный · Форма 2/0",
+          "specialtyCount": 1
+        },
+        {
           "id": "10",
           "name": "Архитектурный",
           "specialtyCount": 0
         },
         {
+          "id": "10:day_budget",
+          "name": "Архитектурный · Дневная бюджет",
+          "specialtyCount": 6
+        },
+        {
+          "id": "10:f1_b0",
+          "name": "Архитектурный · Форма 1/0",
+          "specialtyCount": 1
+        },
+        {
           "id": "14",
           "name": "Военный",
           "specialtyCount": 0
+        },
+        {
+          "id": "14:day_budget",
+          "name": "Военный · Дневная бюджет",
+          "specialtyCount": 4
         },
         {
           "id": "2",
@@ -200,9 +300,24 @@
           "specialtyCount": 0
         },
         {
+          "id": "8:day_budget",
+          "name": "Инженерно-педагогический · Дневная бюджет",
+          "specialtyCount": 6
+        },
+        {
+          "id": "8:f1_b0",
+          "name": "Инженерно-педагогический · Форма 1/0",
+          "specialtyCount": 3
+        },
+        {
           "id": "7",
           "name": "Информационных технологий и робототехники",
           "specialtyCount": 0
+        },
+        {
+          "id": "7:day_budget",
+          "name": "Информационных технологий и робототехники · Дневная бюджет",
+          "specialtyCount": 6
         },
         {
           "id": "5",
@@ -210,9 +325,29 @@
           "specialtyCount": 0
         },
         {
+          "id": "5:day_budget",
+          "name": "Маркетинга, менеджмента, предпринимательства · Дневная бюджет",
+          "specialtyCount": 9
+        },
+        {
+          "id": "5:f1_b0",
+          "name": "Маркетинга, менеджмента, предпринимательства · Форма 1/0",
+          "specialtyCount": 9
+        },
+        {
           "id": "3",
           "name": "Машиностроительный",
           "specialtyCount": 0
+        },
+        {
+          "id": "3:day_budget",
+          "name": "Машиностроительный · Дневная бюджет",
+          "specialtyCount": 9
+        },
+        {
+          "id": "3:f1_b0",
+          "name": "Машиностроительный · Форма 1/0",
+          "specialtyCount": 2
         },
         {
           "id": "4",
@@ -220,9 +355,34 @@
           "specialtyCount": 0
         },
         {
+          "id": "4:day_budget",
+          "name": "Механико-технологический · Дневная бюджет",
+          "specialtyCount": 8
+        },
+        {
           "id": "12",
           "name": "Приборостроительный",
           "specialtyCount": 0
+        },
+        {
+          "id": "12:day_budget",
+          "name": "Приборостроительный · Дневная бюджет",
+          "specialtyCount": 4
+        },
+        {
+          "id": "12:zao_budget",
+          "name": "Приборостроительный · Заочная бюджет",
+          "specialtyCount": 1
+        },
+        {
+          "id": "12:f1_b0",
+          "name": "Приборостроительный · Форма 1/0",
+          "specialtyCount": 2
+        },
+        {
+          "id": "12:f2_b0",
+          "name": "Приборостроительный · Форма 2/0",
+          "specialtyCount": 1
         },
         {
           "id": "11",
@@ -235,9 +395,39 @@
           "specialtyCount": 0
         },
         {
+          "id": "13:day_budget",
+          "name": "Транспортных коммуникаций · Дневная бюджет",
+          "specialtyCount": 11
+        },
+        {
+          "id": "13:zao_budget",
+          "name": "Транспортных коммуникаций · Заочная бюджет",
+          "specialtyCount": 1
+        },
+        {
+          "id": "13:f2_b0",
+          "name": "Транспортных коммуникаций · Форма 2/0",
+          "specialtyCount": 1
+        },
+        {
+          "id": "18:f2_b0",
+          "name": "Факультет 18 · Форма 2/0",
+          "specialtyCount": 2
+        },
+        {
+          "id": "19:day_budget",
+          "name": "Факультет 19 · Дневная бюджет",
+          "specialtyCount": 2
+        },
+        {
           "id": "17",
           "name": "Филиалы / другие",
           "specialtyCount": 0
+        },
+        {
+          "id": "17:f2_b0",
+          "name": "Филиалы / другие · Форма 2/0",
+          "specialtyCount": 1
         },
         {
           "id": "6",
@@ -245,9 +435,34 @@
           "specialtyCount": 0
         },
         {
+          "id": "6:day_budget",
+          "name": "Энергетический · Дневная бюджет",
+          "specialtyCount": 9
+        },
+        {
+          "id": "6:zao_budget",
+          "name": "Энергетический · Заочная бюджет",
+          "specialtyCount": 2
+        },
+        {
+          "id": "6:f1_b0",
+          "name": "Энергетический · Форма 1/0",
+          "specialtyCount": 1
+        },
+        {
+          "id": "6:f2_b0",
+          "name": "Энергетический · Форма 2/0",
+          "specialtyCount": 2
+        },
+        {
           "id": "9",
           "name": "Энергетического строительства",
           "specialtyCount": 0
+        },
+        {
+          "id": "9:day_budget",
+          "name": "Энергетического строительства · Дневная бюджет",
+          "specialtyCount": 5
         }
       ]
     },
@@ -255,8 +470,8 @@
       "id": "grsu",
       "name": "ГрГУ",
       "fullName": "Гродненский государственный университет имени Янки Купалы",
-      "specialtyCount": 57,
-      "updatedAt": "2026-07-13T21:57:36.083Z",
+      "specialtyCount": 75,
+      "updatedAt": "2026-07-13T22:09:13.058Z",
       "available": true,
       "faculties": [
         {
@@ -277,12 +492,12 @@
         {
           "id": "ZP",
           "name": "Заочная платное",
-          "specialtyCount": 0
+          "specialtyCount": 4
         },
         {
           "id": "SZF",
           "name": "Заочная сокращённая бюджет",
-          "specialtyCount": 0
+          "specialtyCount": 14
         }
       ]
     }
