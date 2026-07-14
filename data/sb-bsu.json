@@ -3,7 +3,7 @@
   "name": "Институт бизнеса БГУ",
   "fullName": "Институт бизнеса Белорусского государственного университета",
   "hubUrl": "https://sb.bsu.by/",
-  "updatedAt": "2026-07-14T11:20:18.160Z",
+  "updatedAt": "2026-07-14T11:41:57.556Z",
   "specialtyCount": 4,
   "faculties": [
     {
@@ -23,8 +23,8 @@
       "groupName": "",
       "specName": "бизнес-администрирование",
       "plan": 75,
-      "totalApps": 32,
-      "inCompetition": 32,
+      "totalApps": 33,
+      "inCompetition": 33,
       "ranges": [
         "396 и более",
         "395 - 391",
@@ -108,7 +108,7 @@
         1,
         0,
         0,
-        1,
+        2,
         0,
         0,
         1,
@@ -145,7 +145,7 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T11:20:18.160Z"
+      "updatedAt": "2026-07-14T11:41:57.556Z"
     },
     {
       "id": "sb-bsu:7:логистика:45",
@@ -279,7 +279,7 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T11:20:18.160Z"
+      "updatedAt": "2026-07-14T11:41:57.556Z"
     },
     {
       "id": "sb-bsu:7:маркетинг:70",
@@ -413,7 +413,7 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T11:20:18.160Z"
+      "updatedAt": "2026-07-14T11:41:57.556Z"
     },
     {
       "id": "sb-bsu:7:управление-информационными-ресурсами:70",
@@ -547,7 +547,7 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T11:20:18.160Z"
+      "updatedAt": "2026-07-14T11:41:57.556Z"
     }
   ],
   "scrapeErrors": [],
