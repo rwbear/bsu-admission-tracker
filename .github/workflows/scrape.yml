@@ -1,11 +1,14 @@
 name: Scrape admission tables
 
 # IMPORTANT: schedule events only run from the default branch (main).
+# Trigger: keep Schedules on main + push-scrapes on Pages.
 # This workflow still checks out the GitHub Pages branch and pushes data there.
 on:
   schedule:
-    # Every 10 minutes — shared snapshot for every visitor.
-    - cron: "*/10 * * * *"
+    # Two overlapping 10-minute grids. GitHub routinely delays/skips a single
+    # */10 cron on free/public repos; redundant slots recover freshness faster.
+    - cron: "0,10,20,30,40,50 * * * *"
+    - cron: "5,15,25,35,45,55 * * * *"
   workflow_dispatch:
   push:
     branches:
@@ -28,7 +31,9 @@ jobs:
     timeout-minutes: 45
     concurrency:
       group: scrape-admission-data
-      cancel-in-progress: true
+      # Don't cancel a live scrape when another slot/push fires — dropped runs
+      # were leaving the site on a 40–60 minute old snapshot.
+      cancel-in-progress: false
     steps:
       - name: Resolve Pages / scrape branch
         id: target
@@ -56,7 +61,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # Scheduled runs skip tests so the job stays short and gets scheduled more
+      # reliably under GitHub Actions load. Push/manual still run the suite.
       - name: Run tests
+        if: github.event_name != 'schedule'
         run: npm test
 
       - name: Scrape universities
