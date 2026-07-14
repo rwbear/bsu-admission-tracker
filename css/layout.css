@@ -90,9 +90,9 @@ input {
 .command-brand {
   font-weight: 700;
   font-size: var(--text-md);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-decoration: none;
-  text-transform: uppercase;
+  text-transform: none;
 }
 
 .command-meta {
