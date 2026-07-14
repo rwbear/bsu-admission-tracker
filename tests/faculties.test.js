@@ -5,6 +5,7 @@ import {
   facultyKey,
   resolveFacultyId,
   sortFaculties,
+  filterFacultiesByName,
 } from '../js/faculties.js';
 import {
   filterFacultySections,
@@ -45,6 +46,19 @@ describe('faculty labels', () => {
       { id: 'a', name: 'Биологический факультет' },
     ]);
     assert.equal(sorted[0].id, 'b');
+  });
+
+  it('filters faculties by name (silence search)', () => {
+    const list = [
+      { id: 'y', name: 'Юридический факультет' },
+      { id: 'b', name: 'Институт бизнеса БГУ' },
+      { id: 'a', name: 'Биологический факультет' },
+    ];
+    const hit = filterFacultiesByName(list, 'био');
+    assert.equal(hit.length, 1);
+    assert.equal(hit[0].id, 'a');
+    assert.equal(filterFacultiesByName(list, 'xyz').length, 0);
+    assert.equal(filterFacultiesByName(list, '').length, 3);
   });
 });
 

@@ -55,6 +55,7 @@ let fetchChain = Promise.resolve();
 let visibilityBound = false;
 let onlineBound = false;
 let facultyMenuOpen = false;
+let facultySearchQuery = '';
 let facultyOutsideBound = false;
 
 function showOnly(which) {
@@ -89,19 +90,22 @@ function currentSpecialties() {
 function closeFacultyMenu() {
   if (!facultyMenuOpen) return;
   facultyMenuOpen = false;
-  // Re-render picker closed without full board if possible
+  facultySearchQuery = '';
   renderFacultyChrome();
+  const trigger = document.getElementById('faculty-trigger');
+  if (trigger instanceof HTMLElement) trigger.focus();
 }
 
 function openFacultyMenu() {
   facultyMenuOpen = true;
+  facultySearchQuery = '';
   renderFacultyChrome();
-  // Focus first selected / first option after paint
   queueMicrotask(() => {
-    const active =
-      $facultyMount.querySelector('.faculty-option.is-active') ||
-      $facultyMount.querySelector('.faculty-option');
-    if (active instanceof HTMLElement) active.focus();
+    const search = document.getElementById('faculty-search-input');
+    if (search instanceof HTMLInputElement) {
+      search.focus();
+      search.select();
+    }
   });
 }
 
@@ -112,8 +116,27 @@ function toggleFacultyMenu() {
 
 function onSelectFaculty(id) {
   facultyMenuOpen = false;
+  facultySearchQuery = '';
   if (id !== state.facultyId) setFaculty(id);
   else renderFacultyChrome();
+  const trigger = document.getElementById('faculty-trigger');
+  if (trigger instanceof HTMLElement) trigger.focus();
+}
+
+function onFacultyQuery(q) {
+  facultySearchQuery = q;
+  const active = document.activeElement;
+  const keepSearch =
+    active instanceof HTMLInputElement && active.id === 'faculty-search-input';
+  const caret = keepSearch ? active.selectionStart : null;
+  renderFacultyChrome();
+  if (keepSearch) {
+    const search = document.getElementById('faculty-search-input');
+    if (search instanceof HTMLInputElement) {
+      search.focus();
+      if (caret != null) search.setSelectionRange(caret, caret);
+    }
+  }
 }
 
 function renderFacultyChrome() {
@@ -121,9 +144,11 @@ function renderFacultyChrome() {
     faculties: facultyList(),
     selectedId: state.facultyId,
     open: facultyMenuOpen,
+    query: facultySearchQuery,
     onToggle: toggleFacultyMenu,
     onSelect: onSelectFaculty,
     onClose: closeFacultyMenu,
+    onQuery: onFacultyQuery,
   });
 }
 
@@ -177,7 +202,7 @@ function renderBoard() {
     showOnly('empty');
     $empty.querySelector('h2').textContent = 'Введи балл';
     $empty.querySelector('p').textContent =
-      'Сверху выбери факультет. Затем — обзор специальностей и детали.';
+      'Факультет сверху — фильтр по длинному списку специальностей. Затем введи балл.';
     return;
   }
 
@@ -361,38 +386,49 @@ function bindFacultyChrome() {
   if (facultyOutsideBound) return;
   facultyOutsideBound = true;
 
-  document.addEventListener('click', (e) => {
-    if (!facultyMenuOpen) return;
-    const t = e.target;
-    if (t instanceof Node && $facultyMount.contains(t)) return;
-    closeFacultyMenu();
-  });
-
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && facultyMenuOpen) {
       e.preventDefault();
       closeFacultyMenu();
-      const trigger = document.getElementById('faculty-trigger');
-      if (trigger instanceof HTMLElement) trigger.focus();
       return;
     }
 
     if (!facultyMenuOpen) return;
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') {
+    if (
+      e.key !== 'ArrowDown' &&
+      e.key !== 'ArrowUp' &&
+      e.key !== 'Home' &&
+      e.key !== 'End'
+    ) {
       return;
     }
 
-    const options = [
-      ...$facultyMount.querySelectorAll('.faculty-option'),
-    ];
+    const host = document.getElementById('faculty-overlay');
+    if (!host) return;
+    const options = [...host.querySelectorAll('.faculty-option')];
     if (!options.length) return;
+
+    // Typing in search: only ArrowDown jumps into the list.
+    const inSearch =
+      document.activeElement instanceof HTMLInputElement &&
+      document.activeElement.id === 'faculty-search-input';
+    if (inSearch && e.key !== 'ArrowDown') return;
+
     e.preventDefault();
     const active = document.activeElement;
     let idx = options.findIndex((n) => n === active);
     if (e.key === 'Home') idx = 0;
     else if (e.key === 'End') idx = options.length - 1;
-    else if (e.key === 'ArrowDown') idx = Math.min(options.length - 1, Math.max(0, idx) + 1);
-    else if (e.key === 'ArrowUp') idx = Math.max(0, (idx < 0 ? options.length : idx) - 1);
+    else if (e.key === 'ArrowDown')
+      idx = Math.min(options.length - 1, Math.max(0, idx) + 1);
+    else if (e.key === 'ArrowUp') {
+      if (idx <= 0) {
+        const search = document.getElementById('faculty-search-input');
+        if (search instanceof HTMLElement) search.focus();
+        return;
+      }
+      idx -= 1;
+    }
     const next = options[idx];
     if (next instanceof HTMLElement) next.focus();
   });

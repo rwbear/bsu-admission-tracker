@@ -78,3 +78,23 @@ export function sortFaculties(faculties) {
     return String(a.name || '').localeCompare(String(b.name || ''), 'ru');
   });
 }
+
+/**
+ * Silence filter for the faculty overlay list (search by name).
+ * @param {{ id: string, name?: string, specialtyCount?: number }[]} faculties
+ * @param {string} [query]
+ */
+export function filterFacultiesByName(faculties, query) {
+  const sorted = sortFaculties(faculties);
+  const q = String(query || '')
+    .trim()
+    .toLowerCase()
+    .replace(/ё/g, 'е');
+  if (!q) return sorted;
+  return sorted.filter((f) =>
+    String(f.name || '')
+      .toLowerCase()
+      .replace(/ё/g, 'е')
+      .includes(q),
+  );
+}
