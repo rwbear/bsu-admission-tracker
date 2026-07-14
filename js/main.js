@@ -11,7 +11,7 @@ import { prepareSpecs } from './compute.js';
 import { loadUniversity } from './load-data.js';
 import { CONFIG } from './config.js';
 import { resolveFacultyId } from './faculties.js';
-import { $, fmtTime } from './ui/dom.js';
+import { $, fmtTime, fmtAge } from './ui/dom.js';
 import {
   renderOverviewList,
   renderDetailPanel,
@@ -273,7 +273,9 @@ function snapshotChanged(next, prev) {
 
 function renderCommandMeta(now = Date.now()) {
   const stamp = state.uniData?.updatedAt;
-  $commandTime.textContent = stamp ? `Обновлено ${fmtTime(stamp)}` : 'Загрузка';
+  $commandTime.textContent = stamp
+    ? `Обновлено ${fmtAge(stamp)}`
+    : 'Загрузка';
 
   const baseTitle = `Автообновление каждые ${POLL_MINUTES} мин`;
   $updateStatus.title = stamp

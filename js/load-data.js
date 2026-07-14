@@ -185,7 +185,8 @@ async function loadSnapshotCandidates(universityId, opts) {
     withTimeout(tipShaFromLatest(opts.repo, opts.branch), 3_000, null),
     withTimeout(latestCommitSha(opts.repo, opts.branch, file), 3_000, null),
   ]);
-  const sha = tipSha || apiSha;
+  // Prefer API sha — tip file on branch-raw CDN can itself be stale.
+  const sha = apiSha || tipSha;
 
   /** @type {Promise<object>[]} */
   const tasks = [];

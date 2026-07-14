@@ -1,12 +1,10 @@
 name: Scrape admission tables
 
-# IMPORTANT: schedule events only run from the default branch (main).
-# Trigger: keep Schedules on main + push-scrapes on Pages.
-# This workflow still checks out the GitHub Pages branch and pushes data there.
+# Schedules only run from the default branch (main) — and GitHub routinely
+# drops high-frequency crons on public repos. We keep */5 as a backup, but the
+# real cadence is a self-arming push tick (see "Arm next scrape").
 on:
   schedule:
-    # Every 5 minutes. Dual legacy grids collapsed — one clear cadence.
-    # Schedules only fire from default branch (main); keep this file in sync.
     - cron: "*/5 * * * *"
   workflow_dispatch:
   push:
@@ -14,6 +12,7 @@ on:
       - main
       - "cursor/admission-tracker-rebuild-be86"
     paths:
+      - "data/.scrape-tick"
       - "scripts/scrape/**"
       - "sources/universities.json"
       - ".github/workflows/scrape.yml"
@@ -27,11 +26,10 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    # Must cover scrape (~1 min) + arm sleep (4.5 min).
     timeout-minutes: 45
     concurrency:
       group: scrape-admission-data
-      # Don't cancel a live scrape when another slot/push fires — dropped runs
-      # were leaving the site on a 40–60 minute old snapshot.
       cancel-in-progress: false
     steps:
       - name: Resolve Pages / scrape branch
@@ -60,13 +58,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # Scheduled runs skip tests so the job stays short and gets scheduled more
-      # reliably under GitHub Actions load. Push/manual still run the suite.
       - name: Run tests
-        if: github.event_name != 'schedule'
+        if: |
+          github.event_name != 'schedule' &&
+          !(github.event_name == 'push' && contains(github.event.head_commit.message, 'chore: arm next scrape'))
         run: npm test
 
       - name: Scrape universities
+        id: scrape
         env:
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
           GITHUB_REPOSITORY: ${{ github.repository }}
@@ -75,6 +74,7 @@ jobs:
 
       - name: Detect changes
         id: changes
+        if: success()
         run: |
           if [ -f data/.changed ] && [ "$(cat data/.changed)" = "1" ]; then
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -84,7 +84,8 @@ jobs:
           rm -f data/.changed
 
       - name: Fail soft retention on empty scrape
-        if: always()
+        id: retain_check
+        if: success()
         run: |
           node --input-type=module <<'EOF'
           import { readFileSync, existsSync } from 'node:fs';
@@ -107,7 +108,7 @@ jobs:
           EOF
 
       - name: Commit updated data
-        if: steps.changes.outputs.changed == 'true'
+        if: success() && steps.changes.outputs.changed == 'true'
         id: commit
         run: |
           git config user.name "prohod-bot"
@@ -123,10 +124,8 @@ jobs:
           echo "pushed=true" >> "$GITHUB_OUTPUT"
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      # Publish the exact commit SHA so clients can fetch SHA-pinned raw URLs.
-      # Branch-tip raw.githubusercontent.com is CDN-stale even with ?bust=.
       - name: Publish tip SHA
-        if: steps.commit.outputs.pushed == 'true'
+        if: success() && steps.commit.outputs.pushed == 'true'
         run: |
           SHA="${{ steps.commit.outputs.sha }}"
           BRANCH="${{ steps.target.outputs.branch }}"
@@ -149,3 +148,30 @@ jobs:
           git push origin "HEAD:${BRANCH}"
         env:
           TIP_SHA: ${{ steps.commit.outputs.sha }}
+
+      # GitHub schedule is not trustworthy here (hours between fires). After every
+      # attempt, wait ~4.5 minutes on the runner (free for public repos) and push
+      # a tick that re-triggers this workflow — a reliable ~5-minute cadence.
+      - name: Arm next scrape
+        if: always() && !cancelled()
+        env:
+          BRANCH: ${{ steps.target.outputs.branch }}
+        run: |
+          set -e
+          echo "Waiting 270s before arming the next scrape…"
+          sleep 270
+          git config user.name "prohod-bot"
+          git config user.email "prohod-bot@users.noreply.github.com"
+          git fetch origin "$BRANCH"
+          git reset --hard "origin/$BRANCH"
+          mkdir -p data
+          date -u +%Y-%m-%dT%H:%M:%SZ > data/.scrape-tick
+          git add data/.scrape-tick
+          if git diff --staged --quiet; then
+            # Force a new blob if the second resolution somehow matches.
+            echo "armed $(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" > data/.scrape-tick
+            git add data/.scrape-tick
+          fi
+          git commit -m "chore: arm next scrape"
+          git push origin "HEAD:$BRANCH"
+          echo "Armed next scrape on $BRANCH"
