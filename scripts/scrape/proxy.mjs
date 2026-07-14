@@ -152,12 +152,15 @@ export function looksLikeFormk1(text) {
 }
 
 /**
- * Direct → env proxies → discovered regional proxies until formk1 HTML.
+ * Direct → env proxies → discovered regional proxies.
  * @param {string} url
- * @param {{ timeoutMs?: number }} [opts]
+ * @param {{ timeoutMs?: number, requireFormk1?: boolean, minBytes?: number, maxAttempts?: number }} [opts]
  */
 export async function fetchTextResilient(url, opts = {}) {
   const timeoutSec = Math.ceil((opts.timeoutMs ?? 25000) / 1000);
+  const requireFormk1 = opts.requireFormk1 !== false;
+  const minBytes = opts.minBytes ?? (requireFormk1 ? 2000 : 500);
+  const maxAttempts = opts.maxAttempts ?? 64;
 
   /** @type {(string | null)[]} */
   const candidates = [];
@@ -172,6 +175,8 @@ export async function fetchTextResilient(url, opts = {}) {
     if (!candidates.includes(p)) candidates.push(p);
   }
 
+  const limited = candidates.slice(0, Math.max(1, maxAttempts));
+
   let last = {
     ok: false,
     status: 0,
@@ -181,10 +186,14 @@ export async function fetchTextResilient(url, opts = {}) {
     via: 'none',
   };
 
-  for (const proxy of candidates) {
+  for (const proxy of limited) {
     const res = curlFetch(url, { proxy, timeoutSec });
     last = res;
-    if (res.ok && looksLikeFormk1(res.text)) {
+    const contentOk =
+      res.ok &&
+      res.text.length >= minBytes &&
+      (!requireFormk1 || looksLikeFormk1(res.text));
+    if (contentOk) {
       if (proxy) cachedProxy = proxy;
       console.log(
         `[fetch] ok via ${res.via} (${res.text.length} bytes) ← ${url}`,
@@ -195,7 +204,7 @@ export async function fetchTextResilient(url, opts = {}) {
   }
 
   console.warn(
-    `[fetch] fail ${url}: ${last.error || 'unknown'} (tried ${candidates.length} routes)`,
+    `[fetch] fail ${url}: ${last.error || 'unknown'} (tried ${limited.length} routes)`,
   );
   return {
     ok: false,

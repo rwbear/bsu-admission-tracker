@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import {
   fetchText,
   parseScoreBucketTables,
+  parseSimpleCompetitionTables,
   filterFacultySections,
   splitFacultySections,
   cellText,
@@ -14,6 +15,7 @@ import {
   shortFacultyLabel,
   facultyKey,
 } from '../../../js/faculties.js';
+import { setCachedProxy } from '../proxy.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '../../..');
@@ -65,7 +67,12 @@ export async function scrapeFormk1(uni, opts = {}) {
 
   if (uni.discoverFromHub && uni.hubUrl) {
     try {
-      const hub = await fetchText(uni.hubUrl);
+      const hub = await fetchText(uni.hubUrl, {
+        requireFormk1: false,
+        minBytes: 1000,
+        timeoutMs: 15000,
+        maxAttempts: 8,
+      });
       if (hub.ok) {
         const ids = [...hub.text.matchAll(/formk1\?id=(\d+)/gi)].map(
           (m) => m[1],
@@ -106,9 +113,40 @@ export async function scrapeFormk1(uni, opts = {}) {
     const formName = meta?.name || fac.name || `Таблица ${fac.id}`;
     const trackId = meta?.trackId || null;
     const trackName = track?.name || null;
+    const minBytes = Number(meta?.minBytes || fac.minBytes || 0) || 0;
+    const minSections = Number(meta?.minSections || fac.minSections || 0) || 0;
 
-    const res = await fetchText(url);
+    let res = await fetchText(url);
     if (res.via) fetchVia.push({ facultyId: fac.id, via: res.via });
+
+    // Truncated / wrong mirror HTML often still "looks like" formk1 — reject by size.
+    if (res.ok && minBytes && res.text.length < minBytes) {
+      errors.push({
+        facultyId: fac.id,
+        formId: String(fac.id),
+        url,
+        status: res.status,
+        message: `response too small (${res.text.length} < ${minBytes}); retrying`,
+        via: res.via,
+      });
+      setCachedProxy(null);
+      res = await fetchText(url);
+      if (res.via) fetchVia.push({ facultyId: fac.id, via: res.via, retry: true });
+    }
+
+    if (res.ok && minBytes && res.text.length < minBytes) {
+      failedFormIds.push(String(fac.id));
+      errors.push({
+        facultyId: fac.id,
+        formId: String(fac.id),
+        url,
+        status: res.status,
+        message: `response too small after retry (${res.text.length} < ${minBytes})`,
+        via: res.via,
+      });
+      continue;
+    }
+
     if (!res.ok) {
       failedFormIds.push(String(fac.id));
       errors.push({
@@ -141,13 +179,28 @@ export async function scrapeFormk1(uni, opts = {}) {
     if (parseAll) {
       const sections = splitFacultySections(res.text);
       if (!sections.length) {
+        // Legitimate empty monitoring shell (e.g. no applicants yet).
+        okFormIds.push(String(fac.id));
+        errors.push({
+          facultyId: fac.id,
+          formId: String(fac.id),
+          url,
+          status: res.status,
+          message: 'empty monitoring table (no faculty sections)',
+          via: res.via,
+          empty: true,
+        });
+        continue;
+      }
+
+      if (minSections && sections.length < minSections) {
         failedFormIds.push(String(fac.id));
         errors.push({
           facultyId: fac.id,
           formId: String(fac.id),
           url,
           status: res.status,
-          message: 'no faculty sections (td.fl) found',
+          message: `too few faculty sections (${sections.length} < ${minSections}) — likely truncated HTML`,
           via: res.via,
         });
         continue;
@@ -157,7 +210,7 @@ export async function scrapeFormk1(uni, opts = {}) {
       for (const section of sections) {
         const label = shortFacultyLabel(section.title);
         const key = facultyKey(section.title);
-        const parsed = parseScoreBucketTables(`<table>${section.html}</table>`, {
+        let parsed = parseScoreBucketTables(`<table>${section.html}</table>`, {
           universityId: uni.id,
           facultyId: key,
           facultyName: label,
@@ -166,6 +219,17 @@ export async function scrapeFormk1(uni, opts = {}) {
           sourceUrl: url,
           updatedAt,
         });
+        if (!parsed.length) {
+          parsed = parseSimpleCompetitionTables(`<table>${section.html}</table>`, {
+            universityId: uni.id,
+            facultyId: key,
+            facultyName: label,
+            form: String(fac.id),
+            formName,
+            sourceUrl: url,
+            updatedAt,
+          });
+        }
 
         if (!parsed.length) {
           errors.push({
@@ -173,7 +237,7 @@ export async function scrapeFormk1(uni, opts = {}) {
             formId: String(fac.id),
             url,
             status: res.status,
-            message: `no score-bucket rows for ${label}`,
+            message: `no competition rows for ${label}`,
             via: res.via,
           });
           continue;
@@ -193,7 +257,15 @@ export async function scrapeFormk1(uni, opts = {}) {
       }
 
       if (!added) {
-        failedFormIds.push(String(fac.id));
+        // Header-only sections (rare). Count as empty success, not hard fail.
+        okFormIds.push(String(fac.id));
+        errors.push({
+          facultyId: fac.id,
+          formId: String(fac.id),
+          url,
+          message: 'faculty sections present but no parseable specialty rows',
+          empty: true,
+        });
       } else {
         okFormIds.push(String(fac.id));
       }

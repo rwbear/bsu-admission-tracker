@@ -26,7 +26,9 @@
       "name": "Дневная форма. Бюджет",
       "shortName": "Дневная · бюджет",
       "schedule": "day",
-      "finance": "budget"
+      "finance": "budget",
+      "minBytes": 40000,
+      "minSections": 8
     },
     {
       "id": "29",
@@ -51,7 +53,9 @@
       "shortName": "Дневная · платная",
       "schedule": "day",
       "finance": "paid",
-      "default": true
+      "default": true,
+      "minBytes": 40000,
+      "minSections": 8
     },
     {
       "id": "8",

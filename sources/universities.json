@@ -8,7 +8,7 @@
     "enabled": true,
     "baseUrl": "https://abit.bsu.by/formk1?id=",
     "hubUrl": "https://abiturient.bsu.by/priemnaia-kampaniia/monitoring-podachi-zaiavlenii",
-    "discoverFromHub": true,
+    "discoverFromHub": false,
     "parseAllSections": true,
     "tablesCatalog": "sources/bsu-tables.json",
     "faculties": [

@@ -282,6 +282,71 @@ export function parseScoreBucketTables(html, meta) {
   return results;
 }
 
+/**
+ * Parse simpler monitoring tables without score-range buckets
+ * (specialty | plan | applications).
+ * @param {string} html
+ * @param {{ universityId: string, facultyId?: string, facultyName?: string, form?: string, formName?: string, sourceUrl: string, updatedAt: string }} meta
+ */
+export function parseSimpleCompetitionTables(html, meta) {
+  const tables = extractTables(html);
+  const results = [];
+
+  for (const rows of tables) {
+    for (let r = 0; r < rows.length; r += 1) {
+      const texts = rows[r].map(cellText).map((t) => t.replace(/\s+/g, ' ').trim());
+      if (texts.length < 2) continue;
+      if (texts.some((t) => /^специальность$/i.test(t))) continue;
+      if (texts.some((t) => /^план приема/i.test(t))) continue;
+      if (texts.filter(isRangeHeader).length >= 5) continue;
+
+      const named = texts.filter(
+        (t) =>
+          t &&
+          /[А-Яа-яA-Za-z]/.test(t) &&
+          !isBareNumber(t) &&
+          !/^факультет|институт/i.test(t),
+      );
+      const nums = texts.filter(isBareNumber).map(parseCount);
+      if (!named.length || nums.length < 1) continue;
+
+      const sorted = [...named].sort((a, b) => b.length - a.length);
+      const specName = cleanSpecName(sorted[0]);
+      if (specName.length < 3) continue;
+      if (/^(план|подано|всего)/i.test(specName)) continue;
+
+      const plan = nums[0] || 0;
+      const totalApps = nums[1] ?? nums[0] ?? 0;
+      if (plan === 0 && totalApps === 0) continue;
+
+      const facultyPart = meta.facultyId || meta.form || 'main';
+      const safeSpec = slug(specName).slice(0, 48);
+      const id = `${meta.universityId}:${facultyPart}:${safeSpec}:${plan}`;
+      results.push({
+        id,
+        universityId: meta.universityId,
+        facultyId: meta.facultyId || meta.form || '',
+        facultyName: meta.facultyName || meta.formName || '',
+        form: meta.form || '',
+        formName: meta.formName || '',
+        groupName: '',
+        specName,
+        plan,
+        totalApps,
+        inCompetition: totalApps,
+        ranges: [],
+        buckets: [],
+        estimatedPassing: null,
+        sourceUrl: meta.sourceUrl,
+        updatedAt: meta.updatedAt,
+        tableKind: 'simple',
+      });
+    }
+  }
+
+  return results;
+}
+
 function isBareNumber(text) {
   const t = String(text).replace(/\s+/g, '').trim();
   return /^\d+$/.test(t);
