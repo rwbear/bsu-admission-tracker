@@ -38,8 +38,6 @@ const $liveRefresh = /** @type {HTMLButtonElement} */ ($('#live-refresh'));
 
 let pollTimer = null;
 let fetching = false;
-/** ISO time of the last successful client pull (what LIVE displays). */
-let lastCheckedAt = null;
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -62,13 +60,6 @@ function onSelectSpecialty(id) {
   }
 }
 
-function freshnessMeta() {
-  return {
-    snapshotAt: state.uniData?.updatedAt || null,
-    checkedAt: lastCheckedAt,
-  };
-}
-
 function renderMasterDetail(specs, score) {
   const rows = prepareSpecs(specs, score);
   const selectedId = resolveSelection(rows, state.selectedId);
@@ -77,6 +68,7 @@ function renderMasterDetail(specs, score) {
     return;
   }
 
+  const updatedAt = state.uniData?.updatedAt || null;
   renderSummary($summary, rows);
   renderOverviewList($overview, specs, score, {
     selectedId,
@@ -86,7 +78,7 @@ function renderMasterDetail(specs, score) {
     $detail,
     rows.find((r) => r.id === selectedId) ?? null,
     score,
-    freshnessMeta(),
+    { updatedAt },
   );
 }
 
@@ -170,17 +162,16 @@ async function fetchData(opts = {}) {
     const changed = snapshotChanged(payload, prev);
     state.uniData = payload;
     state.error = null;
-    lastCheckedAt = new Date().toISOString();
     applyBanner(payload);
-    emit();
-    if (!changed && silent) tickClock();
+    if (!silent || changed) emit();
+    else tickClock();
     ok = true;
   } catch (err) {
     if (!state.uniData) {
       state.error = err.message || String(err);
       emit();
     } else {
-      console.warn('live refresh failed, keeping previous snapshot', err);
+      console.warn('snapshot refresh failed, keeping previous data', err);
     }
   } finally {
     state.loading = false;
@@ -191,12 +182,11 @@ async function fetchData(opts = {}) {
 }
 
 function tickClock() {
-  const stamp = lastCheckedAt || state.uniData?.updatedAt;
+  const stamp = state.uniData?.updatedAt;
   $commandTime.textContent = stamp ? `LIVE · ${fmtTime(stamp)}` : 'LIVE';
-  const snap = state.uniData?.updatedAt
-    ? `Снимок: ${fmtTime(state.uniData.updatedAt)}`
-    : 'Нет снимка';
-  $liveRefresh.title = `${snap} · нажми, чтобы проверить сейчас`;
+  $liveRefresh.title = stamp
+    ? `Обновлено ${fmtTime(stamp)} · нажми, чтобы обновить`
+    : 'Нажми, чтобы обновить';
 }
 
 async function refreshLive() {
@@ -205,11 +195,13 @@ async function refreshLive() {
   $liveRefresh.classList.add('is-refreshing');
   $liveRefresh.disabled = true;
 
-  await fetchData({ silent: true });
-  tickClock();
-
-  $liveRefresh.classList.remove('is-refreshing');
-  $liveRefresh.disabled = false;
+  try {
+    await fetchData({ silent: true });
+  } finally {
+    tickClock();
+    $liveRefresh.classList.remove('is-refreshing');
+    $liveRefresh.disabled = false;
+  }
 }
 
 function startLivePolling() {

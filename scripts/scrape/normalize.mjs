@@ -1,14 +1,14 @@
 import { calcPassing } from '../../js/compute.js';
-import { fetchTextResilient } from './proxy.mjs';
 
 /**
  * Fetch HTML. Direct cloud fetches to abit.bsu.by usually die on TLS reset;
- * resilient path tries env proxies then regional HTTP proxies.
+ * resilient path tries env proxies then regional HTTP proxies (Node only).
  * @param {string} url
  * @param {{ timeoutMs?: number, retries?: number }} [opts]
  * @returns {Promise<{ ok: boolean, status: number, text: string, url: string, error?: string, via?: string }>}
  */
 export async function fetchText(url, opts = {}) {
+  const { fetchTextResilient } = await import('./proxy.mjs');
   return fetchTextResilient(url, opts);
 }
 
