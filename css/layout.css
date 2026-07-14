@@ -99,10 +99,32 @@ input {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
   font-size: var(--text-xs);
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-dim);
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition),
+    color var(--transition);
+}
+
+.command-meta:hover {
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+.command-meta:active {
+  background: var(--soft);
+}
+
+.command-meta.is-refreshing {
+  color: var(--ink);
+  border-color: var(--line);
 }
 
 .live-dot {
