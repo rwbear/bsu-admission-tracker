@@ -5,6 +5,6 @@ export const CONFIG = {
   /** Fallback if data/index.json has no origin yet. */
   repo: 'rwbear/bsu-admission-tracker',
   dataBranch: 'cursor/admission-tracker-rebuild-be86',
-  /** Client re-pull interval — match Actions scrape cadence (10 min). */
-  pollMs: 10 * 60_000,
+  /** Client re-pull — Actions aim for ~5 min; stay ahead of Pages CDN lag. */
+  pollMs: 3 * 60_000,
 };

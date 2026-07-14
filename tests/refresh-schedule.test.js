@@ -19,12 +19,12 @@ describe('refresh schedule', () => {
     assert.equal(formatCountdown(-3), '0:00');
   });
 
-  it('defaults poll to 10 minutes and allows shorter ?pollMs= for tests', () => {
-    const ten = 10 * 60_000;
-    assert.equal(resolvePollMs(ten, ''), ten);
-    assert.equal(resolvePollMs(ten, '?pollMs=3000'), 3000);
-    assert.equal(resolvePollMs(ten, '?pollMs=999'), 1000);
-    assert.equal(resolvePollMs(ten, '?pollMs=999999'), ten);
+  it('defaults poll to 3 minutes and allows shorter ?pollMs= for tests', () => {
+    const three = 3 * 60_000;
+    assert.equal(resolvePollMs(three, ''), three);
+    assert.equal(resolvePollMs(three, '?pollMs=3000'), 3000);
+    assert.equal(resolvePollMs(three, '?pollMs=999'), 1000);
+    assert.equal(resolvePollMs(three, '?pollMs=999999'), three);
   });
 
   it('arms next due exactly pollMs after a completed load', () => {
@@ -40,16 +40,16 @@ describe('refresh schedule', () => {
   });
 
   it('chases Pages every minute when the snapshot is stale', () => {
-    const ten = 10 * 60_000;
+    const three = 3 * 60_000;
     const now = Date.parse('2026-07-14T13:30:00.000Z');
-    const fresh = '2026-07-14T13:25:00.000Z';
-    const stale = '2026-07-14T13:00:00.000Z';
-    assert.equal(resolveEffectivePollMs(ten, fresh, now), ten);
-    assert.equal(resolveEffectivePollMs(ten, stale, now), STALE_POLL_MS);
-    assert.equal(resolveEffectivePollMs(ten, null, now), STALE_POLL_MS);
+    const fresh = '2026-07-14T13:28:00.000Z';
+    const stale = '2026-07-14T13:20:00.000Z';
+    assert.equal(resolveEffectivePollMs(three, fresh, now), three);
+    assert.equal(resolveEffectivePollMs(three, stale, now), STALE_POLL_MS);
+    assert.equal(resolveEffectivePollMs(three, null, now), STALE_POLL_MS);
     assert.equal(isSnapshotStale(stale, now), true);
     assert.equal(isSnapshotStale(fresh, now), false);
-    assert.ok(STALE_AFTER_MS > ten);
-    assert.ok(STALE_POLL_MS < ten);
+    assert.ok(STALE_AFTER_MS > three);
+    assert.ok(STALE_POLL_MS < STALE_AFTER_MS);
   });
 });

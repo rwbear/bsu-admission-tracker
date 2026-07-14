@@ -50,8 +50,7 @@ async function getJson(path, opts = {}) {
 }
 
 /**
- * Wrap so sync fetch() throws (e.g. relative URL in Node) become rejections
- * and do not abort Promise.allSettled sibling candidates.
+ * Wrap so sync fetch() throws become rejections for allSettled siblings.
  * @param {string} path
  * @param {{ bust?: boolean, timeoutMs?: number }} [opts]
  */
@@ -121,8 +120,6 @@ async function latestCommitSha(repo, branch, filePath) {
 
 /**
  * Resolve repo/branch for remote snapshot pulls.
- * Data always lives on the GitHub Pages branch — never trust a bare "main"
- * label from a workflow that was triggered on the default branch.
  * @param {object | null} index
  */
 export function resolveOrigin(index) {
@@ -150,29 +147,26 @@ export async function loadIndex() {
 }
 
 /**
- * Load candidates for university JSON.
- * Same-origin + raw branch start immediately; SHA lookup is optional and
- * time-boxed so a slow api.github.com cannot blank the board.
+ * Snapshot candidates. Prefer raw.githubusercontent.com (near-instant after
+ * Actions push) over GitHub Pages CDN (often cached up to ~10 minutes).
  *
  * @param {string} universityId
  * @param {{ repo: string, branch: string, bust: boolean }} opts
  */
 async function loadSnapshotCandidates(universityId, opts) {
   const file = `data/${universityId}.json`;
+  const rawBase = `https://raw.githubusercontent.com/${opts.repo}/${opts.branch}`;
 
   const shaPromise = withTimeout(
     latestCommitSha(opts.repo, opts.branch, file),
-    2_000,
+    1_500,
     null,
   );
 
-  /** @type {Promise<object>[]} */
+  /** Primary: raw tip (freshest) + same-origin Pages, in parallel. */
   const primary = [
-    getJsonSettled(`./${file}`, { bust: opts.bust }),
-    getJsonSettled(
-      `https://raw.githubusercontent.com/${opts.repo}/${opts.branch}/${file}`,
-      { bust: true },
-    ),
+    getJsonSettled(`${rawBase}/${file}`, { bust: true, timeoutMs: 8_000 }),
+    getJsonSettled(`./${file}`, { bust: opts.bust, timeoutMs: 8_000 }),
   ];
 
   const [primarySettled, sha] = await Promise.all([
@@ -181,19 +175,23 @@ async function loadSnapshotCandidates(universityId, opts) {
   ]);
 
   /** @type {object[]} */
-  const payloads = primarySettled
-    .filter((r) => r.status === 'fulfilled')
-    .map((r) => /** @type {PromiseFulfilledResult<object>} */ (r).value);
+  const payloads = [];
+  for (const r of primarySettled) {
+    if (r.status === 'fulfilled' && isUniPayload(r.value)) {
+      payloads.push(r.value);
+    }
+  }
 
+  // SHA-pinned raw bypasses every CDN. Only worth it when we have a sha.
   if (sha) {
+    const shaUrl = `https://raw.githubusercontent.com/${opts.repo}/${sha}/${file}`;
     const shaSettled = await Promise.allSettled([
-      getJsonSettled(
-        `https://raw.githubusercontent.com/${opts.repo}/${sha}/${file}`,
-        { timeoutMs: 8_000 },
-      ),
+      getJsonSettled(shaUrl, { timeoutMs: 6_000 }),
     ]);
     for (const r of shaSettled) {
-      if (r.status === 'fulfilled') payloads.push(r.value);
+      if (r.status === 'fulfilled' && isUniPayload(r.value)) {
+        payloads.push(r.value);
+      }
     }
   }
 
@@ -201,38 +199,16 @@ async function loadSnapshotCandidates(universityId, opts) {
 }
 
 /**
- * Load the newest committed university snapshot (Actions scrape).
- * Does not scrape abit.bsu.by in the browser — that path is unreliable.
+ * Load the newest committed university snapshot.
+ * Origin comes from CONFIG immediately — never wait on index.json first
+ * (that serial wait was making the board look "late" on every visit).
  *
  * @param {string} universityId
  * @param {{ bust?: boolean }} [opts]
  */
 export async function loadUniversity(universityId, opts = {}) {
   const bust = opts.bust !== false;
-
-  let origin = { repo: CONFIG.repo, branch: CONFIG.dataBranch };
-  try {
-    const index = await withTimeout(
-      getJsonSettled('./data/index.json', { bust: true, timeoutMs: 8_000 }),
-      8_000,
-      null,
-    );
-    if (index) origin = resolveOrigin(index);
-  } catch {
-    try {
-      const index = await withTimeout(
-        getJson(
-          `https://raw.githubusercontent.com/${origin.repo}/${origin.branch}/data/index.json`,
-          { bust: true, timeoutMs: 8_000 },
-        ),
-        8_000,
-        null,
-      );
-      if (index) origin = resolveOrigin(index);
-    } catch {
-      /* keep CONFIG defaults */
-    }
-  }
+  const origin = { repo: CONFIG.repo, branch: CONFIG.dataBranch };
 
   const snapshots = await loadSnapshotCandidates(universityId, {
     ...origin,

@@ -194,6 +194,7 @@ async function main() {
   index.universities.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
 
   const indexPath = join(dataDir, 'index.json');
+  const tipPath = join(dataDir, 'latest.json');
   if (!args.dry) {
     const prevIndex = existsSync(indexPath)
       ? readFileSync(indexPath, 'utf8')
@@ -203,6 +204,24 @@ async function main() {
       writeFileSync(indexPath, next, 'utf8');
       changed = true;
       console.log(`[write] ${indexPath}`);
+    }
+
+    // Tiny tip file — clients can spot freshness without the heavy JSON CDN.
+    const tip = {
+      generatedAt: index.generatedAt,
+      origin: index.origin,
+      universities: index.universities.map((u) => ({
+        id: u.id,
+        updatedAt: u.updatedAt,
+        specialtyCount: u.specialtyCount,
+      })),
+    };
+    const tipText = `${JSON.stringify(tip, null, 2)}\n`;
+    const prevTip = existsSync(tipPath) ? readFileSync(tipPath, 'utf8') : '';
+    if (prevTip !== tipText) {
+      writeFileSync(tipPath, tipText, 'utf8');
+      changed = true;
+      console.log(`[write] ${tipPath}`);
     }
   }
 
