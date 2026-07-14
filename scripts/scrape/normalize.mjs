@@ -14,7 +14,7 @@ export async function fetchText(url, opts = {}) {
 
 /**
  * Keep only faculty blocks whose section title matches any needle.
- * BSU formk1 pages often mix many faculties; Проход wants Институт бизнеса only.
+ * BSU formk1 pages often mix many faculties.
  * @param {string} html
  * @param {string[]} needles
  */
@@ -24,22 +24,43 @@ export function filterFacultySections(html, needles) {
     .filter(Boolean);
   if (!terms.length) return html;
 
-  const re = /<tr>\s*<td class="fl"[^>]*>[\s\S]*?<\/tr>/gi;
-  const hits = [...html.matchAll(re)];
-  if (!hits.length) return html;
+  const sections = splitFacultySections(html);
+  if (!sections.length) return html;
 
-  const chunks = [];
-  for (let i = 0; i < hits.length; i += 1) {
-    const start = hits[i].index ?? 0;
-    const end = i + 1 < hits.length ? hits[i + 1].index ?? html.length : html.length;
-    const heading = cellText(hits[i][0]).toLowerCase();
-    if (terms.some((t) => heading.includes(t))) {
-      chunks.push(html.slice(start, end));
-    }
-  }
+  const chunks = sections
+    .filter((s) => {
+      const heading = s.title.toLowerCase();
+      return terms.some((t) => heading.includes(t));
+    })
+    .map((s) => s.html);
 
   if (!chunks.length) return '';
   return `<table>${chunks.join('')}</table>`;
+}
+
+/**
+ * Split a formk1 page into faculty blocks by `td.fl` section headers.
+ * @param {string} html
+ * @returns {{ title: string, html: string }[]}
+ */
+export function splitFacultySections(html) {
+  const re = /<tr>\s*<td class="fl"[^>]*>[\s\S]*?<\/tr>/gi;
+  const hits = [...String(html || '').matchAll(re)];
+  if (!hits.length) return [];
+
+  /** @type {{ title: string, html: string }[]} */
+  const sections = [];
+  for (let i = 0; i < hits.length; i += 1) {
+    const start = hits[i].index ?? 0;
+    const end = i + 1 < hits.length ? hits[i + 1].index ?? html.length : html.length;
+    const title = cellText(hits[i][0]);
+    if (!title) continue;
+    sections.push({
+      title,
+      html: html.slice(start, end),
+    });
+  }
+  return sections;
 }
 
 export function sleep(ms) {

@@ -1,16 +1,16 @@
 [
   {
     "id": "sb-bsu",
-    "name": "Институт бизнеса БГУ",
-    "fullName": "Институт бизнеса Белорусского государственного университета",
+    "name": "БГУ",
+    "fullName": "Белорусский государственный университет",
     "adapter": "formk1",
     "priority": 0,
     "enabled": true,
     "baseUrl": "https://abit.bsu.by/formk1?id=",
-    "hubUrl": "https://sb.bsu.by/",
-    "sectionIncludes": ["Институт бизнеса"],
+    "hubUrl": "https://www.bsu.by/",
+    "parseAllSections": true,
     "faculties": [
-      { "id": "7", "name": "Дневная", "sectionIncludes": ["Институт бизнеса"] }
+      { "id": "7", "name": "Дневная", "parseAllSections": true }
     ]
   }
 ]

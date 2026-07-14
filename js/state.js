@@ -1,11 +1,13 @@
 const KEYS = {
   score: 'prohod-sb-score',
   selected: 'prohod-sb-selected',
+  faculty: 'prohod-sb-faculty',
 };
 
 /** @type {{
  *  score: number | null,
  *  selectedId: string | null,
+ *  facultyId: string | null,
  *  uniData: object | null,
  *  loading: boolean,
  *  error: string | null,
@@ -14,6 +16,7 @@ const KEYS = {
 export const state = {
   score: null,
   selectedId: null,
+  facultyId: null,
   uniData: null,
   loading: false,
   error: null,
@@ -39,6 +42,7 @@ export function loadPrefs() {
   }
 
   state.selectedId = localStorage.getItem(KEYS.selected);
+  state.facultyId = localStorage.getItem(KEYS.faculty);
   // Drop obsolete day/zaoch pref if present
   localStorage.removeItem('prohod-sb-form');
 }
@@ -63,5 +67,18 @@ export function setSelected(id) {
   state.selectedId = id;
   if (id) localStorage.setItem(KEYS.selected, id);
   else localStorage.removeItem(KEYS.selected);
+  emit();
+}
+
+/**
+ * @param {string | null} id
+ */
+export function setFaculty(id) {
+  state.facultyId = id;
+  if (id) localStorage.setItem(KEYS.faculty, id);
+  else localStorage.removeItem(KEYS.faculty);
+  // Specialty selection is faculty-scoped — clear so resolveSelection picks anew.
+  state.selectedId = null;
+  localStorage.removeItem(KEYS.selected);
   emit();
 }

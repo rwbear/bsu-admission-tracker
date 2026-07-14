@@ -2,10 +2,15 @@ import {
   fetchText,
   parseScoreBucketTables,
   filterFacultySections,
+  splitFacultySections,
   cellText,
   extractTables,
   isRangeHeader,
 } from '../normalize.mjs';
+import {
+  shortFacultyLabel,
+  facultyKey,
+} from '../../../js/faculties.js';
 
 /**
  * Scrape formk1-style monitoring pages for one university config.
@@ -55,8 +60,61 @@ export async function scrapeFormk1(uni, opts = {}) {
       continue;
     }
 
+    const parseAll =
+      fac.parseAllSections === true || uni.parseAllSections === true;
     const sectionNeedles =
       fac.sectionIncludes || uni.sectionIncludes || null;
+
+    if (parseAll) {
+      const sections = splitFacultySections(res.text);
+      if (!sections.length) {
+        errors.push({
+          facultyId: fac.id,
+          url,
+          status: res.status,
+          message: 'no faculty sections (td.fl) found',
+          via: res.via,
+        });
+        continue;
+      }
+
+      for (const section of sections) {
+        const label = shortFacultyLabel(section.title);
+        const key = facultyKey(section.title);
+        const parsed = parseScoreBucketTables(`<table>${section.html}</table>`, {
+          universityId: uni.id,
+          facultyId: key,
+          facultyName: label,
+          form: String(fac.id),
+          formName: fac.name || 'Дневная',
+          sourceUrl: url,
+          updatedAt,
+        });
+
+        if (!parsed.length) {
+          errors.push({
+            facultyId: key,
+            url,
+            status: res.status,
+            message: `no score-bucket rows for ${label}`,
+            via: res.via,
+          });
+          continue;
+        }
+
+        specs.push(
+          ...parsed.map((s) => ({
+            ...s,
+            facultyId: key,
+            facultyName: label,
+            formName: fac.name || s.formName || 'Дневная',
+            sectionTitle: section.title,
+          })),
+        );
+      }
+      continue;
+    }
+
     const html = sectionNeedles
       ? filterFacultySections(res.text, sectionNeedles)
       : res.text;
@@ -73,10 +131,12 @@ export async function scrapeFormk1(uni, opts = {}) {
     }
 
     const facultyName = detectFacultyName(html) || fac.name;
+    const label = shortFacultyLabel(facultyName);
+    const key = facultyKey(facultyName);
     const parsed = parseScoreBucketTables(html, {
       universityId: uni.id,
-      facultyId: String(fac.id),
-      facultyName: fac.name || facultyName,
+      facultyId: key,
+      facultyName: label,
       form: String(fac.id),
       formName: fac.name || '',
       sourceUrl: url,
@@ -85,7 +145,7 @@ export async function scrapeFormk1(uni, opts = {}) {
 
     if (!parsed.length) {
       errors.push({
-        facultyId: fac.id,
+        facultyId: key,
         url,
         status: res.status,
         message: 'no score-bucket rows',
@@ -95,7 +155,8 @@ export async function scrapeFormk1(uni, opts = {}) {
     specs.push(
       ...parsed.map((s) => ({
         ...s,
-        facultyName: fac.name || facultyName,
+        facultyId: key,
+        facultyName: label,
         formName: fac.name || s.formName,
       })),
     );

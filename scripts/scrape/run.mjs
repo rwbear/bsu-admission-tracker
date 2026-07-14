@@ -6,6 +6,7 @@ import { scrapeBsuir } from './adapters/bsuir.mjs';
 import { scrapeBntu } from './adapters/bntu.mjs';
 import { scrapeGrsu } from './adapters/grsu.mjs';
 import { dedupeSpecs } from './normalize.mjs';
+import { sortFaculties } from '../../js/faculties.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '../..');
@@ -214,38 +215,21 @@ async function main() {
   console.log(`[done] changed=${changed}`);
 }
 
-function buildFacultyIndex(specs, uni) {
+function buildFacultyIndex(specs, _uni) {
   const map = new Map();
   for (const s of specs) {
     const id = s.facultyId || 'main';
     if (!map.has(id)) {
       map.set(id, {
         id,
-        name: s.facultyName || lookupFacultyName(uni, id) || id,
+        name: s.facultyName || id,
         specialtyCount: 0,
       });
     }
     map.get(id).specialtyCount += 1;
   }
 
-  // Ensure configured faculties appear even if empty after scrape
-  for (const f of uni.faculties || []) {
-    const id = String(f.id);
-    if (!map.has(id)) map.set(id, { id, name: f.name, specialtyCount: 0 });
-  }
-  for (const f of uni.forms || []) {
-    const id = String(f.id);
-    if (!map.has(id)) map.set(id, { id, name: f.name, specialtyCount: 0 });
-  }
-
-  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'ru'));
-}
-
-function lookupFacultyName(uni, id) {
-  const fac = (uni.faculties || []).find((f) => String(f.id) === String(id));
-  if (fac) return fac.name;
-  const form = (uni.forms || []).find((f) => String(f.id) === String(id));
-  return form?.name || '';
+  return sortFaculties([...map.values()]);
 }
 
 function summarize(uni, payload) {

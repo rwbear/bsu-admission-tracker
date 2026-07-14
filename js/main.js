@@ -4,11 +4,12 @@ import {
   subscribe,
   setScore,
   setSelected,
-  emit,
+  setFaculty,
 } from './state.js';
 import { prepareSpecs } from './compute.js';
 import { loadUniversity } from './load-data.js';
 import { CONFIG } from './config.js';
+import { resolveFacultyId } from './faculties.js';
 import { $, fmtTime } from './ui/dom.js';
 import {
   renderOverviewList,
@@ -16,6 +17,7 @@ import {
   renderSummary,
   resolveSelection,
 } from './ui/radar.js';
+import { renderFacultyPicker } from './ui/faculty-picker.js';
 import {
   formatCountdown,
   resolvePollMs,
@@ -43,6 +45,7 @@ const $summary = $('#summary-strip');
 const $commandTime = $('#command-time');
 const $nextUpdate = $('#next-update');
 const $updateStatus = $('#update-status');
+const $facultyMount = $('#faculty-picker-mount');
 
 let tickTimer = null;
 let nextRefreshAt = 0;
@@ -51,6 +54,8 @@ let refreshing = false;
 let fetchChain = Promise.resolve();
 let visibilityBound = false;
 let onlineBound = false;
+let facultyMenuOpen = false;
+let facultyOutsideBound = false;
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -62,8 +67,64 @@ function showOnly(which) {
   if (which === 'results') $results.classList.remove('hidden');
 }
 
+function facultyList() {
+  return state.uniData?.faculties || [];
+}
+
+function syncFacultySelection() {
+  const next = resolveFacultyId(facultyList(), state.facultyId);
+  if (next !== state.facultyId) {
+    state.facultyId = next;
+    if (next) localStorage.setItem('prohod-sb-faculty', next);
+    else localStorage.removeItem('prohod-sb-faculty');
+  }
+}
+
 function currentSpecialties() {
-  return state.uniData?.specialties || [];
+  const all = state.uniData?.specialties || [];
+  if (!state.facultyId) return all;
+  return all.filter((s) => s.facultyId === state.facultyId);
+}
+
+function closeFacultyMenu() {
+  if (!facultyMenuOpen) return;
+  facultyMenuOpen = false;
+  // Re-render picker closed without full board if possible
+  renderFacultyChrome();
+}
+
+function openFacultyMenu() {
+  facultyMenuOpen = true;
+  renderFacultyChrome();
+  // Focus first selected / first option after paint
+  queueMicrotask(() => {
+    const active =
+      $facultyMount.querySelector('.faculty-option.is-active') ||
+      $facultyMount.querySelector('.faculty-option');
+    if (active instanceof HTMLElement) active.focus();
+  });
+}
+
+function toggleFacultyMenu() {
+  if (facultyMenuOpen) closeFacultyMenu();
+  else openFacultyMenu();
+}
+
+function onSelectFaculty(id) {
+  facultyMenuOpen = false;
+  if (id !== state.facultyId) setFaculty(id);
+  else renderFacultyChrome();
+}
+
+function renderFacultyChrome() {
+  renderFacultyPicker($facultyMount, {
+    faculties: facultyList(),
+    selectedId: state.facultyId,
+    open: facultyMenuOpen,
+    onToggle: toggleFacultyMenu,
+    onSelect: onSelectFaculty,
+    onClose: closeFacultyMenu,
+  });
 }
 
 function onSelectSpecialty(id) {
@@ -96,6 +157,8 @@ function renderMasterDetail(specs, score) {
 }
 
 function renderBoard() {
+  syncFacultySelection();
+  renderFacultyChrome();
   renderCommandMeta();
   $sourceLink.href = SOURCE_URL;
 
@@ -112,6 +175,9 @@ function renderBoard() {
 
   if (!state.scoreSubmitted || state.score == null) {
     showOnly('empty');
+    $empty.querySelector('h2').textContent = 'Введи балл';
+    $empty.querySelector('p').textContent =
+      'Сверху выбери факультет. Затем — обзор специальностей и детали.';
     return;
   }
 
@@ -120,7 +186,7 @@ function renderBoard() {
     showOnly('empty');
     $empty.querySelector('h2').textContent = 'Нет строк';
     $empty.querySelector('p').textContent =
-      'Таблица могла быть пустой вне кампании, или снимок ещё не обновился.';
+      'На этом факультете пока нет данных — выбери другой или дождись обновления.';
     return;
   }
 
@@ -206,10 +272,14 @@ function fetchData(opts = {}) {
       const payload = await loadUniversity(UNI_ID, { bust: true });
       changed = snapshotChanged(payload, prev);
       state.uniData = payload;
+      syncFacultySelection();
       state.error = null;
       applyBanner(payload);
       if (!silent || changed) emit();
-      else renderCommandMeta();
+      else {
+        renderFacultyChrome();
+        renderCommandMeta();
+      }
       ok = true;
     } catch (err) {
       if (!state.uniData) {
@@ -240,15 +310,10 @@ function fetchData(opts = {}) {
 async function runScheduledRefresh() {
   if (refreshing) return;
   if (document.visibilityState === 'hidden') return;
-  // Claim the slot immediately so the 1s ticker cannot start a second pull
-  // before fetchData sets `refreshing` inside the async queue.
   armNextRefresh();
   await fetchData({ silent: true, armSchedule: true });
 }
 
-/**
- * Single timer drives both countdown UI and the due pull.
- */
 function onScheduleTick() {
   const now = Date.now();
   renderCommandMeta(now);
@@ -292,14 +357,55 @@ function startAutoRefresh() {
   }
 }
 
+function bindFacultyChrome() {
+  if (facultyOutsideBound) return;
+  facultyOutsideBound = true;
+
+  document.addEventListener('click', (e) => {
+    if (!facultyMenuOpen) return;
+    const t = e.target;
+    if (t instanceof Node && $facultyMount.contains(t)) return;
+    closeFacultyMenu();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && facultyMenuOpen) {
+      e.preventDefault();
+      closeFacultyMenu();
+      const trigger = document.getElementById('faculty-trigger');
+      if (trigger instanceof HTMLElement) trigger.focus();
+      return;
+    }
+
+    if (!facultyMenuOpen) return;
+    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') {
+      return;
+    }
+
+    const options = [
+      ...$facultyMount.querySelectorAll('.faculty-option'),
+    ];
+    if (!options.length) return;
+    e.preventDefault();
+    const active = document.activeElement;
+    let idx = options.findIndex((n) => n === active);
+    if (e.key === 'Home') idx = 0;
+    else if (e.key === 'End') idx = options.length - 1;
+    else if (e.key === 'ArrowDown') idx = Math.min(options.length - 1, Math.max(0, idx) + 1);
+    else if (e.key === 'ArrowUp') idx = Math.max(0, (idx < 0 ? options.length : idx) - 1);
+    const next = options[idx];
+    if (next instanceof HTMLElement) next.focus();
+  });
+}
+
 async function bootstrap() {
   loadPrefs();
   if (state.score != null) $scoreInput.value = String(state.score);
   $sourceLink.href = SOURCE_URL;
+  bindFacultyChrome();
+  renderFacultyChrome();
   renderCommandMeta();
-  // 1) Newest committed scrape on open.
   await fetchData({ silent: false, armSchedule: true });
-  // 2) Countdown → refresh every POLL_MS.
   startAutoRefresh();
 }
 
