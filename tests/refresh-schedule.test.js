@@ -3,8 +3,12 @@ import assert from 'node:assert/strict';
 import {
   formatCountdown,
   resolvePollMs,
+  resolveEffectivePollMs,
+  isSnapshotStale,
   nextDueAt,
   shouldRefreshNow,
+  STALE_AFTER_MS,
+  STALE_POLL_MS,
 } from '../js/refresh-schedule.js';
 
 describe('refresh schedule', () => {
@@ -33,5 +37,18 @@ describe('refresh schedule', () => {
     assert.equal(shouldRefreshNow(100, 100, true, true), false);
     assert.equal(shouldRefreshNow(100, 100, false, false), false);
     assert.equal(shouldRefreshNow(100, 0, false, true), false);
+  });
+
+  it('chases Pages every minute when the snapshot is stale', () => {
+    const ten = 10 * 60_000;
+    const now = Date.parse('2026-07-14T13:30:00.000Z');
+    const fresh = '2026-07-14T13:25:00.000Z';
+    const stale = '2026-07-14T13:00:00.000Z';
+    assert.equal(resolveEffectivePollMs(ten, fresh, now), ten);
+    assert.equal(resolveEffectivePollMs(ten, stale, now), STALE_POLL_MS);
+    assert.equal(resolveEffectivePollMs(ten, null, now), STALE_POLL_MS);
+    assert.equal(isSnapshotStale(stale, now), true);
+    assert.equal(isSnapshotStale(fresh, now), false);
+    assert.ok(STALE_AFTER_MS < ten);
   });
 });

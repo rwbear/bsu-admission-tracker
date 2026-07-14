@@ -22,6 +22,8 @@ import { renderFacultyPicker } from './ui/faculty-picker.js';
 import {
   formatCountdown,
   resolvePollMs,
+  resolveEffectivePollMs,
+  isSnapshotStale,
   nextDueAt,
   shouldRefreshNow,
 } from './refresh-schedule.js';
@@ -246,6 +248,10 @@ function applyBanner(payload) {
     $banner.classList.remove('hidden');
     $banner.textContent =
       'Не удалось обновить источник — показан последний успешный снимок.';
+  } else if (isSnapshotStale(payload?.updatedAt)) {
+    $banner.classList.remove('hidden');
+    $banner.textContent =
+      'Снимок старше обычного интервала — ждём следующий сбор Actions и опрашиваем чаще.';
   } else {
     $banner.classList.add('hidden');
   }
@@ -286,7 +292,12 @@ function renderCommandMeta(now = Date.now()) {
 }
 
 function armNextRefresh(fromMs = Date.now()) {
-  nextRefreshAt = nextDueAt(fromMs, POLL_MS);
+  const pollMs = resolveEffectivePollMs(
+    POLL_MS,
+    state.uniData?.updatedAt,
+    fromMs,
+  );
+  nextRefreshAt = nextDueAt(fromMs, pollMs);
   renderCommandMeta(fromMs);
 }
 

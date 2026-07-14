@@ -2,6 +2,11 @@
  * Pure helpers for the auto-refresh countdown (load → wait → refresh).
  */
 
+/** When the snapshot is older than this, chase Pages for a newer scrape. */
+export const STALE_AFTER_MS = 12 * 60_000;
+/** Poll cadence while chasing a stale/missing snapshot. */
+export const STALE_POLL_MS = 60_000;
+
 /**
  * @param {number} totalSec
  */
@@ -28,6 +33,44 @@ export function resolvePollMs(defaultMs, search = '') {
   } catch {
     return defaultMs;
   }
+}
+
+/**
+ * Use a short poll when the committed snapshot looks behind the scrape cadence.
+ * @param {number} defaultMs
+ * @param {string | null | undefined} updatedAt
+ * @param {number} [now]
+ * @param {number} [staleAfterMs]
+ * @param {number} [stalePollMs]
+ */
+export function resolveEffectivePollMs(
+  defaultMs,
+  updatedAt,
+  now = Date.now(),
+  staleAfterMs = STALE_AFTER_MS,
+  stalePollMs = STALE_POLL_MS,
+) {
+  if (!updatedAt) return Math.min(defaultMs, stalePollMs);
+  const t = Date.parse(updatedAt);
+  if (!Number.isFinite(t)) return Math.min(defaultMs, stalePollMs);
+  if (now - t >= staleAfterMs) return Math.min(defaultMs, stalePollMs);
+  return defaultMs;
+}
+
+/**
+ * @param {string | null | undefined} updatedAt
+ * @param {number} [now]
+ * @param {number} [staleAfterMs]
+ */
+export function isSnapshotStale(
+  updatedAt,
+  now = Date.now(),
+  staleAfterMs = STALE_AFTER_MS,
+) {
+  if (!updatedAt) return true;
+  const t = Date.parse(updatedAt);
+  if (!Number.isFinite(t)) return true;
+  return now - t >= staleAfterMs;
 }
 
 /**
