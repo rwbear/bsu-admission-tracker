@@ -235,8 +235,9 @@ html.faculty-overlay-open {
   position: fixed;
   inset: 0;
   display: grid;
-  place-items: end center;
-  padding: 0;
+  place-items: center;
+  padding: var(--space-5);
+  pointer-events: none;
 }
 
 .faculty-overlay-backdrop {
@@ -245,7 +246,8 @@ html.faculty-overlay-open {
   margin: 0;
   padding: 0;
   border: 0;
-  background: color-mix(in srgb, var(--ink) 42%, transparent);
+  pointer-events: auto;
+  background: color-mix(in srgb, var(--ink) 22%, transparent);
   cursor: pointer;
   animation: faculty-fade-in 160ms ease-out both;
 }
@@ -253,18 +255,18 @@ html.faculty-overlay-open {
 .faculty-overlay {
   position: relative;
   z-index: 1;
+  pointer-events: auto;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  width: min(100vw, 28rem);
-  height: min(88vh, 36rem);
+  width: min(100%, 28rem);
+  max-height: min(70vh, 28rem);
   margin: 0;
   padding: 0;
   border: 1px solid var(--line);
-  border-bottom: 0;
-  border-radius: var(--radius) var(--radius) 0 0;
+  border-radius: var(--radius);
   background: var(--bg-elev);
-  box-shadow: 0 -16px 48px color-mix(in srgb, var(--ink) 18%, transparent);
-  animation: faculty-sheet-in 200ms ease-out both;
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--ink) 16%, transparent);
+  animation: faculty-popover-in 180ms ease-out both;
 }
 
 .faculty-overlay-header {
@@ -310,14 +312,14 @@ html.faculty-overlay-open {
 
 .faculty-search-input {
   width: 100%;
-  min-height: 2.75rem;
-  padding: 0 var(--space-4);
+  min-height: 2.5rem;
+  padding: 0 var(--space-3);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--ink);
   font: inherit;
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
 }
 
 .faculty-search-input:focus {
@@ -328,7 +330,7 @@ html.faculty-overlay-open {
 .faculty-overlay-list {
   overflow: auto;
   overscroll-behavior: contain;
-  padding: 0 var(--space-2) var(--space-4);
+  padding: 0 var(--space-2) var(--space-3);
   -webkit-overflow-scrolling: touch;
 }
 
@@ -339,7 +341,7 @@ html.faculty-overlay-open {
   gap: var(--space-3);
   width: 100%;
   margin: 0;
-  padding: 0.85rem 0.75rem;
+  padding: 0.75rem 0.75rem;
   border: 0;
   border-radius: var(--radius-sm);
   background: transparent;
@@ -391,28 +393,14 @@ html.faculty-overlay-open {
   }
 }
 
-@keyframes faculty-sheet-in {
+@keyframes faculty-popover-in {
   from {
     opacity: 0;
-    transform: translateY(1rem);
+    transform: translateY(0.5rem) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (min-width: 640px) {
-  .faculty-overlay-shell {
-    place-items: center;
-    padding: var(--space-6);
-  }
-
-  .faculty-overlay {
-    height: min(80vh, 32rem);
-    border-bottom: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: 0 20px 48px color-mix(in srgb, var(--ink) 16%, transparent);
+    transform: translateY(0) scale(1);
   }
 }
 

@@ -21,7 +21,7 @@ function overlayHost() {
 }
 
 /**
- * Hero title button (same look as old h1.hero-sub) + searchable overlay.
+ * Hero title button + centered popover (not a full-screen sheet).
  * @param {HTMLElement} mount
  * @param {{
  *   faculties: { id: string, name: string, specialtyCount?: number }[],

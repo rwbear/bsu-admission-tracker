@@ -106,12 +106,14 @@ function openFacultyMenu() {
   facultyMenuOpen = true;
   facultySearchQuery = '';
   renderFacultyChrome();
+  // Search is optional — focus the active faculty, not the search box.
   queueMicrotask(() => {
-    const search = document.getElementById('faculty-search-input');
-    if (search instanceof HTMLInputElement) {
-      search.focus();
-      search.select();
-    }
+    const host = document.getElementById('faculty-overlay');
+    if (!host) return;
+    const active =
+      host.querySelector('.faculty-option.is-active') ||
+      host.querySelector('.faculty-option');
+    if (active instanceof HTMLElement) active.focus();
   });
 }
 
