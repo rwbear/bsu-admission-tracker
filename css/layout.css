@@ -323,7 +323,8 @@ html.faculty-overlay-open {
   background: var(--bg);
   color: var(--ink);
   font: inherit;
-  font-size: var(--text-sm);
+  /* ≥16px: iOS Safari zooms the whole page when focusing smaller inputs. */
+  font-size: max(1rem, var(--text-sm));
 }
 
 .faculty-search-input:focus {
