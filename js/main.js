@@ -9,7 +9,7 @@ import {
 } from './state.js';
 import { prepareSpecs } from './compute.js';
 import { loadUniversity } from './load-data.js';
-import { $, fmtAge, fmtTime } from './ui/dom.js';
+import { $, fmtTime } from './ui/dom.js';
 import {
   renderOverviewList,
   renderDetailPanel,
@@ -20,8 +20,6 @@ import {
 const UNI_ID = 'sb-bsu';
 /** How often the client re-pulls data/*.json (Pages may lag the scraper). */
 const POLL_MS = 60_000;
-/** Re-render the relative "ago" stamp. */
-const AGE_TICK_MS = 15_000;
 
 const $scoreInput = /** @type {HTMLInputElement} */ ($('#score-input'));
 const $scoreForm = $('#score-form');
@@ -40,8 +38,8 @@ const $liveRefresh = /** @type {HTMLButtonElement} */ ($('#live-refresh'));
 
 let pollTimer = null;
 let fetching = false;
-/** Absolute stamp shown after a manual tap, until age ticks resume. */
-let pinnedClockLabel = null;
+/** ISO time of the last successful client pull (what LIVE displays). */
+let lastCheckedAt = null;
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -73,6 +71,13 @@ function onSelectSpecialty(id) {
   }
 }
 
+function freshnessMeta() {
+  return {
+    snapshotAt: state.uniData?.updatedAt || null,
+    checkedAt: lastCheckedAt,
+  };
+}
+
 function renderMasterDetail(specs, score) {
   const rows = prepareSpecs(specs, score);
   const selectedId = resolveSelection(rows, state.selectedId);
@@ -90,6 +95,7 @@ function renderMasterDetail(specs, score) {
     $detail,
     rows.find((r) => r.id === selectedId) ?? null,
     score,
+    freshnessMeta(),
   );
 }
 
@@ -173,9 +179,11 @@ async function fetchData(opts = {}) {
     const changed = snapshotChanged(payload, prev);
     state.uniData = payload;
     state.error = null;
+    lastCheckedAt = new Date().toISOString();
     applyBanner(payload);
-    if (!silent || changed) emit();
-    else tickClock();
+    // Always re-render after a successful pull so LIVE / footer stay in sync.
+    emit();
+    if (!changed && silent) tickClock();
     ok = true;
   } catch (err) {
     if (!state.uniData) {
@@ -192,38 +200,23 @@ async function fetchData(opts = {}) {
   return ok;
 }
 
-function nowStamp() {
-  return new Date().toLocaleString('ru-RU', {
-    day: '2-digit',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 function tickClock() {
-  const label = pinnedClockLabel || fmtAge(state.uniData?.updatedAt);
-  $commandTime.textContent = `LIVE · ${label}`;
-  $liveRefresh.title = state.uniData?.updatedAt
-    ? `Снимок: ${fmtTime(state.uniData.updatedAt)} · нажми, чтобы обновить`
-    : 'Нажми, чтобы обновить';
+  const stamp = lastCheckedAt || state.uniData?.updatedAt;
+  $commandTime.textContent = stamp ? `LIVE · ${fmtTime(stamp)}` : 'LIVE';
+  const snap = state.uniData?.updatedAt
+    ? `Снимок: ${fmtTime(state.uniData.updatedAt)}`
+    : 'Нет снимка';
+  $liveRefresh.title = `${snap} · нажми, чтобы проверить сейчас`;
 }
 
 async function refreshLive() {
   if (fetching) return;
-  pinnedClockLabel = 'обновляю…';
+  $commandTime.textContent = 'LIVE · обновляю…';
   $liveRefresh.classList.add('is-refreshing');
   $liveRefresh.disabled = true;
-  tickClock();
 
-  const ok = await fetchData({ silent: true });
-  pinnedClockLabel = ok ? nowStamp() : fmtAge(state.uniData?.updatedAt);
+  await fetchData({ silent: true });
   tickClock();
-
-  window.setTimeout(() => {
-    pinnedClockLabel = null;
-    tickClock();
-  }, 8_000);
 
   $liveRefresh.classList.remove('is-refreshing');
   $liveRefresh.disabled = false;
@@ -250,9 +243,7 @@ async function bootstrap() {
   if (state.score != null) $scoreInput.value = String(state.score);
   syncFormButtons();
   tickClock();
-  setInterval(tickClock, AGE_TICK_MS);
   await fetchData({ silent: false });
-  tickClock();
   startLivePolling();
 }
 

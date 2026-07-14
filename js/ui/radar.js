@@ -84,8 +84,9 @@ export function renderOverviewList(container, specialties, score, opts) {
  * @param {HTMLElement} container
  * @param {object | null} row
  * @param {number | null} score
+ * @param {{ snapshotAt?: string | null, checkedAt?: string | null }} [meta]
  */
-export function renderDetailPanel(container, row, score) {
+export function renderDetailPanel(container, row, score, meta = {}) {
   container.innerHTML = '';
 
   if (!row) {
@@ -106,6 +107,12 @@ export function renderDetailPanel(container, row, score) {
   const pass = row.estimatedPassing == null ? '—' : fmtNum(row.estimatedPassing);
   const pressure =
     row.pressure == null ? '—' : `${row.pressure.toFixed(1)}×`;
+
+  const snapshotAt = meta.snapshotAt || row.updatedAt;
+  const checkedAt = meta.checkedAt || null;
+  const note = checkedAt
+    ? `Снимок ${fmtTime(snapshotAt)} · проверено ${fmtTime(checkedAt)}`
+    : `Снимок ${fmtTime(snapshotAt)} · расчётный проходной — оценка по таблице`;
 
   const trackMount = el('div');
   const histMount = el('div');
@@ -135,7 +142,7 @@ export function renderDetailPanel(container, row, score) {
     ]),
     el('p', {
       className: 'detail-note',
-      text: `Обновлено ${fmtTime(row.updatedAt)} · расчётный проходной — оценка по таблице`,
+      text: note,
     }),
   ]);
 
