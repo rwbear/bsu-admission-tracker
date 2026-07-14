@@ -17,6 +17,16 @@ async function getJson(path, opts = {}) {
 }
 
 /**
+ * Wrap so sync fetch() throws (e.g. relative URL in Node) become rejections
+ * and do not abort Promise.allSettled sibling candidates.
+ * @param {string} path
+ * @param {{ bust?: boolean }} [opts]
+ */
+function getJsonSettled(path, opts = {}) {
+  return Promise.resolve().then(() => getJson(path, opts));
+}
+
+/**
  * @param {unknown} payload
  * @returns {payload is object}
  */
@@ -74,13 +84,19 @@ async function latestCommitSha(repo, branch, filePath) {
 
 /**
  * Resolve repo/branch for remote snapshot pulls.
+ * Data always lives on the GitHub Pages branch — never trust a bare "main"
+ * label from a workflow that was triggered on the default branch.
  * @param {object | null} index
  */
 export function resolveOrigin(index) {
   const origin = index?.origin || {};
+  let branch = String(origin.branch || CONFIG.dataBranch).trim();
+  if (!branch || branch === 'main' || branch === 'master') {
+    branch = CONFIG.dataBranch;
+  }
   return {
     repo: String(origin.repo || CONFIG.repo),
-    branch: String(origin.branch || CONFIG.dataBranch),
+    branch,
   };
 }
 
@@ -106,19 +122,24 @@ export async function loadIndex() {
  */
 async function loadSnapshotCandidates(universityId, opts) {
   const file = `data/${universityId}.json`;
+
+  // Resolve SHA first so every fetch is wrapped in allSettled together —
+  // starting a relative fetch before that can crash Node on unhandledRejection.
+  const sha = await latestCommitSha(opts.repo, opts.branch, file);
+
   /** @type {Promise<object>[]} */
   const tasks = [
-    getJson(`./${file}`, { bust: opts.bust }),
-    getJson(
+    getJsonSettled(`./${file}`, { bust: opts.bust }),
+    getJsonSettled(
       `https://raw.githubusercontent.com/${opts.repo}/${opts.branch}/${file}`,
       { bust: true },
     ),
   ];
-
-  const sha = await latestCommitSha(opts.repo, opts.branch, file);
   if (sha) {
     tasks.push(
-      getJson(`https://raw.githubusercontent.com/${opts.repo}/${sha}/${file}`),
+      getJsonSettled(
+        `https://raw.githubusercontent.com/${opts.repo}/${sha}/${file}`,
+      ),
     );
   }
 
@@ -140,10 +161,18 @@ export async function loadUniversity(universityId, opts = {}) {
 
   let origin = { repo: CONFIG.repo, branch: CONFIG.dataBranch };
   try {
-    const index = await getJson('./data/index.json', { bust: true });
+    const index = await getJsonSettled('./data/index.json', { bust: true });
     origin = resolveOrigin(index);
   } catch {
-    /* defaults */
+    try {
+      const index = await getJson(
+        `https://raw.githubusercontent.com/${origin.repo}/${origin.branch}/data/index.json`,
+        { bust: true },
+      );
+      origin = resolveOrigin(index);
+    } catch {
+      /* keep CONFIG defaults */
+    }
   }
 
   const snapshots = await loadSnapshotCandidates(universityId, {

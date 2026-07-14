@@ -30,9 +30,16 @@ describe('pickNewest', () => {
 describe('resolveOrigin', () => {
   it('reads origin from index with CONFIG fallback', () => {
     const o = resolveOrigin({
-      origin: { repo: 'a/b', branch: 'main' },
+      origin: { repo: 'a/b', branch: 'cursor/admission-tracker-rebuild-be86' },
     });
     assert.equal(o.repo, 'a/b');
-    assert.equal(o.branch, 'main');
+    assert.equal(o.branch, 'cursor/admission-tracker-rebuild-be86');
+  });
+
+  it('ignores main/master origin branch and uses Pages branch', () => {
+    const o = resolveOrigin({
+      origin: { repo: 'rwbear/bsu-admission-tracker', branch: 'main' },
+    });
+    assert.equal(o.branch, 'cursor/admission-tracker-rebuild-be86');
   });
 });

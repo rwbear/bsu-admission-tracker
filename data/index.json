@@ -2,7 +2,7 @@
   "generatedAt": "2026-07-14T11:20:18.156Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
-    "branch": "main"
+    "branch": "cursor/admission-tracker-rebuild-be86"
   },
   "universities": [
     {

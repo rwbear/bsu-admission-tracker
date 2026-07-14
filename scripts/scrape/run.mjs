@@ -76,10 +76,12 @@ async function main() {
     generatedAt: new Date().toISOString(),
     origin: {
       repo: process.env.GITHUB_REPOSITORY || 'rwbear/bsu-admission-tracker',
+      // Prefer explicit Pages branch — when the workflow runs from main,
+      // GITHUB_REF_NAME is "main" even though we checked out the Pages branch.
       branch:
+        process.env.PROHOD_DATA_BRANCH ||
         process.env.GITHUB_REF_NAME ||
         process.env.GITHUB_HEAD_REF ||
-        process.env.PROHOD_DATA_BRANCH ||
         '',
     },
     universities: [],
