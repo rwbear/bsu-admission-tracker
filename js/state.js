@@ -1,13 +1,13 @@
 const KEYS = {
   score: 'prohod-sb-score',
   form: 'prohod-sb-form',
-  query: 'prohod-sb-query',
+  selected: 'prohod-sb-selected',
 };
 
 /** @type {{
  *  score: number | null,
  *  formId: '7' | '8',
- *  query: string,
+ *  selectedId: string | null,
  *  uniData: object | null,
  *  loading: boolean,
  *  error: string | null,
@@ -16,7 +16,7 @@ const KEYS = {
 export const state = {
   score: null,
   formId: '7',
-  query: '',
+  selectedId: null,
   uniData: null,
   loading: false,
   error: null,
@@ -44,7 +44,7 @@ export function loadPrefs() {
   const form = localStorage.getItem(KEYS.form);
   if (form === '7' || form === '8') state.formId = form;
 
-  state.query = localStorage.getItem(KEYS.query) || '';
+  state.selectedId = localStorage.getItem(KEYS.selected);
 }
 
 export function setScore(value) {
@@ -65,12 +65,18 @@ export function setScore(value) {
  */
 export function setForm(formId) {
   state.formId = formId;
+  state.selectedId = null;
   localStorage.setItem(KEYS.form, formId);
+  localStorage.removeItem(KEYS.selected);
   emit();
 }
 
-export function setQuery(query) {
-  state.query = query;
-  localStorage.setItem(KEYS.query, query);
+/**
+ * @param {string | null} id
+ */
+export function setSelected(id) {
+  state.selectedId = id;
+  if (id) localStorage.setItem(KEYS.selected, id);
+  else localStorage.removeItem(KEYS.selected);
   emit();
 }

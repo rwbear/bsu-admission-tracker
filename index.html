@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Проход — радар конкурса для Института бизнеса БГУ. Введи балл и увидь шансы по специальностям." />
+  <meta name="description" content="Проход — радар конкурса для Института бизнеса БГУ." />
   <title>Проход — Институт бизнеса БГУ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,107 +14,106 @@
 </head>
 <body>
   <div class="site">
-    <header class="topbar">
-      <div class="wrap topbar-inner">
-        <a class="brand-mini" href="#top">Проход <span>// SB BSU</span></a>
-        <div class="live-pill" aria-live="polite">
+    <header class="command" id="command">
+      <div class="wrap command-inner">
+        <a class="command-brand" href="#top">ПРОХОД</a>
+        <div class="command-meta">
           <span class="live-dot" aria-hidden="true"></span>
-          Live
+          <span id="command-time">LIVE</span>
         </div>
       </div>
     </header>
 
     <main id="top">
-      <section class="hero">
-        <div class="wrap hero-grid">
-          <h1 class="hero-brand">Проход</h1>
-          <p class="hero-sub">Институт бизнеса БГУ · твой балл против живого конкурса</p>
-          <form class="score-form" id="score-form">
-            <input
-              class="score-input"
-              id="score-input"
-              name="score"
-              type="number"
-              inputmode="numeric"
-              min="0"
-              max="500"
-              step="1"
-              placeholder="Сумма баллов"
-              aria-label="Сумма баллов"
-              required
-            />
-            <button class="btn-mint" type="submit">Смотреть шансы</button>
-          </form>
+      <section class="hero-block wrap">
+        <div class="ascii-hero frame" aria-hidden="true">
+          <pre class="ascii-art ascii-art-wide">
+      .---------------.
+     /  .---------.  /|
+    /  /         /  / |
+   /  /  #####  /  /  |
+  /  /  #   #  /  /   |
+ /  /  #####  /  /    |
+'--+---------+--'     |
+|  PROHOD SB |        |
+|  БГУ BIZ   |       /
+'------------'------'
+          </pre>
+          <pre class="ascii-art ascii-art-narrow">
++--PROHOD--+
+| ##  ##   |
+| # ## #   |
+| ##  ##   |
++--SB BSU--+
+          </pre>
+          <h1 class="hero-title">ПРОХОД</h1>
+        </div>
+
+        <p class="hero-sub">ИНСТИТУТ БИЗНЕСА БГУ</p>
+
+        <form class="score-form" id="score-form">
+          <label class="sr-only" for="score-input">Сумма баллов</label>
+          <input
+            class="score-input"
+            id="score-input"
+            name="score"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            max="500"
+            step="1"
+            placeholder="БАЛЛ"
+            required
+          />
+          <button class="btn-apply" type="submit">ПРИМЕНИТЬ</button>
+        </form>
+
+        <div class="form-toggle" role="group" aria-label="Форма обучения">
+          <button type="button" class="form-btn active" data-form="7" id="form-day">ДНЕВНАЯ</button>
+          <button type="button" class="form-btn" data-form="8" id="form-zaoch">ЗАОЧНАЯ</button>
         </div>
       </section>
 
-      <div class="ticker" aria-hidden="true">
-        <div class="ticker-track" id="ticker-track">
-          <span>Институт бизнеса БГУ</span>
-          <span>Дневная / заочная</span>
-          <span id="ticker-updated">Ожидание данных</span>
-          <span>Расчётный проходной — не приказ</span>
-          <span>Институт бизнеса БГУ</span>
-          <span>Дневная / заочная</span>
-          <span id="ticker-updated-dup">Ожидание данных</span>
-          <span>Расчётный проходной — не приказ</span>
+      <div id="data-banner" class="banner wrap hidden" role="status"></div>
+
+      <section class="board wrap" id="board">
+        <div id="state-loading" class="state-box frame hidden">
+          <pre class="ascii-loading">ЗАГРУЗКА
+[░░░░░░░░░░]</pre>
         </div>
-      </div>
 
-      <section class="board" id="board">
-        <div class="wrap">
-          <div class="board-head">
-            <div>
-              <h2>Специальности</h2>
-              <p>Сколько человек выше тебя относительно мест</p>
+        <div id="state-empty" class="state-box frame hidden">
+          <h2>ВВЕДИ БАЛЛ</h2>
+          <p>Сверху — обзор специальностей. Ниже — детали выбранной.</p>
+        </div>
+
+        <div id="state-error" class="state-box frame hidden">
+          <h2>ОШИБКА ДАННЫХ</h2>
+          <p id="error-msg"></p>
+          <button class="btn-apply" id="retry-btn" type="button">ПОВТОРИТЬ</button>
+        </div>
+
+        <div id="results" class="results hidden">
+          <div class="summary frame" id="summary-strip" aria-live="polite"></div>
+
+          <div class="master-detail">
+            <div class="overview-col">
+              <div class="zone-label">ОБЗОР</div>
+              <div class="frame" id="overview-list"></div>
             </div>
-            <div class="meta-line" id="updated-meta"></div>
+            <div class="detail-col">
+              <div class="zone-label">ДЕТАЛИ</div>
+              <div class="frame" id="detail-panel"></div>
+            </div>
           </div>
-
-          <div id="data-banner" class="banner hidden" role="status"></div>
-
-          <div class="form-toggle" role="group" aria-label="Форма обучения">
-            <button type="button" class="form-btn active" data-form="7" id="form-day">Дневная</button>
-            <button type="button" class="form-btn" data-form="8" id="form-zaoch">Заочная</button>
-          </div>
-
-          <input
-            class="toolbar-search hidden"
-            id="search-input"
-            type="search"
-            placeholder="Поиск специальности"
-            autocomplete="off"
-          />
-
-          <div id="state-loading" class="skeleton-list hidden">
-            <div class="skeleton-row"></div>
-            <div class="skeleton-row"></div>
-            <div class="skeleton-row"></div>
-          </div>
-
-          <div id="state-empty" class="state-box frame hidden">
-            <h3>Введи балл выше</h3>
-            <p>После этого появится радар по специальностям выбранной формы обучения.</p>
-          </div>
-
-          <div id="state-error" class="state-box frame hidden">
-            <h3>Данные не загрузились</h3>
-            <p id="error-msg"></p>
-            <button class="btn-mint" id="retry-btn" type="button" style="margin-top: 1rem">Повторить</button>
-          </div>
-
-          <div id="results" class="hidden"></div>
         </div>
       </section>
     </main>
 
     <footer class="site-footer">
-      <div class="wrap">
-        <span>
-          Источник:
-          <a href="https://abit.bsu.by/formk1?id=7" id="source-link" target="_blank" rel="noopener">abit.bsu.by</a>
-        </span>
-        <span>Расчётный проходной — оценка по таблице, не приказ о зачислении</span>
+      <div class="wrap footer-inner">
+        <a href="https://abit.bsu.by/formk1?id=7" id="source-link" target="_blank" rel="noopener">abit.bsu.by</a>
+        <span>РАСЧЁТНЫЙ ПРОХОДНОЙ — НЕ ПРИКАЗ</span>
       </div>
     </footer>
   </div>
