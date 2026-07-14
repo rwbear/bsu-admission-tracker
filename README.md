@@ -9,7 +9,11 @@
 - Дневная: https://abit.bsu.by/formk1?id=7
 - Заочная: https://abit.bsu.by/formk1?id=8
 
-GitHub Actions скрейпит эти страницы в `data/sb-bsu.json`. Сайт на GitHub Pages читает только локальный JSON — без CORS-прокси.
+GitHub Actions скрейпит эти страницы в `data/sb-bsu.json` (около раз в час днём по Минску).  
+`abit.bsu.by` часто рвёт TLS с GitHub/US cloud — сборщик пробует прямое соединение, затем `SCRAPE_PROXY` / региональные HTTP-прокси.  
+Сайт на GitHub Pages читает только локальный JSON.
+
+Опционально: репозиторий → Settings → Secrets → `SCRAPE_PROXY` (`http://user:pass@host:port`) для стабильного выхода.
 
 ## Локально
 
@@ -30,7 +34,7 @@ python3 -m http.server 8080
 
 ## Дизайн
 
-**Portal CRT** — cream ink on charcoal, grain, hairline frames, mono metrics. Один институт, без мульти-вузового меню.
+Светлый ASCII / master–detail: обзор специальностей сверху, детали выбранной снизу.
 
 ## Стек
 

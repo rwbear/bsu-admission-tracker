@@ -1,4 +1,11 @@
-import { fetchText, parseScoreBucketTables, cellText, extractTables, isRangeHeader } from '../normalize.mjs';
+import {
+  fetchText,
+  parseScoreBucketTables,
+  filterFacultySections,
+  cellText,
+  extractTables,
+  isRangeHeader,
+} from '../normalize.mjs';
 
 /**
  * Scrape formk1-style monitoring pages for one university config.
@@ -11,6 +18,7 @@ export async function scrapeFormk1(uni, opts = {}) {
   const specs = [];
   const errors = [];
   const discovered = [];
+  const fetchVia = [];
 
   if (uni.discoverFromHub && uni.hubUrl) {
     try {
@@ -35,27 +43,62 @@ export async function scrapeFormk1(uni, opts = {}) {
   for (const fac of list) {
     const url = `${uni.baseUrl}${fac.id}`;
     const res = await fetchText(url);
+    if (res.via) fetchVia.push({ facultyId: fac.id, via: res.via });
     if (!res.ok) {
-      errors.push({ facultyId: fac.id, url, status: res.status, message: res.error || 'fetch failed' });
+      errors.push({
+        facultyId: fac.id,
+        url,
+        status: res.status,
+        message: res.error || 'fetch failed',
+        via: res.via,
+      });
       continue;
     }
 
-    const facultyName = detectFacultyName(res.text) || fac.name;
-    const parsed = parseScoreBucketTables(res.text, {
+    const sectionNeedles =
+      fac.sectionIncludes || uni.sectionIncludes || null;
+    const html = sectionNeedles
+      ? filterFacultySections(res.text, sectionNeedles)
+      : res.text;
+
+    if (sectionNeedles && !html) {
+      errors.push({
+        facultyId: fac.id,
+        url,
+        status: res.status,
+        message: `no faculty section matching: ${sectionNeedles.join(' | ')}`,
+        via: res.via,
+      });
+      continue;
+    }
+
+    const facultyName = detectFacultyName(html) || fac.name;
+    const parsed = parseScoreBucketTables(html, {
       universityId: uni.id,
       facultyId: String(fac.id),
-      facultyName,
-      form: '',
-      formName: '',
+      facultyName: fac.name || facultyName,
+      form: String(fac.id),
+      formName: fac.name || '',
       sourceUrl: url,
       updatedAt,
     });
 
     if (!parsed.length) {
-      // Keep faculty even if empty during off-season
-      errors.push({ facultyId: fac.id, url, status: res.status, message: 'no score-bucket rows' });
+      errors.push({
+        facultyId: fac.id,
+        url,
+        status: res.status,
+        message: 'no score-bucket rows',
+        via: res.via,
+      });
     }
-    specs.push(...parsed.map((s) => ({ ...s, facultyName })));
+    specs.push(
+      ...parsed.map((s) => ({
+        ...s,
+        facultyName: fac.name || facultyName,
+        formName: fac.name || s.formName,
+      })),
+    );
   }
 
   return {
@@ -63,7 +106,11 @@ export async function scrapeFormk1(uni, opts = {}) {
     updatedAt,
     specs,
     errors,
-    meta: { discoveredFacultyIds: discovered, fetchedFaculties: list.length },
+    meta: {
+      discoveredFacultyIds: discovered,
+      fetchedFaculties: list.length,
+      fetchVia,
+    },
   };
 }
 
@@ -74,11 +121,12 @@ function detectFacultyName(html) {
       const texts = row.map(cellText).filter(Boolean);
       for (const t of texts) {
         if (isRangeHeader(t)) continue;
-        if (/факультет|институт|академи|колледж/i.test(t) && t.length < 120) return t;
+        if (/факультет|институт|академи|колледж/i.test(t) && t.length < 120) {
+          return t;
+        }
       }
     }
   }
-  // title fallback
   const title = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   if (title) {
     const t = cellText(title[1]);

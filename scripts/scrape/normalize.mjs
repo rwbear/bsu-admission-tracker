@@ -1,66 +1,45 @@
 import { calcPassing } from '../../js/compute.js';
-
-const UA =
-  'Mozilla/5.0 (compatible; ProhodAdmissionBot/2.0; +https://github.com/rwbear/bsu-admission-tracker)';
+import { fetchTextResilient } from './proxy.mjs';
 
 /**
+ * Fetch HTML. Direct cloud fetches to abit.bsu.by usually die on TLS reset;
+ * resilient path tries env proxies then regional HTTP proxies.
  * @param {string} url
  * @param {{ timeoutMs?: number, retries?: number }} [opts]
- * @returns {Promise<{ ok: boolean, status: number, text: string, url: string }>}
+ * @returns {Promise<{ ok: boolean, status: number, text: string, url: string, error?: string, via?: string }>}
  */
 export async function fetchText(url, opts = {}) {
-  const timeoutMs = opts.timeoutMs ?? 25000;
-  const retries = opts.retries ?? 2;
-  let lastError = null;
-
-  for (let attempt = 0; attempt <= retries; attempt += 1) {
-    try {
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), timeoutMs);
-      const res = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          'User-Agent': UA,
-          Accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8',
-          'Accept-Language': 'ru-RU,ru;q=0.9,en;q=0.8',
-        },
-        redirect: 'follow',
-      });
-      clearTimeout(timer);
-      const buf = Buffer.from(await res.arrayBuffer());
-      const text = decodeBuffer(buf);
-      return { ok: res.ok, status: res.status, text, url: res.url || url };
-    } catch (err) {
-      lastError = err;
-      await sleep(400 * (attempt + 1));
-    }
-  }
-
-  return {
-    ok: false,
-    status: 0,
-    text: '',
-    url,
-    error: String(lastError?.message || lastError),
-  };
+  return fetchTextResilient(url, opts);
 }
 
 /**
- * Prefer UTF-8 when it yields clean Cyrillic. Many BY sites lie about windows-1251.
- * @param {Buffer} buf
+ * Keep only faculty blocks whose section title matches any needle.
+ * BSU formk1 pages often mix many faculties; Проход wants Институт бизнеса only.
+ * @param {string} html
+ * @param {string[]} needles
  */
-function decodeBuffer(buf) {
-  const utf8 = buf.toString('utf8');
-  const utf8Ok = !utf8.includes('�') && /[А-Яа-яЁё]/.test(utf8);
-  if (utf8Ok) return utf8;
+export function filterFacultySections(html, needles) {
+  const terms = (needles || [])
+    .map((n) => String(n || '').trim().toLowerCase())
+    .filter(Boolean);
+  if (!terms.length) return html;
 
-  try {
-    const cp1251 = new TextDecoder('windows-1251').decode(buf);
-    if (/[А-Яа-яЁё]/.test(cp1251)) return cp1251;
-  } catch {
-    /* ignore */
+  const re = /<tr>\s*<td class="fl"[^>]*>[\s\S]*?<\/tr>/gi;
+  const hits = [...html.matchAll(re)];
+  if (!hits.length) return html;
+
+  const chunks = [];
+  for (let i = 0; i < hits.length; i += 1) {
+    const start = hits[i].index ?? 0;
+    const end = i + 1 < hits.length ? hits[i + 1].index ?? html.length : html.length;
+    const heading = cellText(hits[i][0]).toLowerCase();
+    if (terms.some((t) => heading.includes(t))) {
+      chunks.push(html.slice(start, end));
+    }
   }
-  return utf8;
+
+  if (!chunks.length) return '';
+  return `<table>${chunks.join('')}</table>`;
 }
 
 export function sleep(ms) {

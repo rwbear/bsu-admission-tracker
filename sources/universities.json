@@ -8,9 +8,10 @@
     "enabled": true,
     "baseUrl": "https://abit.bsu.by/formk1?id=",
     "hubUrl": "https://sb.bsu.by/",
+    "sectionIncludes": ["Институт бизнеса"],
     "faculties": [
-      { "id": "7", "name": "Дневная" },
-      { "id": "8", "name": "Заочная" }
+      { "id": "7", "name": "Дневная", "sectionIncludes": ["Институт бизнеса"] },
+      { "id": "8", "name": "Заочная", "sectionIncludes": ["Институт бизнеса"] }
     ]
   }
 ]
