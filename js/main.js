@@ -3,7 +3,6 @@ import {
   loadPrefs,
   subscribe,
   setScore,
-  setForm,
   setSelected,
   emit,
 } from './state.js';
@@ -18,6 +17,7 @@ import {
 } from './ui/radar.js';
 
 const UNI_ID = 'sb-bsu';
+const SOURCE_URL = 'https://abit.bsu.by/formk1?id=7';
 /** How often the client re-pulls data/*.json (Pages may lag the scraper). */
 const POLL_MS = 60_000;
 
@@ -51,17 +51,8 @@ function showOnly(which) {
   if (which === 'results') $results.classList.remove('hidden');
 }
 
-function syncFormButtons() {
-  document.querySelectorAll('.form-btn').forEach((btn) => {
-    const id = btn.getAttribute('data-form');
-    btn.classList.toggle('active', id === state.formId);
-  });
-  $sourceLink.href = `https://abit.bsu.by/formk1?id=${state.formId}`;
-}
-
 function currentSpecialties() {
-  const all = state.uniData?.specialties || [];
-  return all.filter((s) => String(s.facultyId) === String(state.formId));
+  return state.uniData?.specialties || [];
 }
 
 function onSelectSpecialty(id) {
@@ -100,8 +91,8 @@ function renderMasterDetail(specs, score) {
 }
 
 function renderBoard() {
-  syncFormButtons();
   tickClock();
+  $sourceLink.href = SOURCE_URL;
 
   if (state.loading && !state.uniData) {
     showOnly('loading');
@@ -181,7 +172,6 @@ async function fetchData(opts = {}) {
     state.error = null;
     lastCheckedAt = new Date().toISOString();
     applyBanner(payload);
-    // Always re-render after a successful pull so LIVE / footer stay in sync.
     emit();
     if (!changed && silent) tickClock();
     ok = true;
@@ -241,7 +231,7 @@ function startLivePolling() {
 async function bootstrap() {
   loadPrefs();
   if (state.score != null) $scoreInput.value = String(state.score);
-  syncFormButtons();
+  $sourceLink.href = SOURCE_URL;
   tickClock();
   await fetchData({ silent: false });
   startLivePolling();
@@ -263,13 +253,6 @@ $scoreForm.addEventListener('submit', (e) => {
   document.getElementById('board')?.scrollIntoView({
     behavior: 'smooth',
     block: 'start',
-  });
-});
-
-document.querySelectorAll('.form-btn').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    const id = /** @type {'7' | '8'} */ (btn.getAttribute('data-form') || '7');
-    setForm(id);
   });
 });
 

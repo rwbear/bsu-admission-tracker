@@ -1,23 +1,18 @@
 {
-  "generatedAt": "2026-07-14T09:40:28.329Z",
+  "generatedAt": "2026-07-14T09:58:09.345Z",
   "universities": [
     {
       "id": "sb-bsu",
       "name": "Институт бизнеса БГУ",
       "fullName": "Институт бизнеса Белорусского государственного университета",
       "specialtyCount": 4,
-      "updatedAt": "2026-07-14T09:40:28.332Z",
+      "updatedAt": "2026-07-14T09:58:09.347Z",
       "available": true,
       "faculties": [
         {
           "id": "7",
           "name": "Дневная",
           "specialtyCount": 4
-        },
-        {
-          "id": "8",
-          "name": "Заочная",
-          "specialtyCount": 0
         }
       ]
     }

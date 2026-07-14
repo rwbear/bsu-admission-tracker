@@ -2,8 +2,9 @@
 
 This product is currently scoped to **Институт бизнеса БГУ** only:
 
-- Дневная: https://abit.bsu.by/formk1?id=7
-- Заочная: https://abit.bsu.by/formk1?id=8
+- https://abit.bsu.by/formk1?id=7
+
+Заочная (`formk1?id=8`) currently has no Институт бизнеса block, so it is not enabled.
 
 Source confirmation: [sb.bsu.by](https://sb.bsu.by/novosty/podacha-dokumentov-v-institut-biznesa-bgu-vajnaia-informaciia-dlia-abiturientov)
 

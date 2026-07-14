@@ -3,18 +3,13 @@
   "name": "Институт бизнеса БГУ",
   "fullName": "Институт бизнеса Белорусского государственного университета",
   "hubUrl": "https://sb.bsu.by/",
-  "updatedAt": "2026-07-14T09:40:28.332Z",
+  "updatedAt": "2026-07-14T09:58:09.347Z",
   "specialtyCount": 4,
   "faculties": [
     {
       "id": "7",
       "name": "Дневная",
       "specialtyCount": 4
-    },
-    {
-      "id": "8",
-      "name": "Заочная",
-      "specialtyCount": 0
     }
   ],
   "specialties": [
@@ -150,7 +145,7 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T09:40:28.332Z"
+      "updatedAt": "2026-07-14T09:58:09.347Z"
     },
     {
       "id": "sb-bsu:7:логистика:45",
@@ -284,7 +279,7 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T09:40:28.332Z"
+      "updatedAt": "2026-07-14T09:58:09.347Z"
     },
     {
       "id": "sb-bsu:7:маркетинг:70",
@@ -418,7 +413,7 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T09:40:28.332Z"
+      "updatedAt": "2026-07-14T09:58:09.347Z"
     },
     {
       "id": "sb-bsu:7:управление-информационными-ресурсами:70",
@@ -430,8 +425,8 @@
       "groupName": "",
       "specName": "управление информационными ресурсами",
       "plan": 70,
-      "totalApps": 18,
-      "inCompetition": 18,
+      "totalApps": 19,
+      "inCompetition": 19,
       "ranges": [
         "396 и более",
         "395 - 391",
@@ -525,7 +520,7 @@
         0,
         0,
         0,
-        0,
+        1,
         0,
         0,
         0,
@@ -552,29 +547,17 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T09:40:28.332Z"
+      "updatedAt": "2026-07-14T09:58:09.347Z"
     }
   ],
-  "scrapeErrors": [
-    {
-      "facultyId": "8",
-      "url": "https://abit.bsu.by/formk1?id=8",
-      "status": 200,
-      "message": "no faculty section matching: Институт бизнеса",
-      "via": "http://93.77.191.156:8118"
-    }
-  ],
+  "scrapeErrors": [],
   "scrapeMeta": {
     "discoveredFacultyIds": [],
-    "fetchedFaculties": 2,
+    "fetchedFaculties": 1,
     "fetchVia": [
       {
         "facultyId": "7",
-        "via": "http://93.77.191.156:8118"
-      },
-      {
-        "facultyId": "8",
-        "via": "http://93.77.191.156:8118"
+        "via": "http://95.167.210.10:8090"
       }
     ]
   }

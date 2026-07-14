@@ -1,12 +1,10 @@
 const KEYS = {
   score: 'prohod-sb-score',
-  form: 'prohod-sb-form',
   selected: 'prohod-sb-selected',
 };
 
 /** @type {{
  *  score: number | null,
- *  formId: '7' | '8',
  *  selectedId: string | null,
  *  uniData: object | null,
  *  loading: boolean,
@@ -15,7 +13,6 @@ const KEYS = {
  * }} */
 export const state = {
   score: null,
-  formId: '7',
   selectedId: null,
   uniData: null,
   loading: false,
@@ -41,10 +38,9 @@ export function loadPrefs() {
     state.scoreSubmitted = true;
   }
 
-  const form = localStorage.getItem(KEYS.form);
-  if (form === '7' || form === '8') state.formId = form;
-
   state.selectedId = localStorage.getItem(KEYS.selected);
+  // Drop obsolete day/zaoch pref if present
+  localStorage.removeItem('prohod-sb-form');
 }
 
 export function setScore(value) {
@@ -57,17 +53,6 @@ export function setScore(value) {
     state.scoreSubmitted = true;
     localStorage.setItem(KEYS.score, String(state.score));
   }
-  emit();
-}
-
-/**
- * @param {'7' | '8'} formId
- */
-export function setForm(formId) {
-  state.formId = formId;
-  state.selectedId = null;
-  localStorage.setItem(KEYS.form, formId);
-  localStorage.removeItem(KEYS.selected);
   emit();
 }
 
