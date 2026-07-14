@@ -27,6 +27,7 @@ import {
   nextDueAt,
   shouldRefreshNow,
 } from './refresh-schedule.js';
+import { metaRotatorPhase } from './command-meta.js';
 
 const UNI_ID = CONFIG.universityId;
 const SOURCE_URL = CONFIG.sourceUrl;
@@ -53,6 +54,8 @@ const $facultyMount = $('#faculty-picker-mount');
 let tickTimer = null;
 let nextRefreshAt = 0;
 let refreshing = false;
+/** Epoch for age ↔ countdown fade in the shared header slot. */
+let metaRotateEpoch = Date.now();
 /** Serialize refreshes so overlapping polls queue cleanly. */
 let fetchChain = Promise.resolve();
 let visibilityBound = false;
@@ -271,6 +274,14 @@ function snapshotChanged(next, prev) {
   return JSON.stringify(next.specialties) !== JSON.stringify(prev.specialties);
 }
 
+function setMetaActive(phase) {
+  const showAge = phase === 'age';
+  $commandTime.classList.toggle('is-active', showAge);
+  $nextUpdate.classList.toggle('is-active', !showAge);
+  $commandTime.setAttribute('aria-hidden', showAge ? 'false' : 'true');
+  $nextUpdate.setAttribute('aria-hidden', showAge ? 'true' : 'false');
+}
+
 function renderCommandMeta(now = Date.now()) {
   const stamp = state.uniData?.updatedAt;
   $commandTime.textContent = stamp
@@ -282,18 +293,24 @@ function renderCommandMeta(now = Date.now()) {
     ? `Данные от ${fmtTime(stamp)} · ${baseTitle}`
     : baseTitle;
 
+  let hasCountdown = false;
   if (refreshing) {
     $nextUpdate.textContent = 'обновляю…';
-    return;
-  }
-
-  if (!nextRefreshAt) {
+    hasCountdown = true;
+  } else if (nextRefreshAt) {
+    const leftMs = Math.max(0, nextRefreshAt - now);
+    $nextUpdate.textContent = `следующее через ${formatCountdown(leftMs / 1000)}`;
+    hasCountdown = true;
+  } else {
     $nextUpdate.textContent = '';
-    return;
   }
 
-  const leftMs = Math.max(0, nextRefreshAt - now);
-  $nextUpdate.textContent = `следующее через ${formatCountdown(leftMs / 1000)}`;
+  setMetaActive(
+    metaRotatorPhase(now - metaRotateEpoch, {
+      hasCountdown,
+      refreshing,
+    }),
+  );
 }
 
 function armNextRefresh(fromMs = Date.now()) {
@@ -303,6 +320,7 @@ function armNextRefresh(fromMs = Date.now()) {
     fromMs,
   );
   nextRefreshAt = nextDueAt(fromMs, pollMs);
+  metaRotateEpoch = fromMs;
   renderCommandMeta(fromMs);
 }
 

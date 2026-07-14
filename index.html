@@ -8,9 +8,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./css/tokens.css?v=20260714j" />
-  <link rel="stylesheet" href="./css/layout.css?v=20260714j" />
-  <link rel="stylesheet" href="./css/components.css?v=20260714j" />
+  <link rel="stylesheet" href="./css/tokens.css?v=20260714k" />
+  <link rel="stylesheet" href="./css/layout.css?v=20260714k" />
+  <link rel="stylesheet" href="./css/components.css?v=20260714k" />
 </head>
 <body>
   <div class="site">
@@ -19,9 +19,10 @@
         <a class="command-brand" href="#top">r.w.b.&nbsp;|&nbsp;production</a>
         <div class="command-meta" id="update-status" title="Автообновление каждые 10 минут">
           <span class="live-dot" aria-hidden="true"></span>
-          <span id="command-time">Загрузка</span>
-          <span class="command-sep" aria-hidden="true">·</span>
-          <span id="next-update"></span>
+          <span class="command-meta-rotator" aria-live="polite">
+            <span id="command-time" class="command-meta-line is-active">Загрузка</span>
+            <span id="next-update" class="command-meta-line" aria-hidden="true"></span>
+          </span>
         </div>
       </div>
     </header>
@@ -93,6 +94,6 @@
     </footer>
   </div>
 
-  <script type="module" src="./js/main.js?v=20260714i"></script>
+  <script type="module" src="./js/main.js?v=20260714k"></script>
 </body>
 </html>
