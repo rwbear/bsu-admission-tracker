@@ -16,10 +16,16 @@ import {
   renderSummary,
   resolveSelection,
 } from './ui/radar.js';
+import {
+  formatCountdown,
+  resolvePollMs,
+  nextDueAt,
+  shouldRefreshNow,
+} from './refresh-schedule.js';
 
 const UNI_ID = CONFIG.universityId;
 const SOURCE_URL = CONFIG.sourceUrl;
-const POLL_MS = CONFIG.pollMs;
+const POLL_MS = resolvePollMs(CONFIG.pollMs, globalThis.location?.search || '');
 
 const $scoreInput = /** @type {HTMLInputElement} */ ($('#score-input'));
 const $scoreForm = $('#score-form');
@@ -36,8 +42,7 @@ const $summary = $('#summary-strip');
 const $commandTime = $('#command-time');
 const $nextUpdate = $('#next-update');
 
-let pollTimer = null;
-let countdownTimer = null;
+let tickTimer = null;
 let nextRefreshAt = 0;
 let refreshing = false;
 /** Serialize refreshes so overlapping polls queue cleanly. */
@@ -144,17 +149,7 @@ function snapshotChanged(next, prev) {
   return JSON.stringify(next.specialties) !== JSON.stringify(prev.specialties);
 }
 
-/**
- * @param {number} totalSec
- */
-function formatCountdown(totalSec) {
-  const s = Math.max(0, Math.floor(totalSec));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m}:${String(r).padStart(2, '0')}`;
-}
-
-function renderCommandMeta() {
+function renderCommandMeta(now = Date.now()) {
   const stamp = state.uniData?.updatedAt;
   $commandTime.textContent = stamp ? `Обновлено ${fmtTime(stamp)}` : 'Загрузка';
 
@@ -170,26 +165,26 @@ function renderCommandMeta() {
     return;
   }
 
-  const leftMs = nextRefreshAt - Date.now();
-  const label = formatCountdown(leftMs / 1000);
-  $nextUpdate.textContent = `следующее через ${label}`;
+  const leftMs = Math.max(0, nextRefreshAt - now);
+  $nextUpdate.textContent = `следующее через ${formatCountdown(leftMs / 1000)}`;
   $nextUpdate.title = stamp
-    ? `Данные от ${fmtTime(stamp)} · автообновление каждые 5 мин`
-    : 'Автообновление каждые 5 мин';
+    ? `Данные от ${fmtTime(stamp)} · автообновление каждые ${Math.round(POLL_MS / 60000)} мин`
+    : `Автообновление каждые ${Math.round(POLL_MS / 60000)} мин`;
 }
 
-function scheduleNextRefresh(fromMs = Date.now()) {
-  nextRefreshAt = fromMs + POLL_MS;
-  renderCommandMeta();
+function armNextRefresh(fromMs = Date.now()) {
+  nextRefreshAt = nextDueAt(fromMs, POLL_MS);
+  renderCommandMeta(fromMs);
 }
 
 /**
- * @param {{ silent?: boolean, forceRemote?: boolean }} [opts]
+ * @param {{ silent?: boolean, forceRemote?: boolean, armSchedule?: boolean }} [opts]
  * @returns {Promise<{ ok: boolean, changed: boolean }>}
  */
 function fetchData(opts = {}) {
   const silent = Boolean(opts.silent);
   const forceRemote = opts.forceRemote !== false;
+  const armSchedule = opts.armSchedule !== false;
 
   const run = async () => {
     refreshing = true;
@@ -227,7 +222,8 @@ function fetchData(opts = {}) {
     } finally {
       state.loading = false;
       refreshing = false;
-      scheduleNextRefresh();
+      if (armSchedule) armNextRefresh();
+      else renderCommandMeta();
       if (!silent) emit();
       else renderCommandMeta();
     }
@@ -243,36 +239,48 @@ function fetchData(opts = {}) {
 }
 
 async function runScheduledRefresh() {
-  if (document.visibilityState === 'hidden') {
-    // Keep the clock honest: push the next attempt forward until visible.
-    scheduleNextRefresh();
+  if (refreshing) return;
+  if (document.visibilityState === 'hidden') return;
+  // Claim the slot immediately so the 1s ticker cannot start a second pull
+  // before fetchData sets `refreshing` inside the async queue.
+  armNextRefresh();
+  await fetchData({ silent: true, forceRemote: true, armSchedule: true });
+}
+
+/**
+ * Single timer drives both countdown UI and the 5-minute pull.
+ * Avoids setInterval drift vs a separate countdown clock.
+ */
+function onScheduleTick() {
+  const now = Date.now();
+  renderCommandMeta(now);
+  if (
+    !shouldRefreshNow(
+      now,
+      nextRefreshAt,
+      refreshing,
+      document.visibilityState === 'visible',
+    )
+  ) {
     return;
   }
-  await fetchData({ silent: true, forceRemote: true });
+  runScheduledRefresh();
 }
 
 function startAutoRefresh() {
-  if (pollTimer) clearInterval(pollTimer);
-  if (countdownTimer) clearInterval(countdownTimer);
+  if (tickTimer) clearInterval(tickTimer);
+  // First load already armed nextRefreshAt in fetchData finally.
+  if (!nextRefreshAt) armNextRefresh();
 
-  scheduleNextRefresh();
-
-  pollTimer = setInterval(() => {
-    runScheduledRefresh();
-  }, POLL_MS);
-
-  countdownTimer = setInterval(() => {
-    renderCommandMeta();
-  }, 1000);
+  tickTimer = setInterval(onScheduleTick, 1000);
 
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      // Refresh immediately when returning if the slot already passed.
-      if (Date.now() >= nextRefreshAt) {
-        runScheduledRefresh();
-      } else {
-        renderCommandMeta();
-      }
+    if (document.visibilityState !== 'visible') return;
+    const now = Date.now();
+    if (nextRefreshAt && now >= nextRefreshAt) {
+      runScheduledRefresh();
+    } else {
+      renderCommandMeta(now);
     }
   });
 
@@ -286,7 +294,9 @@ async function bootstrap() {
   if (state.score != null) $scoreInput.value = String(state.score);
   $sourceLink.href = SOURCE_URL;
   renderCommandMeta();
-  await fetchData({ silent: false, forceRemote: true });
+  // 1) Load newest data immediately on page open.
+  await fetchData({ silent: false, forceRemote: true, armSchedule: true });
+  // 2) Then tick every second; when countdown hits 0, refresh and re-arm +5 min.
   startAutoRefresh();
 }
 
@@ -306,7 +316,7 @@ $scoreForm.addEventListener('submit', (e) => {
 });
 
 $('#retry-btn').addEventListener('click', () =>
-  fetchData({ silent: false, forceRemote: true }),
+  fetchData({ silent: false, forceRemote: true, armSchedule: true }),
 );
 
 subscribe(() => renderBoard());
