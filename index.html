@@ -7,7 +7,7 @@
   <title>Проход — Институт бизнеса БГУ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Manrope:wght@500;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./css/tokens.css" />
   <link rel="stylesheet" href="./css/layout.css" />
   <link rel="stylesheet" href="./css/components.css" />
@@ -16,7 +16,7 @@
   <div class="site">
     <header class="command" id="command">
       <div class="wrap command-inner">
-        <a class="command-brand" href="#top">ПРОХОД</a>
+        <a class="command-brand" href="#top">Проход</a>
         <div class="command-meta">
           <span class="live-dot" aria-hidden="true"></span>
           <span id="command-time">LIVE</span>
@@ -26,7 +26,7 @@
 
     <main id="top">
       <section class="hero-block wrap">
-        <h1 class="hero-sub">ИНСТИТУТ БИЗНЕСА БГУ</h1>
+        <h1 class="hero-sub">Институт бизнеса БГУ</h1>
 
         <form class="score-form" id="score-form">
           <label class="sr-only" for="score-input">Сумма баллов</label>
@@ -39,48 +39,49 @@
             min="0"
             max="500"
             step="1"
-            placeholder="БАЛЛ"
+            placeholder="Балл"
             required
           />
-          <button class="btn-apply" type="submit">ПРИМЕНИТЬ</button>
+          <button class="btn-apply" type="submit">Применить</button>
         </form>
 
         <div class="form-toggle" role="group" aria-label="Форма обучения">
-          <button type="button" class="form-btn active" data-form="7" id="form-day">ДНЕВНАЯ</button>
-          <button type="button" class="form-btn" data-form="8" id="form-zaoch">ЗАОЧНАЯ</button>
+          <button type="button" class="form-btn active" data-form="7" id="form-day">Дневная</button>
+          <button type="button" class="form-btn" data-form="8" id="form-zaoch">Заочная</button>
         </div>
       </section>
 
       <div id="data-banner" class="banner wrap hidden" role="status"></div>
 
       <section class="board wrap" id="board">
-        <div id="state-loading" class="state-box frame hidden">
-          <pre class="ascii-loading">ЗАГРУЗКА
-[░░░░░░░░░░]</pre>
+        <div id="state-loading" class="state-box panel hidden">
+          <h2>Загрузка</h2>
+          <p>Тянем снимок конкурса…</p>
+          <div class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>
         </div>
 
-        <div id="state-empty" class="state-box frame hidden">
-          <h2>ВВЕДИ БАЛЛ</h2>
+        <div id="state-empty" class="state-box panel hidden">
+          <h2>Введи балл</h2>
           <p>Сверху — обзор специальностей. Ниже — детали выбранной.</p>
         </div>
 
-        <div id="state-error" class="state-box frame hidden">
-          <h2>ОШИБКА ДАННЫХ</h2>
+        <div id="state-error" class="state-box panel hidden">
+          <h2>Ошибка данных</h2>
           <p id="error-msg"></p>
-          <button class="btn-apply" id="retry-btn" type="button">ПОВТОРИТЬ</button>
+          <button class="btn-apply" id="retry-btn" type="button">Повторить</button>
         </div>
 
         <div id="results" class="results hidden">
-          <div class="summary frame" id="summary-strip" aria-live="polite"></div>
+          <div class="summary panel" id="summary-strip" aria-live="polite"></div>
 
           <div class="master-detail">
             <div class="overview-col">
-              <div class="zone-label">ОБЗОР</div>
-              <div class="frame" id="overview-list"></div>
+              <div class="zone-label">Обзор</div>
+              <div class="panel" id="overview-list"></div>
             </div>
             <div class="detail-col">
-              <div class="zone-label">ДЕТАЛИ</div>
-              <div class="frame" id="detail-panel"></div>
+              <div class="zone-label">Детали</div>
+              <div class="panel" id="detail-panel"></div>
             </div>
           </div>
         </div>
@@ -90,7 +91,7 @@
     <footer class="site-footer">
       <div class="wrap footer-inner">
         <a href="https://abit.bsu.by/formk1?id=7" id="source-link" target="_blank" rel="noopener">abit.bsu.by</a>
-        <span>РАСЧЁТНЫЙ ПРОХОДНОЙ — НЕ ПРИКАЗ</span>
+        <span>Расчётный проходной — не приказ</span>
       </div>
     </footer>
   </div>

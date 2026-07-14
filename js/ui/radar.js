@@ -1,15 +1,19 @@
 import { prepareSpecs } from '../compute.js';
 import { el, fmtNum, fmtTime } from './dom.js';
-import { asciiChanceTrack, asciiHistogram, summarizeStatuses } from './ascii.js';
+import {
+  renderChanceTrack,
+  renderHistogram,
+  summarizeStatuses,
+} from './charts.js';
 
 /**
  * @param {object} row
  */
-function statusGlyph(row) {
-  if (row.status === 'safe') return '●';
-  if (row.status === 'risk') return '◐';
-  if (row.status === 'below') return '○';
-  return '·';
+function statusClass(row) {
+  if (row.status === 'safe') return 'is-safe';
+  if (row.status === 'risk') return 'is-risk';
+  if (row.status === 'below') return 'is-below';
+  return '';
 }
 
 /**
@@ -35,7 +39,7 @@ export function renderOverviewList(container, specialties, score, opts) {
 
   if (!rows.length) {
     container.append(
-      el('div', { className: 'detail-empty', text: 'НЕТ СПЕЦИАЛЬНОСТЕЙ' }),
+      el('div', { className: 'detail-empty', text: 'Нет специальностей' }),
     );
     return rows;
   }
@@ -55,8 +59,13 @@ export function renderOverviewList(container, specialties, score, opts) {
         ? '—'
         : `${fmtNum(row.peopleAbove)}/${fmtNum(row.plan)}`;
 
+    const mark = el('span', {
+      className: `ov-mark ${statusClass(row)}`.trim(),
+      'aria-hidden': 'true',
+    });
+
     btn.append(
-      el('span', { className: 'ov-mark', text: statusGlyph(row) }),
+      mark,
       el('span', { className: 'ov-name', text: row.specName }),
       el('span', { className: 'ov-ratio', text: people }),
       el('span', { className: 'ov-delta', text: deltaText(row) }),
@@ -83,7 +92,7 @@ export function renderDetailPanel(container, row, score) {
     container.append(
       el('div', {
         className: 'detail-empty',
-        text: 'ВЫБЕРИ СПЕЦИАЛЬНОСТЬ В ОБЗОРЕ',
+        text: 'Выбери специальность в обзоре',
       }),
     );
     return;
@@ -98,10 +107,13 @@ export function renderDetailPanel(container, row, score) {
   const pressure =
     row.pressure == null ? '—' : `${row.pressure.toFixed(1)}×`;
 
+  const trackMount = el('div');
+  const histMount = el('div');
+
   const inner = el('div', { className: 'detail-inner' }, [
     el('h3', {
       className: 'detail-title',
-      text: `ДЕТАЛИ · ${row.specName}`,
+      text: row.specName,
     }),
     el('div', {
       className: 'detail-status',
@@ -113,19 +125,13 @@ export function renderDetailPanel(container, row, score) {
       metric('Дельта', deltaText(row)),
       metric('Конкурс', pressure),
     ]),
-    el('div', {}, [
-      el('div', { className: 'ascii-caption', text: 'ДОРОЖКА КОНКУРСА' }),
-      el('pre', {
-        className: 'ascii-block ascii-track',
-        text: asciiChanceTrack({ ...row, score }),
-      }),
+    el('div', { className: 'chart-block' }, [
+      el('div', { className: 'chart-caption', text: 'Дорожка конкурса' }),
+      trackMount,
     ]),
-    el('div', {}, [
-      el('div', { className: 'ascii-caption', text: 'ИНТЕРВАЛЫ БАЛЛОВ' }),
-      el('pre', {
-        className: 'ascii-block ascii-hist',
-        text: asciiHistogram({ ...row, score }, score),
-      }),
+    el('div', { className: 'chart-block' }, [
+      el('div', { className: 'chart-caption', text: 'Интервалы баллов' }),
+      histMount,
     ]),
     el('p', {
       className: 'detail-note',
@@ -133,13 +139,17 @@ export function renderDetailPanel(container, row, score) {
     }),
   ]);
 
+  renderChanceTrack(trackMount, { ...row, score });
+  renderHistogram(histMount, { ...row, score }, score);
+
   if (row.sourceUrl) {
     inner.append(
       el('a', {
+        className: 'detail-link',
         href: row.sourceUrl,
         target: '_blank',
         rel: 'noopener',
-        text: 'ОТКРЫТЬ ИСТОЧНИК →',
+        text: 'Открыть источник →',
       }),
     );
   }
@@ -153,7 +163,7 @@ export function renderDetailPanel(container, row, score) {
  */
 export function renderSummary(elSummary, enrichedRows) {
   const c = summarizeStatuses(enrichedRows);
-  elSummary.textContent = `В ЗОНЕ ${c.safe}  ·  НА ГРАНИ ${c.risk}  ·  НИЖЕ ${c.below}`;
+  elSummary.textContent = `В зоне ${c.safe}  ·  На грани ${c.risk}  ·  Ниже ${c.below}`;
 }
 
 function metric(label, value) {
@@ -164,7 +174,7 @@ function metric(label, value) {
 }
 
 /**
- * Keep current selection if still present, else best sortKey (first after prepareSpecs).
+ * Keep current selection if still present, else best sortKey.
  * @param {object[]} enrichedRows
  * @param {string | null} selectedId
  */

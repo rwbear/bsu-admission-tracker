@@ -1,22 +1,23 @@
-/* Overview list */
+/* Overview list — hairline rows */
 .overview-list {
   display: grid;
 }
 
 .overview-row {
   display: grid;
-  grid-template-columns: 1.25rem 1fr auto auto;
-  gap: var(--space-2);
+  grid-template-columns: 0.5rem 1fr auto auto;
+  gap: var(--space-3);
   align-items: center;
   width: 100%;
-  min-height: 3rem;
-  padding: var(--space-3);
+  min-height: 3.25rem;
+  padding: var(--space-3) var(--space-4);
   border: 0;
   border-bottom: 1px solid var(--line);
+  border-radius: 0;
   background: transparent;
   text-align: left;
   cursor: pointer;
-  transition: background var(--transition), color var(--transition);
+  transition: background var(--transition);
 }
 
 .overview-row:last-child {
@@ -24,38 +25,50 @@
 }
 
 .overview-row:hover {
-  background: color-mix(in srgb, var(--ink) 4%, transparent);
+  background: var(--soft);
 }
 
 .overview-row.selected {
-  background: var(--invert-bg);
-  color: var(--invert-ink);
-}
-
-.overview-row.selected .ov-delta,
-.overview-row.selected .ov-mark {
-  color: var(--invert-ink);
+  background: var(--select);
+  box-shadow: inset 2px 0 0 var(--select-line);
 }
 
 .ov-mark {
-  font-size: var(--text-sm);
-  color: var(--ink-dim);
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  border: 1px solid var(--ink-dim);
+  background: transparent;
+}
+
+.ov-mark.is-safe {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+.ov-mark.is-risk {
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+  border-color: var(--ink);
+}
+
+.ov-mark.is-below {
+  background: transparent;
 }
 
 .ov-name {
-  font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 600;
   font-size: var(--text-sm);
-  letter-spacing: -0.02em;
-  text-transform: uppercase;
+  letter-spacing: -0.01em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-transform: none;
 }
 
 .ov-ratio {
   font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
+  font-weight: 500;
 }
 
 .ov-delta {
@@ -66,25 +79,25 @@
   text-align: right;
 }
 
-/* Detail panel */
+/* Detail */
 .detail-inner {
-  padding: var(--space-4);
+  padding: var(--space-5);
   display: grid;
-  gap: var(--space-4);
+  gap: var(--space-5);
 }
 
 .detail-title {
   margin: 0;
-  font-family: var(--font-display);
   font-size: var(--text-md);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  text-transform: none;
 }
 
 .detail-status {
+  margin-top: calc(var(--space-2) * -1);
   font-size: var(--text-xs);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }
@@ -92,18 +105,19 @@
 .metric-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  background: var(--line);
-  border: 1px solid var(--line);
+  gap: var(--space-3);
 }
 
 .metric-cell {
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
   background: var(--bg-elev);
 }
 
 .metric-val {
   font-size: var(--text-lg);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.03em;
 }
@@ -111,52 +125,163 @@
 .metric-lbl {
   margin-top: var(--space-1);
   font-size: var(--text-xs);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--ink-dim);
 }
 
-.ascii-block {
-  margin: 0;
-  font-size: 0.7rem;
-  line-height: 1.35;
-  white-space: pre;
-  overflow-x: auto;
-  color: var(--ink);
+.chart-block {
+  display: grid;
+  gap: var(--space-3);
 }
 
-.ascii-caption {
-  margin: 0 0 var(--space-2);
+.chart-caption {
+  margin: 0;
   font-size: var(--text-xs);
   letter-spacing: 0.1em;
   text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* Chance track */
+.chance-track-wrap {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.chance-track {
+  position: relative;
+  display: flex;
+  height: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--soft);
+}
+
+.chance-seg {
+  height: 100%;
+  background: color-mix(in srgb, var(--ink) 28%, transparent);
+  min-width: 0;
+}
+
+.chance-seg.mine {
+  background: var(--ink);
+}
+
+.chance-seg.empty {
+  background: transparent;
+}
+
+.chance-marker {
+  position: absolute;
+  top: -0.35rem;
+  bottom: -0.35rem;
+  width: 1px;
+  background: var(--ink);
+  transform: translateX(-50%);
+}
+
+.chance-marker.you {
+  width: 0.5rem;
+  height: 0.5rem;
+  top: 50%;
+  bottom: auto;
+  border-radius: 50%;
+  border: 1.5px solid var(--bg-elev);
+  background: var(--ink);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 1px var(--ink);
+}
+
+.chance-legend {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  color: var(--ink-dim);
+}
+
+/* Histogram */
+.hist-list {
+  display: grid;
+  gap: var(--space-2);
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.hist-row {
+  display: grid;
+  grid-template-columns: 5.5rem 1fr 2rem;
+  gap: var(--space-2);
+  align-items: center;
+  font-size: var(--text-xs);
+}
+
+.hist-label {
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hist-bar-track {
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--soft);
+  overflow: hidden;
+}
+
+.hist-bar-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+  min-width: 0;
+}
+
+.hist-row.is-mine .hist-bar-fill {
+  background: var(--ink);
+}
+
+.hist-row.is-cut .hist-label {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.hist-count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
   color: var(--ink-dim);
 }
 
 .detail-note {
+  margin: 0;
   font-size: var(--text-sm);
   color: var(--ink-dim);
 }
 
+.detail-link {
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
 .detail-empty {
-  padding: var(--space-8) var(--space-4);
+  padding: var(--space-10) var(--space-4);
   text-align: center;
   color: var(--ink-dim);
   font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
 }
 
 @media (max-width: 420px) {
   .overview-row {
-    grid-template-columns: 1rem 1fr auto;
+    grid-template-columns: 0.5rem 1fr auto;
   }
 
   .ov-delta {
     display: none;
   }
 
-  .ascii-block {
-    font-size: 0.62rem;
+  .hist-row {
+    grid-template-columns: 4.5rem 1fr 1.5rem;
   }
 }
