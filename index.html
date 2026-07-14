@@ -1,95 +1,98 @@
 <!DOCTYPE html>
-<html lang="ru" data-theme="auto">
+<html lang="ru">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admission Tracker — BSU & БГТУ</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta name="description" content="Проход — радар конкурса БГУ: выбери факультет, введи балл, смотри шансы." />
+  <title>Проход — БГУ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/tokens.css?v=20260714j" />
+  <link rel="stylesheet" href="./css/layout.css?v=20260714j" />
+  <link rel="stylesheet" href="./css/components.css?v=20260714j" />
 </head>
 <body>
-
-  <header class="site-header">
-    <div class="header-inner">
-      <div class="header-left">
-        <span class="logo-icon">🎓</span>
-        <span class="logo-text">Admission Tracker</span>
-        <div class="live-badge"><span class="live-dot"></span>LIVE</div>
-      </div>
-      <div class="header-right">
-        <span class="refresh-label">Обновление через</span>
-        <span id="refresh-countdown" class="refresh-countdown">15:00</span>
-        <button id="refresh-btn" class="icon-btn" title="Обновить">
-          <svg id="refresh-icon" width="15" height="15" viewBox="0 0 16 16"><path d="M13.65 2.35A7.958 7.958 0 008 0C3.58 0 0 3.58 0 8s3.58 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 018 14c-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L9 7h7V0l-2.35 2.35z" fill="currentColor"/></svg>
-        </button>
-        <button id="theme-btn" class="icon-btn" title="Тема">
-          <span class="sun">☀</span><span class="moon">☽</span>
-        </button>
-      </div>
-    </div>
-    <div class="header-sub">
-      <span id="last-updated">Загрузка...</span>
-    </div>
-  </header>
-
-  <div class="score-bar">
-    <div class="score-bar-inner">
-      <span class="score-bar-label">Мой балл:</span>
-      <input type="number" id="score-input" class="score-input" placeholder="напр. 320" min="0" max="500"/>
-      <button id="score-btn" class="apply-btn">Применить</button>
-      <span class="score-bar-hint">Введи сумму баллов — увидишь шансы по каждой специальности</span>
-    </div>
-  </div>
-
-  <div class="selector-panel" id="selector-panel">
-    <div class="selector-inner">
-
-      <div class="selector-group">
-        <div class="selector-label">Учреждение</div>
-        <div class="univ-grid" id="univ-grid"></div>
-      </div>
-
-      <div class="selector-group" id="faculty-group" style="display:none">
-        <div class="selector-label">Факультет / Институт</div>
-        <div class="faculty-grid" id="faculty-grid"></div>
-      </div>
-
-      <div class="selector-group">
-        <div class="selector-label">Или введи ссылку вручную</div>
-        <div class="custom-url-row">
-          <input type="text" id="custom-url" class="custom-url-input" placeholder="https://abit.bsu.by/formk1?id=7"/>
-          <button id="custom-url-btn" class="apply-btn">Добавить</button>
+  <div class="site">
+    <header class="command" id="command">
+      <div class="wrap command-inner">
+        <a class="command-brand" href="#top">r.w.b.&nbsp;|&nbsp;production</a>
+        <div class="command-meta" id="update-status" title="Автообновление каждые 10 минут">
+          <span class="live-dot" aria-hidden="true"></span>
+          <span id="command-time">Загрузка</span>
+          <span class="command-sep" aria-hidden="true">·</span>
+          <span id="next-update"></span>
         </div>
-        <div class="custom-tags" id="custom-tags"></div>
       </div>
+    </header>
 
-    </div>
+    <main id="top">
+      <section class="hero-block wrap">
+        <div id="faculty-picker-mount" class="faculty-picker-mount"></div>
+
+        <form class="score-form" id="score-form">
+          <label class="sr-only" for="score-input">Сумма баллов</label>
+          <input
+            class="score-input"
+            id="score-input"
+            name="score"
+            type="number"
+            inputmode="numeric"
+            min="0"
+            max="500"
+            step="1"
+            placeholder="Балл"
+            required
+          />
+          <button class="btn-apply" type="submit">Применить</button>
+        </form>
+      </section>
+
+      <div id="data-banner" class="banner wrap hidden" role="status"></div>
+
+      <section class="board wrap" id="board">
+        <div id="state-loading" class="state-box panel hidden">
+          <h2>Загрузка</h2>
+          <p>Тянем снимок конкурса…</p>
+          <div class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+        </div>
+
+        <div id="state-empty" class="state-box panel hidden">
+          <h2>Введи балл</h2>
+          <p>Сверху — обзор специальностей. Ниже — детали выбранной.</p>
+        </div>
+
+        <div id="state-error" class="state-box panel hidden">
+          <h2>Ошибка данных</h2>
+          <p id="error-msg"></p>
+          <button class="btn-apply" id="retry-btn" type="button">Повторить</button>
+        </div>
+
+        <div id="results" class="results hidden">
+          <div class="summary" id="summary-strip" aria-live="polite"></div>
+
+          <div class="master-detail">
+            <div class="overview-col">
+              <div class="zone-label">Обзор</div>
+              <div class="panel" id="overview-list"></div>
+            </div>
+            <div class="detail-col">
+              <div class="zone-label">Детали</div>
+              <div class="panel" id="detail-panel"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap footer-inner">
+        <a href="https://abit.bsu.by/formk1?id=7" id="source-link" target="_blank" rel="noopener">abit.bsu.by</a>
+        <span>Расчётный проходной — не приказ</span>
+      </div>
+    </footer>
   </div>
 
-  <main class="main-wrap">
-    <div id="loading" class="state-screen">
-      <div class="spinner"></div>
-      <p>Загружаем данные...</p>
-    </div>
-    <div id="error-screen" class="state-screen hidden">
-      <div class="state-icon">⚠️</div>
-      <h3>Не удалось загрузить данные</h3>
-      <p id="error-msg">Попробуй снова или добавь ссылку вручную</p>
-      <button id="retry-btn" class="apply-btn" style="margin-top:12px">Повторить</button>
-    </div>
-    <div id="empty-screen" class="state-screen hidden">
-      <div class="state-icon">📋</div>
-      <h3>Выбери университет и факультет выше</h3>
-      <p>Или добавь ссылку вручную</p>
-    </div>
-    <div id="cards" class="cards-wrap hidden"></div>
-  </main>
-
-  <footer class="site-footer">
-    Данные: <a href="https://abit.bsu.by" target="_blank" rel="noopener">abit.bsu.by</a> &amp;
-    <a href="https://abiturient.bspu.by" target="_blank" rel="noopener">bspu.by</a> ·
-    Обновление каждые 15 мин
-  </footer>
-
-  <script src="app.js"></script>
+  <script type="module" src="./js/main.js?v=20260714i"></script>
 </body>
 </html>
