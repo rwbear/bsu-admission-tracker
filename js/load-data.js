@@ -1,26 +1,59 @@
 import { CONFIG } from './config.js';
 
+/** @param {number} ms */
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * @template T
+ * @param {Promise<T>} promise
+ * @param {number} ms
+ * @param {T} fallback
+ * @returns {Promise<T>}
+ */
+export function withTimeout(promise, ms, fallback) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (value) => {
+      if (done) return;
+      done = true;
+      resolve(value);
+    };
+    Promise.resolve(promise).then(finish, () => finish(fallback));
+    sleep(ms).then(() => finish(fallback));
+  });
+}
+
 /**
  * @param {string} path
- * @param {{ bust?: boolean, headers?: Record<string, string> }} [opts]
+ * @param {{ bust?: boolean, headers?: Record<string, string>, timeoutMs?: number }} [opts]
  */
 async function getJson(path, opts = {}) {
   const url = opts.bust
     ? `${path}${path.includes('?') ? '&' : '?'}_=${Date.now()}`
     : path;
-  const res = await fetch(url, {
-    cache: 'no-store',
-    headers: { Accept: 'application/json', ...(opts.headers || {}) },
-  });
-  if (!res.ok) throw new Error(`Не удалось загрузить ${path} (${res.status})`);
-  return res.json();
+  const timeoutMs = opts.timeoutMs ?? 12_000;
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      cache: 'no-store',
+      signal: ctrl.signal,
+      headers: { Accept: 'application/json', ...(opts.headers || {}) },
+    });
+    if (!res.ok) throw new Error(`Не удалось загрузить ${path} (${res.status})`);
+    return res.json();
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
  * Wrap so sync fetch() throws (e.g. relative URL in Node) become rejections
  * and do not abort Promise.allSettled sibling candidates.
  * @param {string} path
- * @param {{ bust?: boolean }} [opts]
+ * @param {{ bust?: boolean, timeoutMs?: number }} [opts]
  */
 function getJsonSettled(path, opts = {}) {
   return Promise.resolve().then(() => getJson(path, opts));
@@ -69,17 +102,21 @@ async function latestCommitSha(repo, branch, filePath) {
     `?sha=${encodeURIComponent(branch)}` +
     `&path=${encodeURIComponent(filePath)}` +
     `&per_page=1`;
-  const res = await fetch(url, {
-    cache: 'no-store',
-    headers: {
-      Accept: 'application/vnd.github+json',
-      'X-GitHub-Api-Version': '2022-11-28',
-    },
-  });
-  if (!res.ok) return null;
-  const rows = await res.json();
-  const sha = Array.isArray(rows) && rows[0]?.sha ? String(rows[0].sha) : null;
-  return sha && /^[0-9a-f]{7,40}$/i.test(sha) ? sha : null;
+  try {
+    const res = await fetch(url, {
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+    if (!res.ok) return null;
+    const rows = await res.json();
+    const sha = Array.isArray(rows) && rows[0]?.sha ? String(rows[0].sha) : null;
+    return sha && /^[0-9a-f]{7,40}$/i.test(sha) ? sha : null;
+  } catch {
+    return null;
+  }
 }
 
 /**
@@ -114,8 +151,8 @@ export async function loadIndex() {
 
 /**
  * Load candidates for university JSON.
- * Always tries same-origin Pages + raw branch; also raw-by-SHA so CDN lag
- * cannot hide a newer Actions scrape.
+ * Same-origin + raw branch start immediately; SHA lookup is optional and
+ * time-boxed so a slow api.github.com cannot blank the board.
  *
  * @param {string} universityId
  * @param {{ repo: string, branch: string, bust: boolean }} opts
@@ -123,30 +160,44 @@ export async function loadIndex() {
 async function loadSnapshotCandidates(universityId, opts) {
   const file = `data/${universityId}.json`;
 
-  // Resolve SHA first so every fetch is wrapped in allSettled together —
-  // starting a relative fetch before that can crash Node on unhandledRejection.
-  const sha = await latestCommitSha(opts.repo, opts.branch, file);
+  const shaPromise = withTimeout(
+    latestCommitSha(opts.repo, opts.branch, file),
+    2_000,
+    null,
+  );
 
   /** @type {Promise<object>[]} */
-  const tasks = [
+  const primary = [
     getJsonSettled(`./${file}`, { bust: opts.bust }),
     getJsonSettled(
       `https://raw.githubusercontent.com/${opts.repo}/${opts.branch}/${file}`,
       { bust: true },
     ),
   ];
-  if (sha) {
-    tasks.push(
-      getJsonSettled(
-        `https://raw.githubusercontent.com/${opts.repo}/${sha}/${file}`,
-      ),
-    );
-  }
 
-  const settled = await Promise.allSettled(tasks);
-  return settled
+  const [primarySettled, sha] = await Promise.all([
+    Promise.allSettled(primary),
+    shaPromise,
+  ]);
+
+  /** @type {object[]} */
+  const payloads = primarySettled
     .filter((r) => r.status === 'fulfilled')
     .map((r) => /** @type {PromiseFulfilledResult<object>} */ (r).value);
+
+  if (sha) {
+    const shaSettled = await Promise.allSettled([
+      getJsonSettled(
+        `https://raw.githubusercontent.com/${opts.repo}/${sha}/${file}`,
+        { timeoutMs: 8_000 },
+      ),
+    ]);
+    for (const r of shaSettled) {
+      if (r.status === 'fulfilled') payloads.push(r.value);
+    }
+  }
+
+  return payloads;
 }
 
 /**
@@ -161,15 +212,23 @@ export async function loadUniversity(universityId, opts = {}) {
 
   let origin = { repo: CONFIG.repo, branch: CONFIG.dataBranch };
   try {
-    const index = await getJsonSettled('./data/index.json', { bust: true });
-    origin = resolveOrigin(index);
+    const index = await withTimeout(
+      getJsonSettled('./data/index.json', { bust: true, timeoutMs: 8_000 }),
+      8_000,
+      null,
+    );
+    if (index) origin = resolveOrigin(index);
   } catch {
     try {
-      const index = await getJson(
-        `https://raw.githubusercontent.com/${origin.repo}/${origin.branch}/data/index.json`,
-        { bust: true },
+      const index = await withTimeout(
+        getJson(
+          `https://raw.githubusercontent.com/${origin.repo}/${origin.branch}/data/index.json`,
+          { bust: true, timeoutMs: 8_000 },
+        ),
+        8_000,
+        null,
       );
-      origin = resolveOrigin(index);
+      if (index) origin = resolveOrigin(index);
     } catch {
       /* keep CONFIG defaults */
     }

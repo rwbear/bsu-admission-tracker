@@ -2,6 +2,7 @@ import {
   state,
   loadPrefs,
   subscribe,
+  emit,
   setScore,
   setSelected,
   setFaculty,
@@ -78,6 +79,9 @@ function syncFacultySelection() {
     state.facultyId = next;
     if (next) localStorage.setItem('prohod-sb-faculty', next);
     else localStorage.removeItem('prohod-sb-faculty');
+  } else if (next) {
+    // Ensure default is written so later visits don't start blank.
+    localStorage.setItem('prohod-sb-faculty', next);
   }
 }
 
@@ -182,41 +186,55 @@ function renderMasterDetail(specs, score) {
 }
 
 function renderBoard() {
-  syncFacultySelection();
-  renderFacultyChrome();
-  renderCommandMeta();
-  $sourceLink.href = SOURCE_URL;
+  try {
+    syncFacultySelection();
+    renderFacultyChrome();
+    renderCommandMeta();
+    $sourceLink.href = SOURCE_URL;
 
-  if (state.loading && !state.uniData) {
-    showOnly('loading');
-    return;
-  }
+    if (state.loading && !state.uniData) {
+      showOnly('loading');
+      return;
+    }
 
-  if (state.error && !state.uniData) {
-    $errorMsg.textContent = state.error;
+    if (state.error && !state.uniData) {
+      $errorMsg.textContent = state.error;
+      showOnly('error');
+      return;
+    }
+
+    if (!state.scoreSubmitted || state.score == null) {
+      showOnly('empty');
+      const h2 = $empty.querySelector('h2');
+      const p = $empty.querySelector('p');
+      if (h2) h2.textContent = 'Введи балл';
+      if (p) {
+        p.textContent =
+          'Сверху — Институт бизнеса БГУ (можно сменить). Затем — обзор и детали.';
+      }
+      return;
+    }
+
+    const specs = currentSpecialties();
+    if (!specs.length) {
+      showOnly('empty');
+      const h2 = $empty.querySelector('h2');
+      const p = $empty.querySelector('p');
+      if (h2) h2.textContent = 'Нет строк';
+      if (p) {
+        p.textContent =
+          'На этом факультете пока нет данных — выбери другой или дождись обновления.';
+      }
+      return;
+    }
+
+    showOnly('results');
+    renderMasterDetail(specs, state.score);
+  } catch (err) {
+    console.error('renderBoard failed', err);
+    $errorMsg.textContent = err?.message || String(err);
     showOnly('error');
-    return;
   }
-
-  if (!state.scoreSubmitted || state.score == null) {
-    showOnly('empty');
-    $empty.querySelector('h2').textContent = 'Введи балл';
-    $empty.querySelector('p').textContent =
-      'Сверху выбери факультет. Затем — обзор специальностей и детали.';
-    return;
-  }
-
-  const specs = currentSpecialties();
-  if (!specs.length) {
-    showOnly('empty');
-    $empty.querySelector('h2').textContent = 'Нет строк';
-    $empty.querySelector('p').textContent =
-      'На этом факультете пока нет данных — выбери другой или дождись обновления.';
-    return;
-  }
-
-  showOnly('results');
-  renderMasterDetail(specs, state.score);
 }
 
 function applyBanner(payload) {
@@ -439,8 +457,9 @@ async function bootstrap() {
   if (state.score != null) $scoreInput.value = String(state.score);
   $sourceLink.href = SOURCE_URL;
   bindFacultyChrome();
-  renderFacultyChrome();
-  renderCommandMeta();
+  // Paint loading + default faculty title before any network await.
+  state.loading = true;
+  renderBoard();
   await fetchData({ silent: false, armSchedule: true });
   startAutoRefresh();
 }

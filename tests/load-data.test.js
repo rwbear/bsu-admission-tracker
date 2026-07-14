@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { pickNewest, resolveOrigin } from '../js/load-data.js';
+import { pickNewest, resolveOrigin, withTimeout } from '../js/load-data.js';
 
 describe('pickNewest', () => {
   it('prefers newer updatedAt', () => {
@@ -41,5 +41,26 @@ describe('resolveOrigin', () => {
       origin: { repo: 'rwbear/bsu-admission-tracker', branch: 'main' },
     });
     assert.equal(o.branch, 'cursor/admission-tracker-rebuild-be86');
+  });
+});
+
+describe('withTimeout', () => {
+  it('returns fallback when promise is slow', async () => {
+    const v = await withTimeout(
+      new Promise((r) => setTimeout(() => r('late'), 200)),
+      30,
+      'fallback',
+    );
+    assert.equal(v, 'fallback');
+  });
+
+  it('returns value when promise is fast', async () => {
+    const v = await withTimeout(Promise.resolve('ok'), 200, 'fallback');
+    assert.equal(v, 'ok');
+  });
+
+  it('returns fallback on rejection', async () => {
+    const v = await withTimeout(Promise.reject(new Error('x')), 200, null);
+    assert.equal(v, null);
   });
 });
