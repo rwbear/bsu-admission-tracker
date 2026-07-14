@@ -6,6 +6,7 @@ import {
   resolveFacultyId,
   sortFaculties,
   filterFacultiesByName,
+  DEFAULT_FACULTY_ID,
 } from '../js/faculties.js';
 import {
   filterFacultySections,
@@ -37,6 +38,19 @@ describe('faculty labels', () => {
     assert.equal(resolveFacultyId(faculties, null), 'b');
     assert.equal(resolveFacultyId(faculties, 'a'), 'a');
     assert.equal(resolveFacultyId(faculties, 'missing'), 'b');
+  });
+
+  it('keeps Institute of Business as start default with empty list', () => {
+    assert.equal(resolveFacultyId([], null), DEFAULT_FACULTY_ID);
+    assert.equal(resolveFacultyId(null, null), DEFAULT_FACULTY_ID);
+  });
+
+  it('prefers default id when present in list', () => {
+    const faculties = [
+      { id: 'a', name: 'Биологический факультет' },
+      { id: DEFAULT_FACULTY_ID, name: 'Институт бизнеса БГУ' },
+    ];
+    assert.equal(resolveFacultyId(faculties, null), DEFAULT_FACULTY_ID);
   });
 
   it('sorts Institute of Business first', () => {

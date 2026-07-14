@@ -1,5 +1,9 @@
 import { el } from './dom.js';
-import { filterFacultiesByName } from '../faculties.js';
+import {
+  DEFAULT_FACULTY_ID,
+  DEFAULT_FACULTY_NAME,
+  filterFacultiesByName,
+} from '../faculties.js';
 
 const OVERLAY_ID = 'faculty-overlay-root';
 
@@ -34,8 +38,13 @@ export function renderFacultyPicker(mount, opts) {
   const faculties = opts.faculties || [];
   const filtered = filterFacultiesByName(faculties, opts.query);
   const selected =
-    faculties.find((f) => f.id === opts.selectedId) || faculties[0] || null;
-  const label = selected?.name || 'Выбери факультет';
+    faculties.find((f) => f.id === opts.selectedId) ||
+    (opts.selectedId === DEFAULT_FACULTY_ID
+      ? { id: DEFAULT_FACULTY_ID, name: DEFAULT_FACULTY_NAME }
+      : null) ||
+    faculties[0] ||
+    { id: DEFAULT_FACULTY_ID, name: DEFAULT_FACULTY_NAME };
+  const label = selected?.name || DEFAULT_FACULTY_NAME;
   const query = opts.query || '';
 
   mount.innerHTML = '';

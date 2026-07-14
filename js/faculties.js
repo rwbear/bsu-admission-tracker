@@ -2,6 +2,10 @@
  * Faculty labels / keys shared by scraper and the site.
  */
 
+/** Stable default — Институт бизнеса БГУ */
+export const DEFAULT_FACULTY_ID = 'институт-бизнеса-бгу';
+export const DEFAULT_FACULTY_NAME = 'Институт бизнеса БГУ';
+
 /**
  * Human short label for a BSU formk1 section title.
  * @param {string} raw
@@ -60,10 +64,16 @@ export function facultyKey(raw) {
  */
 export function resolveFacultyId(faculties, savedId) {
   const list = Array.isArray(faculties) ? faculties : [];
-  if (!list.length) return null;
   if (savedId && list.some((f) => f.id === savedId)) return savedId;
-  const biz = list.find((f) => /институт бизнеса/i.test(f.name || ''));
+
+  const biz =
+    list.find((f) => f.id === DEFAULT_FACULTY_ID) ||
+    list.find((f) => /институт бизнеса/i.test(f.name || ''));
   if (biz) return biz.id;
+
+  // Keep default even before the faculties list arrives so filtering
+  // and the title aren't blank / all-specialties on first paint.
+  if (!list.length) return savedId || DEFAULT_FACULTY_ID;
   return list[0].id;
 }
 

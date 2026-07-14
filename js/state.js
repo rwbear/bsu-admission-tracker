@@ -1,3 +1,5 @@
+import { DEFAULT_FACULTY_ID } from './faculties.js';
+
 const KEYS = {
   score: 'prohod-sb-score',
   selected: 'prohod-sb-selected',
@@ -16,7 +18,7 @@ const KEYS = {
 export const state = {
   score: null,
   selectedId: null,
-  facultyId: null,
+  facultyId: DEFAULT_FACULTY_ID,
   uniData: null,
   loading: false,
   error: null,
@@ -42,7 +44,8 @@ export function loadPrefs() {
   }
 
   state.selectedId = localStorage.getItem(KEYS.selected);
-  state.facultyId = localStorage.getItem(KEYS.faculty);
+  const savedFaculty = localStorage.getItem(KEYS.faculty);
+  state.facultyId = savedFaculty || DEFAULT_FACULTY_ID;
   // Drop obsolete day/zaoch pref if present
   localStorage.removeItem('prohod-sb-form');
 }
