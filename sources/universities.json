@@ -1,0 +1,16 @@
+[
+  {
+    "id": "sb-bsu",
+    "name": "БГУ",
+    "fullName": "Белорусский государственный университет",
+    "adapter": "formk1",
+    "priority": 0,
+    "enabled": true,
+    "baseUrl": "https://abit.bsu.by/formk1?id=",
+    "hubUrl": "https://www.bsu.by/",
+    "parseAllSections": true,
+    "faculties": [
+      { "id": "7", "name": "Дневная", "parseAllSections": true }
+    ]
+  }
+]
