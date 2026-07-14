@@ -202,7 +202,7 @@ function renderBoard() {
     showOnly('empty');
     $empty.querySelector('h2').textContent = 'Введи балл';
     $empty.querySelector('p').textContent =
-      'Факультет сверху — фильтр по длинному списку специальностей. Затем введи балл.';
+      'Сверху выбери факультет. Затем — обзор специальностей и детали.';
     return;
   }
 

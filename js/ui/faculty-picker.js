@@ -4,7 +4,7 @@ import { filterFacultiesByName } from '../faculties.js';
 const OVERLAY_ID = 'faculty-overlay-root';
 
 /**
- * Ensure a body-level portal so the overlay escapes list clipping.
+ * Body-level portal so the overlay isn't clipped by hero layout.
  * @returns {HTMLElement}
  */
 function overlayHost() {
@@ -17,7 +17,7 @@ function overlayHost() {
 }
 
 /**
- * Faculty silence control: button in the stream + searchable overlay.
+ * Hero title button (same look as old h1.hero-sub) + searchable overlay.
  * @param {HTMLElement} mount
  * @param {{
  *   faculties: { id: string, name: string, specialtyCount?: number }[],
@@ -41,7 +41,7 @@ export function renderFacultyPicker(mount, opts) {
   mount.innerHTML = '';
 
   const root = el('div', {
-    className: `faculty-silence${opts.open ? ' is-open' : ''}`,
+    className: `faculty-picker${opts.open ? ' is-open' : ''}`,
   });
 
   const btn = el('button', {
@@ -53,12 +53,11 @@ export function renderFacultyPicker(mount, opts) {
     'aria-controls': 'faculty-overlay',
   });
   btn.append(
-    el('span', { className: 'faculty-trigger-kicker', text: 'Факультет' }),
     el('span', { className: 'faculty-trigger-label', text: label }),
     el('span', {
       className: 'faculty-trigger-chevron',
       'aria-hidden': 'true',
-      text: '▾',
+      text: '^',
     }),
   );
   btn.addEventListener('click', (e) => {
@@ -126,7 +125,6 @@ export function renderFacultyPicker(mount, opts) {
     'aria-label': 'Поиск факультета по названию',
     value: query,
   });
-  // value via setAttribute may not stick for input — set property
   search.value = query;
   search.addEventListener('input', () => {
     opts.onQuery(search.value);
@@ -186,7 +184,6 @@ export function renderFacultyPicker(mount, opts) {
   }
 
   dialog.append(header, searchWrap, list);
-  // stop clicks inside dialog from hitting backdrop logic elsewhere
   dialog.addEventListener('click', (e) => e.stopPropagation());
 
   const shell = el('div', { className: 'faculty-overlay-shell' });

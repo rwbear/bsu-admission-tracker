@@ -28,6 +28,8 @@
 
     <main id="top">
       <section class="hero-block wrap">
+        <div id="faculty-picker-mount" class="faculty-picker-mount"></div>
+
         <form class="score-form" id="score-form">
           <label class="sr-only" for="score-input">Сумма баллов</label>
           <input
@@ -49,10 +51,6 @@
       <div id="data-banner" class="banner wrap hidden" role="status"></div>
 
       <section class="board wrap" id="board">
-        <div class="stream">
-          <div id="faculty-picker-mount" class="faculty-silence-mount"></div>
-        </div>
-
         <div id="state-loading" class="state-box panel hidden">
           <h2>Загрузка</h2>
           <p>Тянем снимок конкурса…</p>
@@ -61,7 +59,7 @@
 
         <div id="state-empty" class="state-box panel hidden">
           <h2>Введи балл</h2>
-          <p>Факультет сверху — фильтр по длинному списку специальностей. Затем — балл.</p>
+          <p>Сверху — обзор специальностей. Ниже — детали выбранной.</p>
         </div>
 
         <div id="state-error" class="state-box panel hidden">
@@ -76,7 +74,7 @@
           <div class="master-detail">
             <div class="overview-col">
               <div class="zone-label">Обзор</div>
-              <div class="panel stream-list" id="overview-list"></div>
+              <div class="panel" id="overview-list"></div>
             </div>
             <div class="detail-col">
               <div class="zone-label">Детали</div>
