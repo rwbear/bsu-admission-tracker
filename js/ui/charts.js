@@ -78,7 +78,22 @@ export function renderChanceTrack(mount, row) {
 }
 
 /**
- * Score-bucket histogram as labeled bars.
+ * Short label for dense column axis.
+ * @param {string} label
+ */
+function shortRangeLabel(label) {
+  const t = String(label).replace(/\s+/g, ' ').trim();
+  const more = t.match(/^(\d+(?:\.\d+)?)\s*и более/i);
+  if (more) return `${more[1]}+`;
+  const less = t.match(/^(\d+(?:\.\d+)?)\s*и менее/i);
+  if (less) return `≤${less[1]}`;
+  const range = t.match(/(\d+(?:\.\d+)?)\s*[-\u2013]\s*(\d+(?:\.\d+)?)/);
+  if (range) return range[1];
+  return t.slice(0, 6);
+}
+
+/**
+ * Score-bucket histogram as a horizontal column strip (ranges L→R, bars grow up).
  * @param {HTMLElement} mount
  * @param {object} row
  * @param {number | null} score
@@ -97,32 +112,38 @@ export function renderHistogram(mount, row, score) {
     if (cutIdx === -1 && plan > 0 && cum >= plan) cutIdx = i;
   }
 
-  const list = el('div', { className: 'hist-list' });
+  const chart = el('div', {
+    className: 'hist-chart',
+    role: 'img',
+    'aria-label': 'Распределение по интервалам баллов',
+  });
 
   ranges.forEach((label, i) => {
     const count = buckets[i] || 0;
     const ratio = count / max;
     const mine = score != null && row.chance?.segments?.[i]?.isMine;
     const cut = i === cutIdx;
-    const rowEl = el('div', {
-      className: `hist-row${mine ? ' is-mine' : ''}${cut ? ' is-cut' : ''}`,
+    const col = el('div', {
+      className: `hist-col${mine ? ' is-mine' : ''}${cut ? ' is-cut' : ''}`,
+      title: `${String(label).replace(/\s+/g, ' ')}: ${count}`,
     });
-    rowEl.append(
-      el('div', {
-        className: 'hist-label',
-        text: String(label).replace(/\s+/g, ' '),
-        title: String(label),
-      }),
-      el('div', { className: 'hist-bar-track' }, [
+
+    const barH = count > 0 ? Math.max(ratio * 100, 6) : 0;
+    col.append(
+      el('div', { className: 'hist-col-count', text: count > 0 ? String(count) : '' }),
+      el('div', { className: 'hist-col-track' }, [
         el('div', {
-          className: 'hist-bar-fill',
-          style: `width:${(ratio * 100).toFixed(1)}%`,
+          className: 'hist-col-fill',
+          style: `height:${barH.toFixed(1)}%`,
         }),
       ]),
-      el('div', { className: 'hist-count', text: String(count) }),
+      el('div', {
+        className: 'hist-col-label',
+        text: shortRangeLabel(label),
+      }),
     );
-    list.append(rowEl);
+    chart.append(col);
   });
 
-  mount.append(list);
+  mount.append(chart);
 }

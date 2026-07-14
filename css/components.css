@@ -201,57 +201,86 @@
   color: var(--ink-dim);
 }
 
-/* Histogram */
-.hist-list {
-  display: grid;
-  gap: var(--space-2);
-  max-height: 14rem;
-  overflow: auto;
+/* Histogram — horizontal column strip */
+.hist-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10.5rem;
+  padding: var(--space-2) var(--space-1) 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  -webkit-overflow-scrolling: touch;
 }
 
-.hist-row {
+.hist-col {
+  flex: 0 0 auto;
   display: grid;
-  grid-template-columns: 5.5rem 1fr 2rem;
-  gap: var(--space-2);
-  align-items: center;
-  font-size: var(--text-xs);
+  grid-template-rows: auto 1fr auto;
+  justify-items: center;
+  gap: 0.2rem;
+  width: 1.1rem;
+  height: 100%;
+  min-height: 0;
 }
 
-.hist-label {
+.hist-col-count {
+  font-size: 0.55rem;
+  line-height: 1;
   color: var(--ink-dim);
   font-variant-numeric: tabular-nums;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-height: 0.65rem;
 }
 
-.hist-bar-track {
-  height: 0.5rem;
-  border-radius: 999px;
-  background: var(--soft);
-  overflow: hidden;
+.hist-col-track {
+  width: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 2px 2px 0 0;
+  background: linear-gradient(
+    to top,
+    var(--soft) 0%,
+    transparent 100%
+  );
 }
 
-.hist-bar-fill {
-  height: 100%;
-  border-radius: inherit;
-  background: color-mix(in srgb, var(--ink) 55%, transparent);
-  min-width: 0;
+.hist-col-fill {
+  width: 70%;
+  max-width: 0.7rem;
+  border-radius: 2px 2px 0 0;
+  background: color-mix(in srgb, var(--ink) 45%, transparent);
+  min-height: 0;
 }
 
-.hist-row.is-mine .hist-bar-fill {
+.hist-col.is-mine .hist-col-fill {
   background: var(--ink);
+  width: 85%;
 }
 
-.hist-row.is-cut .hist-label {
+.hist-col.is-cut .hist-col-label {
   color: var(--ink);
   font-weight: 600;
 }
 
-.hist-count {
-  text-align: right;
+.hist-col.is-cut .hist-col-fill {
+  outline: 1px solid var(--ink);
+  outline-offset: 1px;
+}
+
+.hist-col-label {
+  font-size: 0.5rem;
+  line-height: 1;
+  color: var(--ink-faint);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  max-height: 2.8rem;
+  overflow: hidden;
   font-variant-numeric: tabular-nums;
-  color: var(--ink-dim);
 }
 
 .detail-note {
@@ -281,7 +310,7 @@
     display: none;
   }
 
-  .hist-row {
-    grid-template-columns: 4.5rem 1fr 1.5rem;
+  .hist-col {
+    width: 0.95rem;
   }
 }
