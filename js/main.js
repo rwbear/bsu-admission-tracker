@@ -27,7 +27,7 @@ import {
   nextDueAt,
   shouldRefreshNow,
 } from './refresh-schedule.js';
-import { metaRotatorPhase } from './command-meta.js';
+import { metaRotatorPhase, metaFadeMs } from './command-meta.js';
 
 const UNI_ID = CONFIG.universityId;
 const SOURCE_URL = CONFIG.sourceUrl;
@@ -56,6 +56,13 @@ let nextRefreshAt = 0;
 let refreshing = false;
 /** Epoch for age ↔ countdown fade in the shared header slot. */
 let metaRotateEpoch = Date.now();
+/** Currently fully-shown (or mid-transition target) meta line. */
+let metaShownPhase = 'age';
+/** True while hiding the old line before revealing the new one. */
+let metaSwapBusy = false;
+/** Latest desired phase if a swap was requested mid-transition. */
+let metaSwapPending = null;
+let metaSwapTimer = 0;
 /** Serialize refreshes so overlapping polls queue cleanly. */
 let fetchChain = Promise.resolve();
 let visibilityBound = false;
@@ -274,12 +281,65 @@ function snapshotChanged(next, prev) {
   return JSON.stringify(next.specialties) !== JSON.stringify(prev.specialties);
 }
 
-function setMetaActive(phase) {
+function prefersReducedMotion() {
+  try {
+    return Boolean(
+      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
+    );
+  } catch {
+    return false;
+  }
+}
+
+function applyMetaClasses(phase) {
   const showAge = phase === 'age';
   $commandTime.classList.toggle('is-active', showAge);
   $nextUpdate.classList.toggle('is-active', !showAge);
   $commandTime.setAttribute('aria-hidden', showAge ? 'false' : 'true');
   $nextUpdate.setAttribute('aria-hidden', showAge ? 'true' : 'false');
+}
+
+/**
+ * Sequential swap: previous fades out fully, then the next fades in.
+ * Never crossfades (no overlay of both texts).
+ * @param {'age' | 'countdown'} phase
+ */
+function setMetaActive(phase) {
+  if (metaSwapBusy) {
+    metaSwapPending = phase;
+    return;
+  }
+
+  if (phase === metaShownPhase) {
+    applyMetaClasses(phase);
+    return;
+  }
+
+  metaSwapBusy = true;
+  metaSwapPending = null;
+
+  // 1) Hide whatever is showing — slot goes empty.
+  $commandTime.classList.remove('is-active');
+  $nextUpdate.classList.remove('is-active');
+  $commandTime.setAttribute('aria-hidden', 'true');
+  $nextUpdate.setAttribute('aria-hidden', 'true');
+
+  const delay = metaFadeMs(prefersReducedMotion());
+  if (metaSwapTimer) clearTimeout(metaSwapTimer);
+  metaSwapTimer = globalThis.setTimeout(() => {
+    metaSwapTimer = 0;
+    metaShownPhase = phase;
+    // 2) After hide completes, reveal the new line alone.
+    applyMetaClasses(phase);
+    metaSwapBusy = false;
+    if (metaSwapPending && metaSwapPending !== metaShownPhase) {
+      const next = metaSwapPending;
+      metaSwapPending = null;
+      setMetaActive(next);
+    } else {
+      metaSwapPending = null;
+    }
+  }, delay);
 }
 
 function renderCommandMeta(now = Date.now()) {
