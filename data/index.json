@@ -1,8 +1,8 @@
 {
-  "generatedAt": "2026-07-14T10:57:10.121Z",
+  "generatedAt": "2026-07-14T11:20:18.156Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
-    "branch": "cursor/admission-tracker-rebuild-be86"
+    "branch": "main"
   },
   "universities": [
     {
@@ -10,7 +10,7 @@
       "name": "Институт бизнеса БГУ",
       "fullName": "Институт бизнеса Белорусского государственного университета",
       "specialtyCount": 4,
-      "updatedAt": "2026-07-14T10:57:10.125Z",
+      "updatedAt": "2026-07-14T11:20:18.160Z",
       "available": true,
       "faculties": [
         {
