@@ -9,7 +9,7 @@ import {
 } from './state.js';
 import { prepareSpecs } from './compute.js';
 import { loadUniversity } from './load-data.js';
-import { $, fmtAge } from './ui/dom.js';
+import { $, fmtAge, fmtTime } from './ui/dom.js';
 import {
   renderOverviewList,
   renderDetailPanel,
@@ -36,9 +36,12 @@ const $overview = $('#overview-list');
 const $detail = $('#detail-panel');
 const $summary = $('#summary-strip');
 const $commandTime = $('#command-time');
+const $liveRefresh = /** @type {HTMLButtonElement} */ ($('#live-refresh'));
 
 let pollTimer = null;
 let fetching = false;
+/** Absolute stamp shown after a manual tap, until age ticks resume. */
+let pinnedClockLabel = null;
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -75,7 +78,7 @@ function renderMasterDetail(specs, score) {
   const selectedId = resolveSelection(rows, state.selectedId);
   if (selectedId !== state.selectedId) {
     setSelected(selectedId);
-    return; // subscribe will re-render
+    return;
   }
 
   renderSummary($summary, rows);
@@ -150,10 +153,11 @@ function snapshotChanged(next, prev) {
 
 /**
  * @param {{ silent?: boolean }} [opts]
+ * @returns {Promise<boolean>}
  */
 async function fetchData(opts = {}) {
   const silent = Boolean(opts.silent);
-  if (fetching) return;
+  if (fetching) return false;
   fetching = true;
 
   if (!silent) {
@@ -162,6 +166,7 @@ async function fetchData(opts = {}) {
     emit();
   }
 
+  let ok = false;
   try {
     const prev = state.uniData;
     const payload = await loadUniversity(UNI_ID, { bust: true });
@@ -171,6 +176,7 @@ async function fetchData(opts = {}) {
     applyBanner(payload);
     if (!silent || changed) emit();
     else tickClock();
+    ok = true;
   } catch (err) {
     if (!state.uniData) {
       state.error = err.message || String(err);
@@ -183,14 +189,44 @@ async function fetchData(opts = {}) {
     fetching = false;
     if (!silent) emit();
   }
+  return ok;
+}
+
+function nowStamp() {
+  return new Date().toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
 
 function tickClock() {
-  const age = fmtAge(state.uniData?.updatedAt);
-  $commandTime.textContent = `LIVE · ${age}`;
-  $commandTime.title = state.uniData?.updatedAt
-    ? `Снимок: ${state.uniData.updatedAt}`
-    : '';
+  const label = pinnedClockLabel || fmtAge(state.uniData?.updatedAt);
+  $commandTime.textContent = `LIVE · ${label}`;
+  $liveRefresh.title = state.uniData?.updatedAt
+    ? `Снимок: ${fmtTime(state.uniData.updatedAt)} · нажми, чтобы обновить`
+    : 'Нажми, чтобы обновить';
+}
+
+async function refreshLive() {
+  if (fetching) return;
+  pinnedClockLabel = 'обновляю…';
+  $liveRefresh.classList.add('is-refreshing');
+  $liveRefresh.disabled = true;
+  tickClock();
+
+  const ok = await fetchData({ silent: true });
+  pinnedClockLabel = ok ? nowStamp() : fmtAge(state.uniData?.updatedAt);
+  tickClock();
+
+  window.setTimeout(() => {
+    pinnedClockLabel = null;
+    tickClock();
+  }, 8_000);
+
+  $liveRefresh.classList.remove('is-refreshing');
+  $liveRefresh.disabled = false;
 }
 
 function startLivePolling() {
@@ -219,6 +255,10 @@ async function bootstrap() {
   tickClock();
   startLivePolling();
 }
+
+$liveRefresh.addEventListener('click', () => {
+  refreshLive();
+});
 
 $scoreForm.addEventListener('submit', (e) => {
   e.preventDefault();
