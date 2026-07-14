@@ -1,6 +1,7 @@
 name: Scrape admission tables
 
 # IMPORTANT: schedule events only run from the default branch (main).
+# Trigger: keep Schedules on main + push-scrapes on Pages.
 # This workflow still checks out the GitHub Pages branch and pushes data there.
 on:
   schedule:
