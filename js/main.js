@@ -9,7 +9,7 @@ import {
 } from './state.js';
 import { prepareSpecs } from './compute.js';
 import { loadUniversity } from './load-data.js';
-import { $, fmtTime } from './ui/dom.js';
+import { $, fmtAge } from './ui/dom.js';
 import {
   renderOverviewList,
   renderDetailPanel,
@@ -18,6 +18,10 @@ import {
 } from './ui/radar.js';
 
 const UNI_ID = 'sb-bsu';
+/** How often the client re-pulls data/*.json (Pages may lag the scraper). */
+const POLL_MS = 60_000;
+/** Re-render the relative "ago" stamp. */
+const AGE_TICK_MS = 15_000;
 
 const $scoreInput = /** @type {HTMLInputElement} */ ($('#score-input'));
 const $scoreForm = $('#score-form');
@@ -32,6 +36,9 @@ const $overview = $('#overview-list');
 const $detail = $('#detail-panel');
 const $summary = $('#summary-strip');
 const $commandTime = $('#command-time');
+
+let pollTimer = null;
+let fetching = false;
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -85,13 +92,14 @@ function renderMasterDetail(specs, score) {
 
 function renderBoard() {
   syncFormButtons();
+  tickClock();
 
-  if (state.loading) {
+  if (state.loading && !state.uniData) {
     showOnly('loading');
     return;
   }
 
-  if (state.error) {
+  if (state.error && !state.uniData) {
     $errorMsg.textContent = state.error;
     showOnly('error');
     return;
@@ -105,7 +113,7 @@ function renderBoard() {
   const specs = currentSpecialties();
   if (!specs.length) {
     showOnly('empty');
-    $empty.querySelector('h2').textContent = 'НЕТ СТРОК';
+    $empty.querySelector('h2').textContent = 'Нет строк';
     $empty.querySelector('p').textContent =
       'Таблица могла быть пустой вне кампании, или снимок ещё не обновился.';
     return;
@@ -115,38 +123,90 @@ function renderBoard() {
   renderMasterDetail(specs, state.score);
 }
 
-async function fetchData() {
-  state.loading = true;
-  state.error = null;
-  emit();
+function applyBanner(payload) {
+  if (payload?.scrapeMeta?.fixture) {
+    $banner.classList.remove('hidden');
+    $banner.textContent =
+      'Демо-снимок: live-таблица БГУ сейчас недоступна сборщику. После успешного Actions данные подтянутся сами.';
+  } else if (payload?.scrapeMeta?.retainedPrevious) {
+    $banner.classList.remove('hidden');
+    $banner.textContent =
+      'Не удалось обновить источник — показан последний успешный снимок.';
+  } else {
+    $banner.classList.add('hidden');
+  }
+}
+
+/**
+ * @param {object | null} next
+ * @param {object | null} prev
+ */
+function snapshotChanged(next, prev) {
+  if (!next) return false;
+  if (!prev) return true;
+  if (next.updatedAt !== prev.updatedAt) return true;
+  return JSON.stringify(next.specialties) !== JSON.stringify(prev.specialties);
+}
+
+/**
+ * @param {{ silent?: boolean }} [opts]
+ */
+async function fetchData(opts = {}) {
+  const silent = Boolean(opts.silent);
+  if (fetching) return;
+  fetching = true;
+
+  if (!silent) {
+    state.loading = true;
+    state.error = null;
+    emit();
+  }
+
   try {
-    state.uniData = await loadUniversity(UNI_ID);
-    if (state.uniData?.scrapeMeta?.fixture) {
-      $banner.classList.remove('hidden');
-      $banner.textContent =
-        'Демо-снимок: live-таблица БГУ сейчас недоступна сборщику. После успешного Actions данные подтянутся сами.';
-    } else if (state.uniData?.scrapeMeta?.retainedPrevious) {
-      $banner.classList.remove('hidden');
-      $banner.textContent =
-        'Не удалось обновить источник — показан последний успешный снимок.';
-    } else {
-      $banner.classList.add('hidden');
-    }
+    const prev = state.uniData;
+    const payload = await loadUniversity(UNI_ID, { bust: true });
+    const changed = snapshotChanged(payload, prev);
+    state.uniData = payload;
+    state.error = null;
+    applyBanner(payload);
+    if (!silent || changed) emit();
+    else tickClock();
   } catch (err) {
-    state.uniData = null;
-    state.error = err.message || String(err);
+    if (!state.uniData) {
+      state.error = err.message || String(err);
+      emit();
+    } else {
+      console.warn('live refresh failed, keeping previous snapshot', err);
+    }
   } finally {
     state.loading = false;
-    emit();
+    fetching = false;
+    if (!silent) emit();
   }
 }
 
 function tickClock() {
-  const now = new Date();
-  const stamp = state.uniData?.updatedAt
-    ? fmtTime(state.uniData.updatedAt)
-    : now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  $commandTime.textContent = `LIVE · ${stamp}`;
+  const age = fmtAge(state.uniData?.updatedAt);
+  $commandTime.textContent = `LIVE · ${age}`;
+  $commandTime.title = state.uniData?.updatedAt
+    ? `Снимок: ${state.uniData.updatedAt}`
+    : '';
+}
+
+function startLivePolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(() => {
+    if (document.visibilityState === 'hidden') return;
+    fetchData({ silent: true });
+  }, POLL_MS);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      fetchData({ silent: true });
+    }
+  });
+
+  window.addEventListener('online', () => fetchData({ silent: true }));
 }
 
 async function bootstrap() {
@@ -154,9 +214,10 @@ async function bootstrap() {
   if (state.score != null) $scoreInput.value = String(state.score);
   syncFormButtons();
   tickClock();
-  setInterval(tickClock, 30_000);
-  await fetchData();
+  setInterval(tickClock, AGE_TICK_MS);
+  await fetchData({ silent: false });
   tickClock();
+  startLivePolling();
 }
 
 $scoreForm.addEventListener('submit', (e) => {
@@ -181,7 +242,7 @@ document.querySelectorAll('.form-btn').forEach((btn) => {
   });
 });
 
-$('#retry-btn').addEventListener('click', () => fetchData());
+$('#retry-btn').addEventListener('click', () => fetchData({ silent: false }));
 
 subscribe(() => renderBoard());
 

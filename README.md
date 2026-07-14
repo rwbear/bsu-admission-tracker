@@ -9,9 +9,9 @@
 - Дневная: https://abit.bsu.by/formk1?id=7
 - Заочная: https://abit.bsu.by/formk1?id=8
 
-GitHub Actions скрейпит эти страницы в `data/sb-bsu.json` (около раз в час днём по Минску).  
-`abit.bsu.by` часто рвёт TLS с GitHub/US cloud — сборщик пробует прямое соединение, затем `SCRAPE_PROXY` / региональные HTTP-прокси.  
-Сайт на GitHub Pages читает только локальный JSON.
+GitHub Actions скрейпит эти страницы в `data/sb-bsu.json` примерно каждые 15 минут днём по Минску.  
+Клиент молча перечитывает JSON каждую минуту (cache-bust), чтобы Pages CDN не держал устаревший снимок.  
+`abit.bsu.by` часто рвёт TLS с GitHub/US cloud — сборщик пробует прямое соединение, затем `SCRAPE_PROXY` / региональные HTTP-прокси.
 
 Опционально: репозиторий → Settings → Secrets → `SCRAPE_PROXY` (`http://user:pass@host:port`) для стабильного выхода.
 

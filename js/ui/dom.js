@@ -54,3 +54,18 @@ export function fmtTime(iso) {
     return iso;
   }
 }
+
+/**
+ * Relative freshness for the live strip.
+ * @param {string | null | undefined} iso
+ */
+export function fmtAge(iso) {
+  if (!iso) return 'нет данных';
+  const t = new Date(iso).getTime();
+  if (!Number.isFinite(t)) return fmtTime(iso);
+  const sec = Math.max(0, Math.round((Date.now() - t) / 1000));
+  if (sec < 45) return 'только что';
+  if (sec < 3600) return `${Math.floor(sec / 60)} мин назад`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)} ч назад`;
+  return fmtTime(iso);
+}

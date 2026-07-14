@@ -2,8 +2,8 @@ name: Scrape admission tables
 
 on:
   schedule:
-    # Hourly 06:15–18:15 UTC ≈ 09:15–21:15 Minsk — keep Pages data fresh
-    - cron: "15 6-18 * * *"
+    # Every 15 minutes, campaign daytime Minsk (UTC+3 → 06–20 UTC)
+    - cron: "*/15 6-20 * * *"
   workflow_dispatch:
   push:
     paths:
@@ -20,6 +20,9 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    concurrency:
+      group: scrape-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Resolve Pages / scrape branch
         id: target
