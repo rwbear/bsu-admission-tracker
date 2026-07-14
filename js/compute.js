@@ -276,6 +276,30 @@ export function enrichSpec(spec, score) {
 }
 
 /**
+ * Display order for Институт бизнеса specialties (overview list).
+ * @type {string[]}
+ */
+export const SPEC_DISPLAY_ORDER = [
+  'бизнес-администрирование',
+  'управление информационными ресурсами',
+  'маркетинг',
+  'логистика',
+];
+
+/**
+ * @param {string | null | undefined} name
+ */
+export function specOrderIndex(name) {
+  const key = String(name || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/\s+/g, ' ')
+    .trim();
+  const idx = SPEC_DISPLAY_ORDER.indexOf(key);
+  return idx === -1 ? SPEC_DISPLAY_ORDER.length + 1 : idx;
+}
+
+/**
  * @param {object[]} specs
  * @param {number | null} score
  * @param {{ filter?: 'all' | 'safe' | 'risk' | 'below', query?: string }} [opts]
@@ -298,6 +322,9 @@ export function prepareSpecs(specs, score, opts = {}) {
   }
 
   rows.sort((a, b) => {
+    const oa = specOrderIndex(a.specName);
+    const ob = specOrderIndex(b.specName);
+    if (oa !== ob) return oa - ob;
     if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
     return String(a.specName || '').localeCompare(String(b.specName || ''), 'ru');
   });

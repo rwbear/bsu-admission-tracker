@@ -107,6 +107,32 @@ describe('enrich + prepare', () => {
     assert.equal(q[0].specName, 'Биоинженерия');
   });
 
+  it('orders Institute of Business specialties as requested', () => {
+    const mk = (name) => ({
+      ...base,
+      id: name,
+      specName: name,
+    });
+    const rows = prepareSpecs(
+      [
+        mk('логистика'),
+        mk('маркетинг'),
+        mk('бизнес-администрирование'),
+        mk('управление информационными ресурсами'),
+      ],
+      null,
+    );
+    assert.deepEqual(
+      rows.map((r) => r.specName),
+      [
+        'бизнес-администрирование',
+        'управление информационными ресурсами',
+        'маркетинг',
+        'логистика',
+      ],
+    );
+  });
+
   it('builds chance track seat cut', () => {
     const track = buildChanceTrack(base, 375);
     assert.ok(track.seatCutRatio > 0 && track.seatCutRatio <= 1);
