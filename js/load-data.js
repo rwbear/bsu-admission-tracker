@@ -1,5 +1,4 @@
 import { CONFIG } from './config.js';
-import { fetchLiveUniversity, LIVE_BUDGET_MS } from './live-table.js';
 
 /**
  * @param {string} path
@@ -30,7 +29,7 @@ function isUniPayload(payload) {
 }
 
 /**
- * Prefer the snapshot with the newest updatedAt (table truth time).
+ * Prefer the snapshot with the newest updatedAt (last successful scrape).
  * @param {object[]} payloads
  */
 export function pickNewest(payloads) {
@@ -88,7 +87,7 @@ export function resolveOrigin(index) {
 export async function loadIndex() {
   try {
     return await getJson('./data/index.json', { bust: true });
-  } catch (err) {
+  } catch {
     const { repo, branch } = resolveOrigin(null);
     return getJson(
       `https://raw.githubusercontent.com/${repo}/${branch}/data/index.json`,
@@ -97,20 +96,13 @@ export async function loadIndex() {
   }
 }
 
-function resolveLiveApiUrl() {
-  try {
-    if (typeof window !== 'undefined' && window.__PROHOD_LIVE_API__) {
-      return String(window.__PROHOD_LIVE_API__).trim();
-    }
-  } catch {
-    /* ignore */
-  }
-  return String(CONFIG.liveApiUrl || '').trim();
-}
-
 /**
+ * Load candidates for university JSON.
+ * Always tries same-origin Pages + raw branch; also raw-by-SHA so CDN lag
+ * cannot hide a newer Actions scrape.
+ *
  * @param {string} universityId
- * @param {{ repo: string, branch: string, forceRemote: boolean, bust: boolean }} opts
+ * @param {{ repo: string, branch: string, bust: boolean }} opts
  */
 async function loadSnapshotCandidates(universityId, opts) {
   const file = `data/${universityId}.json`;
@@ -123,15 +115,11 @@ async function loadSnapshotCandidates(universityId, opts) {
     ),
   ];
 
-  if (opts.forceRemote) {
-    const sha = await latestCommitSha(opts.repo, opts.branch, file);
-    if (sha) {
-      tasks.push(
-        getJson(
-          `https://raw.githubusercontent.com/${opts.repo}/${sha}/${file}`,
-        ),
-      );
-    }
+  const sha = await latestCommitSha(opts.repo, opts.branch, file);
+  if (sha) {
+    tasks.push(
+      getJson(`https://raw.githubusercontent.com/${opts.repo}/${sha}/${file}`),
+    );
   }
 
   const settled = await Promise.allSettled(tasks);
@@ -141,17 +129,14 @@ async function loadSnapshotCandidates(universityId, opts) {
 }
 
 /**
- * Prefer ordered live sources when forceRemote: dedicated scrape API → CORS
- * HTML parse → newest committed JSON (Pages can lag).
+ * Load the newest committed university snapshot (Actions scrape).
+ * Does not scrape abit.bsu.by in the browser — that path is unreliable.
  *
  * @param {string} universityId
- * @param {{ bust?: boolean, forceRemote?: boolean, tryLive?: boolean, liveBudgetMs?: number }} [opts]
+ * @param {{ bust?: boolean }} [opts]
  */
 export async function loadUniversity(universityId, opts = {}) {
-  const forceRemote = Boolean(opts.forceRemote);
-  const tryLive = Boolean(opts.tryLive);
   const bust = opts.bust !== false;
-  const liveBudgetMs = opts.liveBudgetMs ?? LIVE_BUDGET_MS;
 
   let origin = { repo: CONFIG.repo, branch: CONFIG.dataBranch };
   try {
@@ -161,44 +146,16 @@ export async function loadUniversity(universityId, opts = {}) {
     /* defaults */
   }
 
-  const snapPromise = loadSnapshotCandidates(universityId, {
+  const snapshots = await loadSnapshotCandidates(universityId, {
     ...origin,
-    forceRemote,
     bust,
   });
-
-  /** Start live work in parallel with snapshots, but only when asked. */
-  /** @type {Promise<object | null>} */
-  let livePromise = Promise.resolve(null);
-  if (tryLive) {
-    const apiUrl = resolveLiveApiUrl();
-    const parts = [];
-    if (apiUrl) {
-      parts.push(getJson(apiUrl, { bust: true }).catch(() => null));
-    }
-    parts.push(
-      fetchLiveUniversity({ budgetMs: liveBudgetMs }).catch(() => null),
-    );
-    livePromise = Promise.all(parts).then(
-      (rows) => rows.find((p) => p?.specialties?.length) || null,
-    );
+  const newest = pickNewest(snapshots);
+  if (!newest) {
+    throw new Error(`Не удалось загрузить data/${universityId}.json`);
   }
-
-  const snapshots = await snapPromise;
-  const newestSnap = pickNewest(snapshots);
-
-  // Don't make the caller wait the full CORS budget if JSON is already fresh —
-  // race live against a short grace after snapshots resolve.
-  const live = tryLive
-    ? await Promise.race([
-        livePromise,
-        new Promise((resolve) => {
-          setTimeout(() => resolve(null), Math.min(liveBudgetMs, 8_000));
-        }),
-      ])
-    : null;
-
-  if (live?.specialties?.length) return live;
-  if (newestSnap) return newestSnap;
-  throw new Error(`Не удалось загрузить data/${universityId}.json`);
+  if (!newest.specialties?.length) {
+    throw new Error('Снимок пустой — подождите следующий сбор Actions');
+  }
+  return newest;
 }

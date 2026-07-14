@@ -42,9 +42,17 @@ function loadExisting(uniId) {
 
 function stablePayload(payload) {
   const copy = structuredClone(payload);
-  // Ignore volatile scrape error noise for change detection of content
+  // Fingerprint of table numbers only (ignore scrape clocks / meta).
   delete copy.scrapeErrors;
   delete copy.scrapeMeta;
+  delete copy.scrapedAt;
+  delete copy.updatedAt;
+  delete copy.lastAttemptAt;
+  if (Array.isArray(copy.specialties)) {
+    for (const row of copy.specialties) {
+      if (row && typeof row === 'object') delete row.updatedAt;
+    }
+  }
   return JSON.stringify(copy);
 }
 
@@ -140,10 +148,18 @@ async function main() {
 
     const outPath = join(dataDir, `${uni.id}.json`);
     if (!args.dry) {
-      if (!prev || stablePayload(prev) !== stablePayload(payload)) {
+      const contentChanged =
+        !prev || stablePayload(prev) !== stablePayload(payload);
+      const successfulLive = specs.length > 0;
+      // Always publish a successful scrape so updatedAt advances every run.
+      // Retained/failed scrapes only write when the file on disk must change.
+      if (successfulLive || contentChanged) {
         writeFileSync(outPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
         changed = true;
-        console.log(`[write] ${outPath} (${payload.specialtyCount ?? payload.specialties.length} specialties)`);
+        console.log(
+          `[write] ${outPath} (${payload.specialtyCount ?? payload.specialties.length} specialties)` +
+            (successfulLive && !contentChanged ? ' [heartbeat]' : ''),
+        );
       } else {
         console.log(`[unchanged] ${uni.id}`);
       }

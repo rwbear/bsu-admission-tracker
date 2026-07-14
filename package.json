@@ -6,9 +6,9 @@
   "description": "Live Belarus university admission chance radar for GitHub Pages",
   "scripts": {
     "scrape": "node scripts/scrape/run.mjs",
-    "live-server": "node scripts/live-server.mjs",
     "test": "node --test tests/*.test.js",
-    "fixtures": "node scripts/scrape/write-fixtures.mjs"
+    "fixtures": "node scripts/scrape/write-fixtures.mjs",
+    "verify-refresh": "node scripts/verify-refresh.mjs"
   },
   "engines": {
     "node": ">=20"

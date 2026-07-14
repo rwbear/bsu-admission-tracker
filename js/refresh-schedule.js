@@ -13,7 +13,7 @@ export function formatCountdown(totalSec) {
 }
 
 /**
- * Allow `?pollMs=3000` for local verification without waiting 5 minutes.
+ * Allow `?pollMs=3000` for local verification without waiting the full interval.
  * Clamped so a typo cannot hammer GitHub's API.
  * @param {number} defaultMs
  * @param {string} search

@@ -9,22 +9,22 @@ import {
 
 describe('refresh schedule', () => {
   it('formats countdown mm:ss', () => {
-    assert.equal(formatCountdown(300), '5:00');
+    assert.equal(formatCountdown(600), '10:00');
     assert.equal(formatCountdown(59), '0:59');
     assert.equal(formatCountdown(0), '0:00');
     assert.equal(formatCountdown(-3), '0:00');
   });
 
-  it('defaults poll to 5 minutes and allows shorter ?pollMs= for tests', () => {
-    const five = 5 * 60_000;
-    assert.equal(resolvePollMs(five, ''), five);
-    assert.equal(resolvePollMs(five, '?pollMs=3000'), 3000);
-    assert.equal(resolvePollMs(five, '?pollMs=999'), 1000);
-    assert.equal(resolvePollMs(five, '?pollMs=999999'), five);
+  it('defaults poll to 10 minutes and allows shorter ?pollMs= for tests', () => {
+    const ten = 10 * 60_000;
+    assert.equal(resolvePollMs(ten, ''), ten);
+    assert.equal(resolvePollMs(ten, '?pollMs=3000'), 3000);
+    assert.equal(resolvePollMs(ten, '?pollMs=999'), 1000);
+    assert.equal(resolvePollMs(ten, '?pollMs=999999'), ten);
   });
 
   it('arms next due exactly pollMs after a completed load', () => {
-    assert.equal(nextDueAt(1_000_000, 300_000), 1_300_000);
+    assert.equal(nextDueAt(1_000_000, 600_000), 1_600_000);
   });
 
   it('refreshes only when due, idle, and visible', () => {

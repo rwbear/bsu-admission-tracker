@@ -1,6 +1,6 @@
 # Проход — Институт бизнеса БГУ
 
-Радар конкурса для **Института бизнеса БГУ**: вводишь сумму баллов → выбираешь дневную или заочную → видишь, сколько заявлений выше тебя относительно мест.
+Радар конкурса для **Института бизнеса БГУ**: вводишь сумму баллов → видишь, сколько заявлений выше тебя относительно мест.
 
 ## Данные
 
@@ -8,32 +8,33 @@
 
 - https://abit.bsu.by/formk1?id=7
 
-GitHub Actions скрейпит эти страницы в `data/sb-bsu.json` примерно каждые 5 минут днём по Минску (и реже ночью).  
-Клиент автообновляет снимок каждые 5 минут (GitHub commits API + raw-by-SHA, чтобы обойти кэш Pages) и показывает обратный отсчёт до следующего обновления.  
-`abit.bsu.by` часто рвёт TLS с GitHub/US cloud — сборщик пробует прямое соединение, затем `SCRAPE_PROXY` / региональные HTTP-прокси.
+**Как обновляется:** GitHub Actions раз в **10 минут** скрейпит таблицу через региональные HTTP-прокси и коммитит `data/sb-bsu.json` в ветку GitHub Pages.  
+Сайт на загрузке и каждые 10 минут тянет самый новый закоммиченный снимок (Pages + raw + commit SHA) и показывает обратный отсчёт до следующего обновления.
 
-Опционально: репозиторий → Settings → Secrets → `SCRAPE_PROXY` (`http://user:pass@host:port`) для стабильного выхода.
+Браузер **не** ходит на `abit.bsu.by` напрямую — оттуда TLS/CORS ломают любой клиентский «live»-парс.
+
+Опционально: репозиторий → Settings → Secrets → `SCRAPE_PROXY` (`http://user:pass@host:port`) для стабильного выхода сборщика.
 
 ## Локально
 
 ```bash
 npm test
 npm run fixtures   # демо-снимок, если БГУ недоступен
-npm run scrape     # живой сбор id=7 и id=8
+npm run scrape     # живой сбор id=7
 python3 -m http.server 8080
 ```
 
-Открой `http://localhost:8080`.
+Открой `http://localhost:8080`. Для быстрой проверки таймера: `?pollMs=3000`.
 
 ## GitHub Pages
 
-1. Settings → Pages → Deploy from a branch
-2. Branch: `main` или `cursor/admission-tracker-rebuild-be86`, folder `/ (root)`
-3. Actions → **Scrape admission tables** → Run workflow
+1. Settings → Pages → Deploy from a branch  
+2. Branch: `cursor/admission-tracker-rebuild-be86` (или актуальная Pages-ветка), folder `/ (root)`  
+3. **Важно:** workflow `scrape.yml` должен быть на **default branch (`main`)**, иначе schedule не запустится. Actions → **Scrape admission tables** → Run workflow
 
 ## Дизайн
 
-Минимальный line UI: тонкие рамки, мягкие скругления, hairline-список, визуальные бары вместо ASCII.
+Минимальный line UI: тонкие рамки, мягкие скругления, hairline-список, визуальные бары.
 
 ## Стек
 
