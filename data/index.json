@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-14T22:14:47.148Z",
+  "generatedAt": "2026-07-14T22:20:13.687Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
     "branch": "cursor/admission-tracker-rebuild-be86"
@@ -9,8 +9,8 @@
       "id": "sb-bsu",
       "name": "БГУ",
       "fullName": "Белорусский государственный университет",
-      "specialtyCount": 197,
-      "updatedAt": "2026-07-14T22:14:47.151Z",
+      "specialtyCount": 200,
+      "updatedAt": "2026-07-14T22:20:13.690Z",
       "available": true,
       "faculties": [
         {
@@ -21,7 +21,7 @@
         {
           "id": "биологический-факультет",
           "name": "Биологический факультет",
-          "specialtyCount": 17
+          "specialtyCount": 20
         },
         {
           "id": "военный-факультет",
@@ -120,7 +120,7 @@
         {
           "id": "2",
           "name": "Заочная форма. Бюджет",
-          "specialtyCount": 0,
+          "specialtyCount": 3,
           "trackId": "cert3"
         },
         {
