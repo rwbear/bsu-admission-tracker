@@ -66,8 +66,26 @@ async function main() {
 
   const index = {
     generatedAt: new Date().toISOString(),
+    origin: {
+      repo: process.env.GITHUB_REPOSITORY || 'rwbear/bsu-admission-tracker',
+      branch:
+        process.env.GITHUB_REF_NAME ||
+        process.env.GITHUB_HEAD_REF ||
+        process.env.PROHOD_DATA_BRANCH ||
+        '',
+    },
     universities: [],
   };
+  if (!index.origin.branch) {
+    try {
+      const { execSync } = await import('node:child_process');
+      index.origin.branch = execSync('git rev-parse --abbrev-ref HEAD', {
+        encoding: 'utf8',
+      }).trim();
+    } catch {
+      index.origin.branch = 'cursor/admission-tracker-rebuild-be86';
+    }
+  }
 
   let changed = false;
 

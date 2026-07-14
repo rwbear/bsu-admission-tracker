@@ -2,8 +2,10 @@ name: Scrape admission tables
 
 on:
   schedule:
-    # Every 15 minutes, campaign daytime Minsk (UTC+3 → 06–20 UTC)
-    - cron: "*/15 6-20 * * *"
+    # Every 5 minutes daytime Minsk (UTC+3 → 05–20 UTC). Densest reliable GH cron.
+    - cron: "*/5 5-20 * * *"
+    # Overnight campaign watch — still catch late updates.
+    - cron: "*/20 0-4,21-23 * * *"
   workflow_dispatch:
   push:
     paths:

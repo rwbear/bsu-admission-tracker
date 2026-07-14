@@ -3,7 +3,7 @@
   "name": "Институт бизнеса БГУ",
   "fullName": "Институт бизнеса Белорусского государственного университета",
   "hubUrl": "https://sb.bsu.by/",
-  "updatedAt": "2026-07-14T10:06:38.898Z",
+  "updatedAt": "2026-07-14T10:49:05.046Z",
   "specialtyCount": 4,
   "faculties": [
     {
@@ -23,8 +23,8 @@
       "groupName": "",
       "specName": "бизнес-администрирование",
       "plan": 75,
-      "totalApps": 29,
-      "inCompetition": 29,
+      "totalApps": 32,
+      "inCompetition": 32,
       "ranges": [
         "396 и более",
         "395 - 391",
@@ -92,7 +92,7 @@
         1,
         2,
         1,
-        1,
+        2,
         2,
         3,
         2,
@@ -105,13 +105,13 @@
         0,
         0,
         0,
-        0,
+        1,
         0,
         0,
         1,
         0,
         0,
-        0,
+        1,
         0,
         0,
         0,
@@ -145,7 +145,7 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T10:06:38.898Z"
+      "updatedAt": "2026-07-14T10:49:05.046Z"
     },
     {
       "id": "sb-bsu:7:логистика:45",
@@ -279,7 +279,7 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T10:06:38.898Z"
+      "updatedAt": "2026-07-14T10:49:05.046Z"
     },
     {
       "id": "sb-bsu:7:маркетинг:70",
@@ -413,7 +413,7 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T10:06:38.898Z"
+      "updatedAt": "2026-07-14T10:49:05.046Z"
     },
     {
       "id": "sb-bsu:7:управление-информационными-ресурсами:70",
@@ -547,7 +547,7 @@
       ],
       "estimatedPassing": null,
       "sourceUrl": "https://abit.bsu.by/formk1?id=7",
-      "updatedAt": "2026-07-14T10:06:38.898Z"
+      "updatedAt": "2026-07-14T10:49:05.046Z"
     }
   ],
   "scrapeErrors": [],
@@ -557,7 +557,7 @@
     "fetchVia": [
       {
         "facultyId": "7",
-        "via": "http://80.87.195.84:2080"
+        "via": "http://93.77.191.156:8118"
       }
     ]
   }

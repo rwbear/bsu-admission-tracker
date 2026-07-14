@@ -8,6 +8,7 @@ import {
 } from './state.js';
 import { prepareSpecs } from './compute.js';
 import { loadUniversity } from './load-data.js';
+import { CONFIG } from './config.js';
 import { $, fmtTime } from './ui/dom.js';
 import {
   renderOverviewList,
@@ -16,10 +17,9 @@ import {
   resolveSelection,
 } from './ui/radar.js';
 
-const UNI_ID = 'sb-bsu';
-const SOURCE_URL = 'https://abit.bsu.by/formk1?id=7';
-/** How often the client re-pulls data/*.json (Pages may lag the scraper). */
-const POLL_MS = 60_000;
+const UNI_ID = CONFIG.universityId;
+const SOURCE_URL = CONFIG.sourceUrl;
+const POLL_MS = CONFIG.pollMs;
 
 const $scoreInput = /** @type {HTMLInputElement} */ ($('#score-input'));
 const $scoreForm = $('#score-form');
@@ -37,7 +37,9 @@ const $commandTime = $('#command-time');
 const $liveRefresh = /** @type {HTMLButtonElement} */ ($('#live-refresh'));
 
 let pollTimer = null;
-let fetching = false;
+/** Serialize refreshes so LIVE click never no-ops while a poll runs. */
+let fetchChain = Promise.resolve();
+let liveBusy = false;
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -141,66 +143,91 @@ function snapshotChanged(next, prev) {
 }
 
 /**
- * @param {{ silent?: boolean }} [opts]
- * @returns {Promise<boolean>}
+ * @param {{ silent?: boolean, forceRemote?: boolean, tryLive?: boolean }} [opts]
+ * @returns {Promise<{ ok: boolean, changed: boolean }>}
  */
-async function fetchData(opts = {}) {
+function fetchData(opts = {}) {
   const silent = Boolean(opts.silent);
-  if (fetching) return false;
-  fetching = true;
+  const forceRemote = Boolean(opts.forceRemote);
+  const tryLive = Boolean(opts.tryLive);
 
-  if (!silent) {
-    state.loading = true;
-    state.error = null;
-    emit();
-  }
-
-  let ok = false;
-  try {
-    const prev = state.uniData;
-    const payload = await loadUniversity(UNI_ID, { bust: true });
-    const changed = snapshotChanged(payload, prev);
-    state.uniData = payload;
-    state.error = null;
-    applyBanner(payload);
-    if (!silent || changed) emit();
-    else tickClock();
-    ok = true;
-  } catch (err) {
-    if (!state.uniData) {
-      state.error = err.message || String(err);
+  const run = async () => {
+    if (!silent) {
+      state.loading = true;
+      state.error = null;
       emit();
-    } else {
-      console.warn('snapshot refresh failed, keeping previous data', err);
     }
-  } finally {
-    state.loading = false;
-    fetching = false;
-    if (!silent) emit();
-  }
-  return ok;
+
+    let ok = false;
+    let changed = false;
+    try {
+      const prev = state.uniData;
+      const payload = await loadUniversity(UNI_ID, {
+        bust: true,
+        forceRemote,
+        tryLive,
+      });
+      changed = snapshotChanged(payload, prev);
+      state.uniData = payload;
+      state.error = null;
+      applyBanner(payload);
+      if (!silent || changed) emit();
+      else tickClock();
+      ok = true;
+    } catch (err) {
+      if (!state.uniData) {
+        state.error = err.message || String(err);
+        emit();
+      } else {
+        console.warn('snapshot refresh failed, keeping previous data', err);
+      }
+    } finally {
+      state.loading = false;
+      if (!silent) emit();
+    }
+    return { ok, changed };
+  };
+
+  const queued = fetchChain.then(run, run);
+  fetchChain = queued.then(
+    () => undefined,
+    () => undefined,
+  );
+  return queued;
 }
 
-function tickClock() {
+function tickClock(extra = '') {
   const stamp = state.uniData?.updatedAt;
-  $commandTime.textContent = stamp ? `LIVE · ${fmtTime(stamp)}` : 'LIVE';
+  const base = stamp ? `LIVE · ${fmtTime(stamp)}` : 'LIVE';
+  $commandTime.textContent = extra ? `${base}${extra}` : base;
   $liveRefresh.title = stamp
     ? `Обновлено ${fmtTime(stamp)} · нажми, чтобы обновить`
     : 'Нажми, чтобы обновить';
 }
 
 async function refreshLive() {
-  if (fetching) return;
+  if (liveBusy) return;
+  liveBusy = true;
   $commandTime.textContent = 'LIVE · обновляю…';
   $liveRefresh.classList.add('is-refreshing');
   $liveRefresh.disabled = true;
 
   try {
-    await fetchData({ silent: true });
-  } finally {
+    const prev = state.uniData;
+    const { ok, changed } = await fetchData({
+      silent: true,
+      forceRemote: true,
+      tryLive: true,
+    });
     tickClock();
+    if (ok && !changed && prev) {
+      $commandTime.textContent = `LIVE · ${fmtTime(prev.updatedAt)} · актуально`;
+      $liveRefresh.title = `Снимок уже свежий · ${fmtTime(prev.updatedAt)}`;
+    }
+  } finally {
     $liveRefresh.classList.remove('is-refreshing');
     $liveRefresh.disabled = false;
+    liveBusy = false;
   }
 }
 
@@ -208,16 +235,19 @@ function startLivePolling() {
   if (pollTimer) clearInterval(pollTimer);
   pollTimer = setInterval(() => {
     if (document.visibilityState === 'hidden') return;
-    fetchData({ silent: true });
+    if (liveBusy) return;
+    fetchData({ silent: true, forceRemote: false, tryLive: false });
   }, POLL_MS);
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      fetchData({ silent: true });
+      fetchData({ silent: true, forceRemote: true, tryLive: false });
     }
   });
 
-  window.addEventListener('online', () => fetchData({ silent: true }));
+  window.addEventListener('online', () =>
+    fetchData({ silent: true, forceRemote: true, tryLive: false }),
+  );
 }
 
 async function bootstrap() {
@@ -225,7 +255,8 @@ async function bootstrap() {
   if (state.score != null) $scoreInput.value = String(state.score);
   $sourceLink.href = SOURCE_URL;
   tickClock();
-  await fetchData({ silent: false });
+  // Newest committed scrape on first paint (bypass Pages CDN lag).
+  await fetchData({ silent: false, forceRemote: true, tryLive: false });
   startLivePolling();
 }
 
@@ -248,7 +279,9 @@ $scoreForm.addEventListener('submit', (e) => {
   });
 });
 
-$('#retry-btn').addEventListener('click', () => fetchData({ silent: false }));
+$('#retry-btn').addEventListener('click', () =>
+  fetchData({ silent: false, forceRemote: true, tryLive: true }),
+);
 
 subscribe(() => renderBoard());
 
