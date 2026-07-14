@@ -100,6 +100,7 @@ export function renderFacultyPicker(mount, opts) {
     role: 'dialog',
     'aria-modal': 'true',
     'aria-labelledby': 'faculty-overlay-title',
+    tabindex: '-1',
   });
 
   const header = el('div', { className: 'faculty-overlay-header' });

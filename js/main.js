@@ -106,14 +106,15 @@ function openFacultyMenu() {
   facultyMenuOpen = true;
   facultySearchQuery = '';
   renderFacultyChrome();
-  // Search is optional — focus the active faculty, not the search box.
+  // Focus the dialog shell — not the active row. Focusing the selected
+  // option painted :focus-visible on top of .is-active (broken double border).
   queueMicrotask(() => {
-    const host = document.getElementById('faculty-overlay');
-    if (!host) return;
-    const active =
-      host.querySelector('.faculty-option.is-active') ||
-      host.querySelector('.faculty-option');
-    if (active instanceof HTMLElement) active.focus();
+    const dialog = document.getElementById('faculty-overlay');
+    if (dialog instanceof HTMLElement) dialog.focus();
+    const active = dialog?.querySelector('.faculty-option.is-active');
+    if (active instanceof HTMLElement) {
+      active.scrollIntoView({ block: 'nearest' });
+    }
   });
 }
 
@@ -450,15 +451,28 @@ function bindFacultyChrome() {
     let idx = options.findIndex((n) => n === active);
     if (e.key === 'Home') idx = 0;
     else if (e.key === 'End') idx = options.length - 1;
-    else if (e.key === 'ArrowDown')
-      idx = Math.min(options.length - 1, Math.max(0, idx) + 1);
-    else if (e.key === 'ArrowUp') {
-      if (idx <= 0) {
+    else if (e.key === 'ArrowDown') {
+      if (idx < 0) {
+        const selected = options.findIndex((n) =>
+          n.classList.contains('is-active'),
+        );
+        idx = selected >= 0 ? selected : 0;
+      } else {
+        idx = Math.min(options.length - 1, idx + 1);
+      }
+    } else if (e.key === 'ArrowUp') {
+      if (idx < 0) {
+        const selected = options.findIndex((n) =>
+          n.classList.contains('is-active'),
+        );
+        idx = selected >= 0 ? selected : 0;
+      } else if (idx <= 0) {
         const search = document.getElementById('faculty-search-input');
         if (search instanceof HTMLElement) search.focus();
         return;
+      } else {
+        idx -= 1;
       }
-      idx -= 1;
     }
     const next = options[idx];
     if (next instanceof HTMLElement) next.focus();

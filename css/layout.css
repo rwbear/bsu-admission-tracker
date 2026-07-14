@@ -269,6 +269,10 @@ html.faculty-overlay-open {
   animation: faculty-popover-in 180ms ease-out both;
 }
 
+.faculty-overlay:focus {
+  outline: none;
+}
+
 .faculty-overlay-header {
   display: flex;
   align-items: center;
@@ -351,14 +355,30 @@ html.faculty-overlay-open {
   transition: background var(--transition);
 }
 
-.faculty-option:hover,
+/* Kill the global :focus-visible ring here — it stacked with .is-active
+   (inset bar + offset outline) and looked like a doubled broken border. */
+.faculty-option:focus,
+.faculty-option:focus-visible {
+  outline: none;
+}
+
+.faculty-option:hover {
+  background: var(--soft);
+}
+
 .faculty-option:focus-visible {
   background: var(--soft);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
 }
 
 .faculty-option.is-active {
   background: var(--select);
-  box-shadow: inset 2px 0 0 var(--select-line);
+}
+
+.faculty-option.is-active:hover,
+.faculty-option.is-active:focus-visible {
+  background: var(--select);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
 }
 
 .faculty-option-name {
