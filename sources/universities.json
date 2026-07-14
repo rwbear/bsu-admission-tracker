@@ -7,10 +7,24 @@
     "priority": 0,
     "enabled": true,
     "baseUrl": "https://abit.bsu.by/formk1?id=",
-    "hubUrl": "https://www.bsu.by/",
+    "hubUrl": "https://abiturient.bsu.by/priemnaia-kampaniia/monitoring-podachi-zaiavlenii",
+    "discoverFromHub": true,
     "parseAllSections": true,
+    "tablesCatalog": "sources/bsu-tables.json",
     "faculties": [
-      { "id": "7", "name": "Дневная", "parseAllSections": true }
+      { "id": "32", "name": "Дневная форма. Бюджет", "parseAllSections": true },
+      { "id": "29", "name": "Военный факультет. Дневная форма. Бюджет", "parseAllSections": true },
+      { "id": "2", "name": "Заочная форма. Бюджет", "parseAllSections": true },
+      { "id": "7", "name": "Дневная платная форма", "parseAllSections": true },
+      { "id": "8", "name": "Заочная платная форма", "parseAllSections": true },
+      { "id": "34", "name": "Дневная форма. Бюджет", "parseAllSections": true },
+      { "id": "21", "name": "Дневная форма. Бюджет. Факультет социокультурных коммуникаций", "parseAllSections": true },
+      { "id": "22", "name": "Дневная платная форма. Факультет социокультурных коммуникаций", "parseAllSections": true },
+      { "id": "5", "name": "Дневная форма. Бюджет", "parseAllSections": true },
+      { "id": "6", "name": "Заочная форма. Бюджет", "parseAllSections": true },
+      { "id": "16", "name": "Дневная платная форма", "parseAllSections": true },
+      { "id": "17", "name": "Заочная платная форма", "parseAllSections": true },
+      { "id": "13", "name": "Заочная платная форма получения второго высшего образования", "parseAllSections": true }
     ]
   }
 ]

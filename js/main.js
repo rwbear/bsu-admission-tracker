@@ -6,11 +6,19 @@ import {
   setScore,
   setSelected,
   setFaculty,
+  setForm,
 } from './state.js';
 import { prepareSpecs } from './compute.js';
 import { loadUniversity } from './load-data.js';
 import { CONFIG } from './config.js';
-import { resolveFacultyId } from './faculties.js';
+import { resolveFacultyId, sortFaculties } from './faculties.js';
+import {
+  DEFAULT_TABLE_ID,
+  facultiesForTable,
+  listCatalogTables,
+  resolveTableId,
+  sourceUrlForTable,
+} from './tables.js';
 import { $, fmtTime, fmtAge } from './ui/dom.js';
 import {
   renderOverviewList,
@@ -19,6 +27,7 @@ import {
   resolveSelection,
 } from './ui/radar.js';
 import { renderFacultyPicker } from './ui/faculty-picker.js';
+import { renderTablePicker } from './ui/table-picker.js';
 import {
   formatCountdown,
   resolvePollMs,
@@ -30,7 +39,6 @@ import {
 import { metaRotatorPhase, metaFadeMs } from './command-meta.js';
 
 const UNI_ID = CONFIG.universityId;
-const SOURCE_URL = CONFIG.sourceUrl;
 const POLL_MS = resolvePollMs(CONFIG.pollMs, globalThis.location?.search || '');
 const POLL_MINUTES = Math.max(1, Math.round(POLL_MS / 60_000));
 
@@ -49,6 +57,7 @@ const $summary = $('#summary-strip');
 const $commandTime = $('#command-time');
 const $nextUpdate = $('#next-update');
 const $updateStatus = $('#update-status');
+const $tableMount = $('#table-picker-mount');
 const $facultyMount = $('#faculty-picker-mount');
 
 let tickTimer = null;
@@ -70,6 +79,8 @@ let onlineBound = false;
 let facultyMenuOpen = false;
 let facultySearchQuery = '';
 let facultyOutsideBound = false;
+let tableMenuOpen = false;
+let tableSearchQuery = '';
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -81,8 +92,30 @@ function showOnly(which) {
   if (which === 'results') $results.classList.remove('hidden');
 }
 
+function tableList() {
+  const fromData = state.uniData?.tables;
+  if (Array.isArray(fromData) && fromData.length) return fromData;
+  return listCatalogTables();
+}
+
+function syncTableSelection() {
+  const next = resolveTableId(tableList(), state.formId);
+  if (next !== state.formId) {
+    state.formId = next;
+    localStorage.setItem('prohod-sb-form', next);
+  } else if (next) {
+    localStorage.setItem('prohod-sb-form', next);
+  }
+}
+
 function facultyList() {
-  return state.uniData?.faculties || [];
+  const formId = state.formId || DEFAULT_TABLE_ID;
+  const fromSpecs = facultiesForTable(
+    state.uniData?.specialties || [],
+    formId,
+  );
+  if (fromSpecs.length) return sortFaculties(fromSpecs);
+  return sortFaculties(state.uniData?.faculties || []);
 }
 
 function syncFacultySelection() {
@@ -92,15 +125,82 @@ function syncFacultySelection() {
     if (next) localStorage.setItem('prohod-sb-faculty', next);
     else localStorage.removeItem('prohod-sb-faculty');
   } else if (next) {
-    // Ensure default is written so later visits don't start blank.
     localStorage.setItem('prohod-sb-faculty', next);
   }
 }
 
 function currentSpecialties() {
   const all = state.uniData?.specialties || [];
-  if (!state.facultyId) return all;
-  return all.filter((s) => s.facultyId === state.facultyId);
+  const formId = state.formId || DEFAULT_TABLE_ID;
+  const inTable = all.filter((s) => String(s.form) === String(formId));
+  if (!state.facultyId) return inTable;
+  return inTable.filter((s) => s.facultyId === state.facultyId);
+}
+
+function closeTableMenu() {
+  if (!tableMenuOpen) return;
+  tableMenuOpen = false;
+  tableSearchQuery = '';
+  renderTableChrome();
+  const trigger = document.getElementById('table-trigger');
+  if (trigger instanceof HTMLElement) trigger.focus();
+}
+
+function openTableMenu() {
+  closeFacultyMenu();
+  tableMenuOpen = true;
+  tableSearchQuery = '';
+  renderTableChrome();
+  queueMicrotask(() => {
+    const dialog = document.getElementById('table-overlay');
+    if (dialog instanceof HTMLElement) dialog.focus();
+  });
+}
+
+function toggleTableMenu() {
+  if (tableMenuOpen) closeTableMenu();
+  else openTableMenu();
+}
+
+function onSelectTable(id) {
+  tableMenuOpen = false;
+  tableSearchQuery = '';
+  if (id !== state.formId) setForm(id);
+  else renderHeroChrome();
+  // After table change, re-resolve faculty defaults for that table.
+  syncFacultySelection();
+  const trigger = document.getElementById('table-trigger');
+  if (trigger instanceof HTMLElement) trigger.focus();
+}
+
+function onTableQuery(q) {
+  tableSearchQuery = q;
+  const active = document.activeElement;
+  const keepSearch =
+    active instanceof HTMLInputElement && active.id === 'table-search-input';
+  const caret = keepSearch ? active.selectionStart : null;
+  renderTableChrome();
+  if (keepSearch) {
+    const search = document.getElementById('table-search-input');
+    if (search instanceof HTMLInputElement) {
+      search.focus();
+      if (caret != null) search.setSelectionRange(caret, caret);
+    }
+  }
+}
+
+function renderTableChrome() {
+  if (!$tableMount) return;
+  renderTablePicker($tableMount, {
+    tables: tableList(),
+    selectedId: state.formId,
+    open: tableMenuOpen,
+    query: tableSearchQuery,
+    onToggle: toggleTableMenu,
+    onSelect: onSelectTable,
+    onClose: closeTableMenu,
+    onQuery: onTableQuery,
+  });
 }
 
 function closeFacultyMenu() {
@@ -113,11 +213,10 @@ function closeFacultyMenu() {
 }
 
 function openFacultyMenu() {
+  closeTableMenu();
   facultyMenuOpen = true;
   facultySearchQuery = '';
   renderFacultyChrome();
-  // Focus the dialog shell — not the active row. Focusing the selected
-  // option painted :focus-visible on top of .is-active (broken double border).
   queueMicrotask(() => {
     const dialog = document.getElementById('faculty-overlay');
     if (dialog instanceof HTMLElement) dialog.focus();
@@ -171,6 +270,11 @@ function renderFacultyChrome() {
   });
 }
 
+function renderHeroChrome() {
+  renderTableChrome();
+  renderFacultyChrome();
+}
+
 function onSelectSpecialty(id) {
   setSelected(id);
   if (window.matchMedia('(max-width: 767px)').matches) {
@@ -202,10 +306,11 @@ function renderMasterDetail(specs, score) {
 
 function renderBoard() {
   try {
+    syncTableSelection();
     syncFacultySelection();
-    renderFacultyChrome();
+    renderHeroChrome();
     renderCommandMeta();
-    $sourceLink.href = SOURCE_URL;
+    $sourceLink.href = sourceUrlForTable(state.formId || DEFAULT_TABLE_ID);
 
     if (state.loading && !state.uniData) {
       showOnly('loading');
@@ -261,6 +366,10 @@ function applyBanner(payload) {
     $banner.classList.remove('hidden');
     $banner.textContent =
       'Не удалось обновить источник — показан последний успешный снимок.';
+  } else if (payload?.scrapeMeta?.retainedFormIds?.length) {
+    $banner.classList.remove('hidden');
+    $banner.textContent =
+      'Часть таблиц не обновилась — для них показан предыдущий снимок; остальные свежие.';
   } else if (isSnapshotStale(payload?.updatedAt)) {
     $banner.classList.remove('hidden');
     $banner.textContent =
@@ -409,12 +518,13 @@ function fetchData(opts = {}) {
       const payload = await loadUniversity(UNI_ID, { bust: true });
       changed = snapshotChanged(payload, prev);
       state.uniData = payload;
+      syncTableSelection();
       syncFacultySelection();
       state.error = null;
       applyBanner(payload);
       if (!silent || changed) emit();
       else {
-        renderFacultyChrome();
+        renderHeroChrome();
         renderCommandMeta();
       }
       ok = true;
@@ -494,18 +604,28 @@ function startAutoRefresh() {
   }
 }
 
-function bindFacultyChrome() {
+function bindPickerChrome() {
   if (facultyOutsideBound) return;
   facultyOutsideBound = true;
 
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && tableMenuOpen) {
+      e.preventDefault();
+      closeTableMenu();
+      return;
+    }
     if (e.key === 'Escape' && facultyMenuOpen) {
       e.preventDefault();
       closeFacultyMenu();
       return;
     }
 
-    if (!facultyMenuOpen) return;
+    const overlayId = facultyMenuOpen
+      ? 'faculty-overlay'
+      : tableMenuOpen
+        ? 'table-overlay'
+        : null;
+    if (!overlayId) return;
     if (
       e.key !== 'ArrowDown' &&
       e.key !== 'ArrowUp' &&
@@ -515,15 +635,17 @@ function bindFacultyChrome() {
       return;
     }
 
-    const host = document.getElementById('faculty-overlay');
+    const host = document.getElementById(overlayId);
     if (!host) return;
     const options = [...host.querySelectorAll('.faculty-option')];
     if (!options.length) return;
 
-    // Typing in search: only ArrowDown jumps into the list.
+    const searchId = facultyMenuOpen
+      ? 'faculty-search-input'
+      : 'table-search-input';
     const inSearch =
       document.activeElement instanceof HTMLInputElement &&
-      document.activeElement.id === 'faculty-search-input';
+      document.activeElement.id === searchId;
     if (inSearch && e.key !== 'ArrowDown') return;
 
     e.preventDefault();
@@ -547,7 +669,7 @@ function bindFacultyChrome() {
         );
         idx = selected >= 0 ? selected : 0;
       } else if (idx <= 0) {
-        const search = document.getElementById('faculty-search-input');
+        const search = document.getElementById(searchId);
         if (search instanceof HTMLElement) search.focus();
         return;
       } else {
@@ -562,9 +684,8 @@ function bindFacultyChrome() {
 async function bootstrap() {
   loadPrefs();
   if (state.score != null) $scoreInput.value = String(state.score);
-  $sourceLink.href = SOURCE_URL;
-  bindFacultyChrome();
-  // Paint loading + default faculty title before any network await.
+  $sourceLink.href = sourceUrlForTable(state.formId || DEFAULT_TABLE_ID);
+  bindPickerChrome();
   state.loading = true;
   renderBoard();
   await fetchData({ silent: false, armSchedule: true });

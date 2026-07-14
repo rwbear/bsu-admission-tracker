@@ -1,3 +1,6 @@
+import { readFileSync, existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   fetchText,
   parseScoreBucketTables,
@@ -12,6 +15,26 @@ import {
   facultyKey,
 } from '../../../js/faculties.js';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const root = join(__dirname, '../../..');
+
+/**
+ * @param {string | undefined} catalogPath
+ */
+function loadTablesCatalog(catalogPath) {
+  const path = join(root, catalogPath || 'sources/bsu-tables.json');
+  if (!existsSync(path)) return { tracks: [], tables: [] };
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    return { tracks: [], tables: [] };
+  }
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 /**
  * Scrape formk1-style monitoring pages for one university config.
  * @param {object} uni
@@ -19,24 +42,52 @@ import {
  */
 export async function scrapeFormk1(uni, opts = {}) {
   const updatedAt = new Date().toISOString();
-  const faculties = [...(uni.faculties || [])];
+  const catalog = loadTablesCatalog(uni.tablesCatalog);
+  const byId = new Map(
+    (catalog.tables || []).map((t) => [String(t.id), t]),
+  );
+  const trackById = new Map(
+    (catalog.tracks || []).map((t) => [t.id, t]),
+  );
+
+  const faculties = [...(uni.faculties || [])].map((f) => ({
+    ...f,
+    id: String(f.id),
+  }));
   const specs = [];
   const errors = [];
   const discovered = [];
   const fetchVia = [];
+  /** @type {string[]} */
+  const failedFormIds = [];
+  /** @type {string[]} */
+  const okFormIds = [];
 
   if (uni.discoverFromHub && uni.hubUrl) {
     try {
       const hub = await fetchText(uni.hubUrl);
       if (hub.ok) {
-        const ids = [...hub.text.matchAll(/formk1\?id=(\d+)/gi)].map((m) => m[1]);
+        const ids = [...hub.text.matchAll(/formk1\?id=(\d+)/gi)].map(
+          (m) => m[1],
+        );
         const unique = [...new Set(ids)];
         for (const id of unique) {
           if (!faculties.some((f) => String(f.id) === String(id))) {
-            faculties.push({ id: String(id), name: `Форма / факультет ${id}` });
+            const known = byId.get(String(id));
+            faculties.push({
+              id: String(id),
+              name: known?.name || `Таблица ${id}`,
+              parseAllSections: true,
+            });
             discovered.push(id);
           }
         }
+      } else {
+        errors.push({
+          stage: 'hub',
+          message: hub.error || `hub HTTP ${hub.status}`,
+          via: hub.via,
+        });
       }
     } catch (err) {
       errors.push({ stage: 'hub', message: String(err.message || err) });
@@ -45,13 +96,24 @@ export async function scrapeFormk1(uni, opts = {}) {
 
   const list = opts.limit ? faculties.slice(0, opts.limit) : faculties;
 
-  for (const fac of list) {
+  for (let i = 0; i < list.length; i += 1) {
+    const fac = list[i];
+    if (i > 0) await sleep(400);
+
     const url = `${uni.baseUrl}${fac.id}`;
+    const meta = byId.get(String(fac.id));
+    const track = meta ? trackById.get(meta.trackId) : null;
+    const formName = meta?.name || fac.name || `Таблица ${fac.id}`;
+    const trackId = meta?.trackId || null;
+    const trackName = track?.name || null;
+
     const res = await fetchText(url);
     if (res.via) fetchVia.push({ facultyId: fac.id, via: res.via });
     if (!res.ok) {
+      failedFormIds.push(String(fac.id));
       errors.push({
         facultyId: fac.id,
+        formId: String(fac.id),
         url,
         status: res.status,
         message: res.error || 'fetch failed',
@@ -65,11 +127,24 @@ export async function scrapeFormk1(uni, opts = {}) {
     const sectionNeedles =
       fac.sectionIncludes || uni.sectionIncludes || null;
 
+    const decorate = (row) => ({
+      ...row,
+      form: String(fac.id),
+      formName,
+      trackId,
+      trackName,
+      schedule: meta?.schedule || null,
+      finance: meta?.finance || null,
+      sourceUrl: url,
+    });
+
     if (parseAll) {
       const sections = splitFacultySections(res.text);
       if (!sections.length) {
+        failedFormIds.push(String(fac.id));
         errors.push({
           facultyId: fac.id,
+          formId: String(fac.id),
           url,
           status: res.status,
           message: 'no faculty sections (td.fl) found',
@@ -78,6 +153,7 @@ export async function scrapeFormk1(uni, opts = {}) {
         continue;
       }
 
+      let added = 0;
       for (const section of sections) {
         const label = shortFacultyLabel(section.title);
         const key = facultyKey(section.title);
@@ -86,7 +162,7 @@ export async function scrapeFormk1(uni, opts = {}) {
           facultyId: key,
           facultyName: label,
           form: String(fac.id),
-          formName: fac.name || 'Дневная',
+          formName,
           sourceUrl: url,
           updatedAt,
         });
@@ -94,6 +170,7 @@ export async function scrapeFormk1(uni, opts = {}) {
         if (!parsed.length) {
           errors.push({
             facultyId: key,
+            formId: String(fac.id),
             url,
             status: res.status,
             message: `no score-bucket rows for ${label}`,
@@ -103,14 +180,22 @@ export async function scrapeFormk1(uni, opts = {}) {
         }
 
         specs.push(
-          ...parsed.map((s) => ({
-            ...s,
-            facultyId: key,
-            facultyName: label,
-            formName: fac.name || s.formName || 'Дневная',
-            sectionTitle: section.title,
-          })),
+          ...parsed.map((s) =>
+            decorate({
+              ...s,
+              facultyId: key,
+              facultyName: label,
+              sectionTitle: section.title,
+            }),
+          ),
         );
+        added += parsed.length;
+      }
+
+      if (!added) {
+        failedFormIds.push(String(fac.id));
+      } else {
+        okFormIds.push(String(fac.id));
       }
       continue;
     }
@@ -120,8 +205,10 @@ export async function scrapeFormk1(uni, opts = {}) {
       : res.text;
 
     if (sectionNeedles && !html) {
+      failedFormIds.push(String(fac.id));
       errors.push({
         facultyId: fac.id,
+        formId: String(fac.id),
         url,
         status: res.status,
         message: `no faculty section matching: ${sectionNeedles.join(' | ')}`,
@@ -138,28 +225,34 @@ export async function scrapeFormk1(uni, opts = {}) {
       facultyId: key,
       facultyName: label,
       form: String(fac.id),
-      formName: fac.name || '',
+      formName,
       sourceUrl: url,
       updatedAt,
     });
 
     if (!parsed.length) {
+      failedFormIds.push(String(fac.id));
       errors.push({
         facultyId: key,
+        formId: String(fac.id),
         url,
         status: res.status,
         message: 'no score-bucket rows',
         via: res.via,
       });
+      continue;
     }
+
     specs.push(
-      ...parsed.map((s) => ({
-        ...s,
-        facultyId: key,
-        facultyName: label,
-        formName: fac.name || s.formName,
-      })),
+      ...parsed.map((s) =>
+        decorate({
+          ...s,
+          facultyId: key,
+          facultyName: label,
+        }),
+      ),
     );
+    okFormIds.push(String(fac.id));
   }
 
   return {
@@ -171,6 +264,9 @@ export async function scrapeFormk1(uni, opts = {}) {
       discoveredFacultyIds: discovered,
       fetchedFaculties: list.length,
       fetchVia,
+      okFormIds,
+      failedFormIds,
+      hubUrl: uni.hubUrl || null,
     },
   };
 }
