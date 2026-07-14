@@ -143,62 +143,120 @@
   color: var(--ink-faint);
 }
 
-/* Chance track */
+/* Chance track — clean seat rail (no per-bucket stripes) */
 .chance-track-wrap {
   display: grid;
   gap: var(--space-2);
+  padding-top: var(--space-1);
 }
 
-.chance-track {
+.chance-rail {
   position: relative;
-  display: flex;
-  height: 0.75rem;
-  border: 1px solid var(--line);
+  height: 0.55rem;
   border-radius: 999px;
-  overflow: hidden;
   background: var(--soft);
+  overflow: visible;
 }
 
-.chance-seg {
-  height: 100%;
-  background: color-mix(in srgb, var(--ink) 28%, transparent);
-  min-width: 0;
-}
-
-.chance-seg.mine {
-  background: var(--ink);
-}
-
-.chance-seg.empty {
-  background: transparent;
-}
-
-.chance-marker {
+.chance-fill {
   position: absolute;
-  top: -0.35rem;
-  bottom: -0.35rem;
-  width: 1px;
+  inset: 0 auto 0 0;
+  background: color-mix(in srgb, var(--ink) 18%, var(--soft));
+  transform-origin: left center;
+  animation: chance-fill-in 420ms ease-out both;
+}
+
+.chance-cut {
+  position: absolute;
+  top: -0.28rem;
+  bottom: -0.28rem;
+  width: 1.5px;
   background: var(--ink);
   transform: translateX(-50%);
+  border-radius: 1px;
 }
 
-.chance-marker.you {
-  width: 0.5rem;
-  height: 0.5rem;
+.chance-you {
+  position: absolute;
   top: 50%;
-  bottom: auto;
+  width: 0.7rem;
+  height: 0.7rem;
   border-radius: 50%;
-  border: 1.5px solid var(--bg-elev);
-  background: var(--ink);
+  background: var(--bg-elev);
+  border: 2px solid var(--ink);
   transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 1px var(--ink);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg-elev) 80%, transparent);
+  animation: chance-you-in 380ms ease-out both;
 }
 
-.chance-legend {
-  display: flex;
-  justify-content: space-between;
+.chance-axis {
+  position: relative;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+}
+
+.chance-axis-cut,
+.chance-axis-you {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
   font-size: var(--text-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.chance-axis-cut {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.chance-axis-you {
   color: var(--ink-dim);
+}
+
+.chance-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.chance-stat.is-muted {
+  color: var(--ink-dim);
+}
+
+@keyframes chance-fill-in {
+  from {
+    transform: scaleX(0.08);
+    opacity: 0.55;
+  }
+  to {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes chance-you-in {
+  from {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chance-fill,
+  .chance-you {
+    animation: none;
+  }
 }
 
 /* Histogram — full-width, no scroll on mobile */

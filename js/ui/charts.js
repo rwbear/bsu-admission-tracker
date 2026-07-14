@@ -13,7 +13,8 @@ export function summarizeStatuses(enrichedRows) {
 }
 
 /**
- * Visual chance track (segmented bar + seat / you markers).
+ * Visual chance track: applicants ordered high→low, seats fill from the left.
+ * Your score is a pin; the seat cut is a single vertical mark — no bucket stripes.
  * @param {HTMLElement} mount
  * @param {object} row
  */
@@ -25,56 +26,137 @@ export function renderChanceTrack(mount, row) {
     plan: 0,
     seatCutRatio: 0,
     myMarkerRatio: null,
+    peopleAbove: null,
   };
-  const denom = Math.max(chance.totalInBuckets, chance.plan, 1);
 
-  const track = el('div', {
-    className: 'chance-track',
+  const plan = chance.plan || 0;
+  const seatPct = Math.min(100, Math.max(0, (chance.seatCutRatio || 0) * 100));
+  const youPct =
+    chance.myMarkerRatio == null
+      ? null
+      : Math.min(100, Math.max(0, chance.myMarkerRatio * 100));
+
+  const rail = el('div', {
+    className: 'chance-rail',
     role: 'img',
-    'aria-label': 'Дорожка конкурса',
+    'aria-label': chanceAria(chance, youPct, seatPct),
   });
 
-  for (const seg of chance.segments || []) {
-    const width = (seg.count / denom) * 100;
-    track.append(
+  // Seats zone fills from the left (stronger scores claim places first).
+  const fillRadius =
+    seatPct >= 99.5 ? '999px' : seatPct <= 0.5 ? '0' : '999px 0 0 999px';
+  rail.append(
+    el('div', {
+      className: 'chance-fill',
+      style: `width:${seatPct.toFixed(2)}%;border-radius:${fillRadius}`,
+    }),
+  );
+
+  if (plan > 0) {
+    rail.append(
       el('div', {
-        className: `chance-seg${seg.count === 0 ? ' empty' : ''}${seg.isMine ? ' mine' : ''}`,
-        title: `${seg.label}: ${seg.count}`,
-        style: `width:${Math.max(width, seg.count > 0 ? 0.5 : 0)}%`,
+        className: 'chance-cut',
+        title: `План приёма: ${plan}`,
+        style: `left:${seatPct.toFixed(2)}%`,
       }),
     );
   }
 
-  if (chance.plan > 0) {
-    track.append(
+  if (youPct != null) {
+    rail.append(
       el('div', {
-        className: 'chance-marker seat',
-        title: `Мест: ${chance.plan}`,
-        style: `left:${((chance.seatCutRatio || 0) * 100).toFixed(2)}%`,
-      }),
-    );
-  }
-
-  if (chance.myMarkerRatio != null) {
-    track.append(
-      el('div', {
-        className: 'chance-marker you',
+        className: 'chance-you',
         title: 'Твой балл',
-        style: `left:${(chance.myMarkerRatio * 100).toFixed(2)}%`,
+        style: `left:${youPct.toFixed(2)}%`,
       }),
     );
   }
 
-  const wrap = el('div', { className: 'chance-track-wrap' }, [
-    track,
-    el('div', { className: 'chance-legend' }, [
-      el('span', { text: 'Выше' }),
-      el('span', { text: `Мест ${chance.plan || 0}` }),
-      el('span', { text: 'Ниже' }),
-    ]),
-  ]);
+  const axis = el('div', { className: 'chance-axis' });
+  /** Nudge overlapping labels so "ты" and "мест" stay readable. */
+  let cutLabelPct = seatPct;
+  let youLabelPct = youPct;
+  if (youPct != null && plan > 0 && Math.abs(youPct - seatPct) < 14) {
+    if (youPct <= seatPct) {
+      youLabelPct = Math.max(0, seatPct - 14);
+      cutLabelPct = Math.min(100, seatPct + 2);
+    } else {
+      cutLabelPct = Math.max(0, seatPct - 2);
+      youLabelPct = Math.min(100, seatPct + 14);
+    }
+  }
 
-  mount.append(wrap);
+  if (plan > 0) {
+    axis.append(
+      el('span', {
+        className: 'chance-axis-cut',
+        text: `мест ${plan}`,
+        style: `left:${cutLabelPct.toFixed(2)}%`,
+      }),
+    );
+  }
+  if (youLabelPct != null) {
+    axis.append(
+      el('span', {
+        className: 'chance-axis-you',
+        text: 'ты',
+        style: `left:${youLabelPct.toFixed(2)}%`,
+      }),
+    );
+  }
+
+  const above =
+    chance.peopleAbove == null ? null : Number(chance.peopleAbove);
+  const stats = el('div', { className: 'chance-stats' });
+  if (above != null) {
+    stats.append(
+      el('span', {
+        className: 'chance-stat',
+        text:
+          above === 0
+            ? 'Никого выше тебя'
+            : above === 1
+              ? '1 выше тебя'
+              : `${above} выше тебя`,
+      }),
+    );
+  } else {
+    stats.append(
+      el('span', {
+        className: 'chance-stat is-muted',
+        text: 'Введи балл — увидишь своё место',
+      }),
+    );
+  }
+  if (plan > 0) {
+    stats.append(
+      el('span', {
+        className: 'chance-stat is-muted',
+        text: `план ${plan}`,
+      }),
+    );
+  }
+
+  mount.append(
+    el('div', { className: 'chance-track-wrap' }, [rail, axis, stats]),
+  );
+}
+
+/**
+ * @param {object} chance
+ * @param {number | null} youPct
+ * @param {number} seatPct
+ */
+function chanceAria(chance, youPct, seatPct) {
+  const parts = [`План ${chance.plan || 0} мест`];
+  if (chance.peopleAbove != null) {
+    parts.push(`${chance.peopleAbove} выше тебя`);
+  }
+  if (youPct != null) {
+    parts.push(`ты на ${youPct.toFixed(0)}% дорожки`);
+  }
+  parts.push(`отсечение мест на ${seatPct.toFixed(0)}%`);
+  return parts.join(', ');
 }
 
 /**
