@@ -108,13 +108,44 @@ jobs:
 
       - name: Commit updated data
         if: steps.changes.outputs.changed == 'true'
+        id: commit
         run: |
           git config user.name "prohod-bot"
           git config user.email "prohod-bot@users.noreply.github.com"
           git add data/*.json
           if git diff --staged --quiet; then
             echo "Nothing to commit"
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git commit -m "data: refresh admission snapshots"
           git push origin "HEAD:${{ steps.target.outputs.branch }}"
+          echo "pushed=true" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # Publish the exact commit SHA so clients can fetch SHA-pinned raw URLs.
+      # Branch-tip raw.githubusercontent.com is CDN-stale even with ?bust=.
+      - name: Publish tip SHA
+        if: steps.commit.outputs.pushed == 'true'
+        run: |
+          SHA="${{ steps.commit.outputs.sha }}"
+          BRANCH="${{ steps.target.outputs.branch }}"
+          node --input-type=module <<EOF
+          import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+          const tipPath = 'data/latest.json';
+          const tip = existsSync(tipPath)
+            ? JSON.parse(readFileSync(tipPath, 'utf8'))
+            : { universities: [] };
+          tip.commitSha = process.env.TIP_SHA;
+          tip.publishedAt = new Date().toISOString();
+          writeFileSync(tipPath, JSON.stringify(tip, null, 2) + '\n');
+          EOF
+          git add data/latest.json
+          if git diff --staged --quiet; then
+            echo "Tip already had sha"
+            exit 0
+          fi
+          git commit -m "data: publish tip sha"
+          git push origin "HEAD:${BRANCH}"
+        env:
+          TIP_SHA: ${{ steps.commit.outputs.sha }}
