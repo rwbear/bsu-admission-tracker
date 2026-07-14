@@ -5,10 +5,9 @@ name: Scrape admission tables
 # This workflow still checks out the GitHub Pages branch and pushes data there.
 on:
   schedule:
-    # Two overlapping 10-minute grids. GitHub routinely delays/skips a single
-    # */10 cron on free/public repos; redundant slots recover freshness faster.
-    - cron: "0,10,20,30,40,50 * * * *"
-    - cron: "5,15,25,35,45,55 * * * *"
+    # Every 5 minutes. Dual legacy grids collapsed — one clear cadence.
+    # Schedules only fire from default branch (main); keep this file in sync.
+    - cron: "*/5 * * * *"
   workflow_dispatch:
   push:
     branches:
