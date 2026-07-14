@@ -1,4 +1,1 @@
-# Forces a scrape workflow run via push path filter (data/.scrape-tick).
-# Updated by GitHub Actions after each scrape to keep a ~5-minute cadence
-# even when `schedule` events are dropped by GitHub.
-2026-07-14T14:30:00Z
+2026-07-14T14:34:30Z
