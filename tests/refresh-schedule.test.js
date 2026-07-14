@@ -49,6 +49,7 @@ describe('refresh schedule', () => {
     assert.equal(resolveEffectivePollMs(ten, null, now), STALE_POLL_MS);
     assert.equal(isSnapshotStale(stale, now), true);
     assert.equal(isSnapshotStale(fresh, now), false);
-    assert.ok(STALE_AFTER_MS < ten);
+    assert.ok(STALE_AFTER_MS > ten);
+    assert.ok(STALE_POLL_MS < ten);
   });
 });
