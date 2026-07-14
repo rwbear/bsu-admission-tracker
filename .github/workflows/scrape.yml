@@ -108,6 +108,18 @@ jobs:
             process.exit(1);
           }
           console.log('Fresh snapshot OK:', data.specialtyCount, 'rows @', data.updatedAt);
+          const okForms = data.scrapeMeta?.okFormIds || [];
+          const tables = data.tables || [];
+          console.log('Live tables:', okForms.length || tables.filter((t) => t.specialtyCount > 0).length);
+          if ((okForms.length === 0) && !(tables.some((t) => (t.specialtyCount || 0) > 0))) {
+            console.error('No live monitoring tables in snapshot');
+            process.exit(1);
+          }
+          const defaultTable = tables.find((t) => t.id === '7') || tables.find((t) => t.default);
+          if (defaultTable && !(defaultTable.specialtyCount > 0) && data.scrapeMeta?.retainedPrevious) {
+            console.error('Default daytime-paid table missing after failed scrape');
+            process.exit(1);
+          }
           EOF
 
       - name: Commit updated data
