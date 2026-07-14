@@ -5,6 +5,8 @@ import {
   META_AGE_MS,
   META_COUNTDOWN_MS,
   META_CYCLE_MS,
+  META_FADE_MS,
+  metaFadeMs,
 } from '../js/command-meta.js';
 
 describe('command meta rotator', () => {
@@ -26,5 +28,11 @@ describe('command meta rotator', () => {
 
   it('forces countdown line while refreshing', () => {
     assert.equal(metaRotatorPhase(100, { refreshing: true }), 'countdown');
+  });
+
+  it('uses a deliberate fade, skipped under reduced motion', () => {
+    assert.ok(META_FADE_MS >= 600);
+    assert.equal(metaFadeMs(false), META_FADE_MS);
+    assert.equal(metaFadeMs(true), 0);
   });
 });
