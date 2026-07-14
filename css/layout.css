@@ -138,52 +138,6 @@ input {
   gap: var(--space-4);
 }
 
-.ascii-hero {
-  position: relative;
-  padding: var(--space-4);
-  overflow: hidden;
-}
-
-.ascii-art {
-  margin: 0;
-  font-size: 0.65rem;
-  line-height: 1.15;
-  color: var(--ink-dim);
-  white-space: pre;
-  overflow: hidden;
-}
-
-.ascii-art-narrow {
-  display: none;
-}
-
-.hero-title {
-  position: absolute;
-  left: var(--space-4);
-  bottom: var(--space-4);
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-hero);
-  font-weight: 800;
-  letter-spacing: -0.06em;
-  line-height: 0.9;
-  text-transform: uppercase;
-  color: var(--ink);
-  mix-blend-mode: multiply;
-  animation: title-in 480ms ease-out both;
-}
-
-@keyframes title-in {
-  from {
-    opacity: 0;
-    transform: translateY(0.4rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .hero-sub {
   margin: 0;
   font-family: var(--font-display);
