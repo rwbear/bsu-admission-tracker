@@ -50,7 +50,6 @@ async function getJson(path, opts = {}) {
 }
 
 /**
- * Wrap so sync fetch() throws become rejections for allSettled siblings.
  * @param {string} path
  * @param {{ bust?: boolean, timeoutMs?: number }} [opts]
  */
@@ -71,7 +70,7 @@ function isUniPayload(payload) {
 }
 
 /**
- * Prefer the snapshot with the newest updatedAt (last successful scrape).
+ * Prefer the snapshot with the newest updatedAt.
  * @param {object[]} payloads
  */
 export function pickNewest(payloads) {
@@ -119,7 +118,29 @@ async function latestCommitSha(repo, branch, filePath) {
 }
 
 /**
- * Resolve repo/branch for remote snapshot pulls.
+ * Read tip SHA written by the scraper (no GitHub API, no CDN games).
+ * @param {string} repo
+ * @param {string} branch
+ * @returns {Promise<string | null>}
+ */
+async function tipShaFromLatest(repo, branch) {
+  const urls = [
+    `./data/latest.json`,
+    `https://raw.githubusercontent.com/${repo}/${branch}/data/latest.json`,
+  ];
+  for (const url of urls) {
+    try {
+      const tip = await getJson(url, { bust: true, timeoutMs: 4_000 });
+      const sha = tip?.commitSha || tip?.sha || null;
+      if (sha && /^[0-9a-f]{7,40}$/i.test(String(sha))) return String(sha);
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
+}
+
+/**
  * @param {object | null} index
  */
 export function resolveOrigin(index) {
@@ -147,61 +168,54 @@ export async function loadIndex() {
 }
 
 /**
- * Snapshot candidates. Prefer raw.githubusercontent.com (near-instant after
- * Actions push) over GitHub Pages CDN (often cached up to ~10 minutes).
+ * Snapshot candidates.
+ *
+ * IMPORTANT: branch-tip raw.githubusercontent.com URLs are CDN-stale even
+ * with ?cache-bust — only SHA-pinned raw URLs are reliably fresh. Same-origin
+ * Pages can also lag; prefer SHA, then Pages, then tip raw last.
  *
  * @param {string} universityId
  * @param {{ repo: string, branch: string, bust: boolean }} opts
  */
 async function loadSnapshotCandidates(universityId, opts) {
   const file = `data/${universityId}.json`;
-  const rawBase = `https://raw.githubusercontent.com/${opts.repo}/${opts.branch}`;
 
-  const shaPromise = withTimeout(
-    latestCommitSha(opts.repo, opts.branch, file),
-    1_500,
-    null,
+  // Resolve SHA from tip file + API in parallel (tip is faster when present).
+  const [tipSha, apiSha] = await Promise.all([
+    withTimeout(tipShaFromLatest(opts.repo, opts.branch), 3_000, null),
+    withTimeout(latestCommitSha(opts.repo, opts.branch, file), 3_000, null),
+  ]);
+  const sha = tipSha || apiSha;
+
+  /** @type {Promise<object>[]} */
+  const tasks = [];
+  if (sha) {
+    tasks.push(
+      getJsonSettled(
+        `https://raw.githubusercontent.com/${opts.repo}/${sha}/${file}`,
+        { timeoutMs: 8_000 },
+      ),
+    );
+  }
+  // Pages with bust — often OK; secondary.
+  tasks.push(getJsonSettled(`./${file}`, { bust: opts.bust, timeoutMs: 8_000 }));
+  // Branch tip raw — last resort (CDN may ignore bust).
+  tasks.push(
+    getJsonSettled(
+      `https://raw.githubusercontent.com/${opts.repo}/${opts.branch}/${file}`,
+      { bust: true, timeoutMs: 8_000 },
+    ),
   );
 
-  /** Primary: raw tip (freshest) + same-origin Pages, in parallel. */
-  const primary = [
-    getJsonSettled(`${rawBase}/${file}`, { bust: true, timeoutMs: 8_000 }),
-    getJsonSettled(`./${file}`, { bust: opts.bust, timeoutMs: 8_000 }),
-  ];
-
-  const [primarySettled, sha] = await Promise.all([
-    Promise.allSettled(primary),
-    shaPromise,
-  ]);
-
-  /** @type {object[]} */
-  const payloads = [];
-  for (const r of primarySettled) {
-    if (r.status === 'fulfilled' && isUniPayload(r.value)) {
-      payloads.push(r.value);
-    }
-  }
-
-  // SHA-pinned raw bypasses every CDN. Only worth it when we have a sha.
-  if (sha) {
-    const shaUrl = `https://raw.githubusercontent.com/${opts.repo}/${sha}/${file}`;
-    const shaSettled = await Promise.allSettled([
-      getJsonSettled(shaUrl, { timeoutMs: 6_000 }),
-    ]);
-    for (const r of shaSettled) {
-      if (r.status === 'fulfilled' && isUniPayload(r.value)) {
-        payloads.push(r.value);
-      }
-    }
-  }
-
-  return payloads;
+  const settled = await Promise.allSettled(tasks);
+  return settled
+    .filter((r) => r.status === 'fulfilled' && isUniPayload(r.value))
+    .map((r) => /** @type {PromiseFulfilledResult<object>} */ (r).value);
 }
 
 /**
  * Load the newest committed university snapshot.
- * Origin comes from CONFIG immediately — never wait on index.json first
- * (that serial wait was making the board look "late" on every visit).
+ * Never blocks on index.json before starting the real fetch.
  *
  * @param {string} universityId
  * @param {{ bust?: boolean }} [opts]
