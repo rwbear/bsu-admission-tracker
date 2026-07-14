@@ -7,6 +7,11 @@ import { scrapeBntu } from './adapters/bntu.mjs';
 import { scrapeGrsu } from './adapters/grsu.mjs';
 import { dedupeSpecs } from './normalize.mjs';
 import { sortFaculties } from '../../js/faculties.js';
+import {
+  listCatalogTables,
+  trackById,
+  sourceUrlForTable,
+} from '../../js/tables.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, '../..');
@@ -120,8 +125,29 @@ async function main() {
       continue;
     }
 
-    const specs = dedupeSpecs(result.specs || []);
+    const liveSpecs = dedupeSpecs(result.specs || []);
     const prev = loadExisting(uni.id);
+    const failedFormIds = (result.meta?.failedFormIds || []).map(String);
+    const okFormIds = (result.meta?.okFormIds || []).map(String);
+
+    // Per-table soft-fail: keep prior rows for tables that failed this run.
+    let specs = liveSpecs;
+    let retainedFormIds = [];
+    if (prev?.specialties?.length && failedFormIds.length) {
+      const kept = [];
+      for (const row of prev.specialties) {
+        if (failedFormIds.includes(String(row.form))) kept.push(row);
+      }
+      if (kept.length) {
+        retainedFormIds = [
+          ...new Set(kept.map((r) => String(r.form))),
+        ];
+        specs = dedupeSpecs([...liveSpecs, ...kept]);
+        console.warn(
+          `[keep-forms] ${uni.id}: retained ${kept.length} rows for forms ${retainedFormIds.join(',')}`,
+        );
+      }
+    }
 
     // Soft-fail: if scrape returned zero but we had prior data, keep prior and note it
     let payload;
@@ -135,6 +161,10 @@ async function main() {
       };
     } else {
       const faculties = buildFacultyIndex(specs, uni);
+      const tables = buildTablesIndex(specs, uni);
+      const allFailed =
+        okFormIds.length === 0 &&
+        (failedFormIds.length > 0 || liveSpecs.length === 0);
       payload = {
         universityId: uni.id,
         name: uni.name,
@@ -143,9 +173,15 @@ async function main() {
         updatedAt: result.updatedAt,
         specialtyCount: specs.length,
         faculties,
+        tables,
         specialties: specs,
         scrapeErrors: result.errors || [],
-        scrapeMeta: result.meta || {},
+        scrapeMeta: {
+          ...(result.meta || {}),
+          retainedFormIds,
+          // Full retention only when nothing live succeeded.
+          retainedPrevious: allFailed && Boolean(prev?.specialties?.length),
+        },
       };
     }
 
@@ -153,14 +189,14 @@ async function main() {
     if (!args.dry) {
       const contentChanged =
         !prev || stablePayload(prev) !== stablePayload(payload);
-      const successfulLive = specs.length > 0;
+      const successfulLive = (result.meta?.okFormIds || []).length > 0 || liveSpecs.length > 0;
       // Always publish a successful scrape so updatedAt advances every run.
       // Retained/failed scrapes only write when the file on disk must change.
       if (successfulLive || contentChanged) {
         writeFileSync(outPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
         changed = true;
         console.log(
-          `[write] ${outPath} (${payload.specialtyCount ?? payload.specialties.length} specialties)` +
+          `[write] ${outPath} (${payload.specialtyCount ?? payload.specialties.length} specialties, tables=${(payload.tables || []).length})` +
             (successfulLive && !contentChanged ? ' [heartbeat]' : ''),
         );
       } else {
@@ -251,6 +287,64 @@ function buildFacultyIndex(specs, _uni) {
   return sortFaculties([...map.values()]);
 }
 
+/**
+ * Monitoring-table index (hub channels), catalog order first.
+ * @param {object[]} specs
+ * @param {object} uni
+ */
+function buildTablesIndex(specs, uni) {
+  const counts = new Map();
+  for (const s of specs || []) {
+    const id = String(s.form || '');
+    if (!id) continue;
+    counts.set(id, (counts.get(id) || 0) + 1);
+  }
+
+  const catalog = listCatalogTables();
+  const seen = new Set();
+  const tables = [];
+
+  for (const t of catalog) {
+    const count = counts.get(t.id) || 0;
+    if (!count && !(uni.faculties || []).some((f) => String(f.id) === t.id)) {
+      continue;
+    }
+    seen.add(t.id);
+    const track = trackById(t.trackId);
+    tables.push({
+      id: t.id,
+      name: t.name,
+      shortName: t.shortName || t.name,
+      trackId: t.trackId,
+      trackName: track?.name || null,
+      schedule: t.schedule || null,
+      finance: t.finance || null,
+      default: Boolean(t.default),
+      specialtyCount: count,
+      sourceUrl: sourceUrlForTable(t.id),
+    });
+  }
+
+  for (const [id, count] of counts) {
+    if (seen.has(id)) continue;
+    const sample = (specs || []).find((s) => String(s.form) === id);
+    tables.push({
+      id,
+      name: sample?.formName || `Таблица ${id}`,
+      shortName: sample?.formName || `Таблица ${id}`,
+      trackId: sample?.trackId || null,
+      trackName: sample?.trackName || null,
+      schedule: sample?.schedule || null,
+      finance: sample?.finance || null,
+      default: id === '7',
+      specialtyCount: count,
+      sourceUrl: sourceUrlForTable(id),
+    });
+  }
+
+  return tables;
+}
+
 function summarize(uni, payload) {
   return {
     id: uni.id,
@@ -263,6 +357,12 @@ function summarize(uni, payload) {
       id: f.id,
       name: f.name,
       specialtyCount: f.specialtyCount,
+    })),
+    tables: (payload.tables || []).map((t) => ({
+      id: t.id,
+      name: t.name,
+      specialtyCount: t.specialtyCount,
+      trackId: t.trackId,
     })),
   };
 }

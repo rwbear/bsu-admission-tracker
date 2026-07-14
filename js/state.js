@@ -1,15 +1,18 @@
 import { DEFAULT_FACULTY_ID } from './faculties.js';
+import { DEFAULT_TABLE_ID } from './tables.js';
 
 const KEYS = {
   score: 'prohod-sb-score',
   selected: 'prohod-sb-selected',
   faculty: 'prohod-sb-faculty',
+  form: 'prohod-sb-form',
 };
 
 /** @type {{
  *  score: number | null,
  *  selectedId: string | null,
  *  facultyId: string | null,
+ *  formId: string | null,
  *  uniData: object | null,
  *  loading: boolean,
  *  error: string | null,
@@ -19,6 +22,7 @@ export const state = {
   score: null,
   selectedId: null,
   facultyId: DEFAULT_FACULTY_ID,
+  formId: DEFAULT_TABLE_ID,
   uniData: null,
   loading: false,
   error: null,
@@ -46,8 +50,8 @@ export function loadPrefs() {
   state.selectedId = localStorage.getItem(KEYS.selected);
   const savedFaculty = localStorage.getItem(KEYS.faculty);
   state.facultyId = savedFaculty || DEFAULT_FACULTY_ID;
-  // Drop obsolete day/zaoch pref if present
-  localStorage.removeItem('prohod-sb-form');
+  const savedForm = localStorage.getItem(KEYS.form);
+  state.formId = savedForm || DEFAULT_TABLE_ID;
 }
 
 export function setScore(value) {
@@ -80,7 +84,19 @@ export function setFaculty(id) {
   state.facultyId = id;
   if (id) localStorage.setItem(KEYS.faculty, id);
   else localStorage.removeItem(KEYS.faculty);
-  // Specialty selection is faculty-scoped — clear so resolveSelection picks anew.
+  state.selectedId = null;
+  localStorage.removeItem(KEYS.selected);
+  emit();
+}
+
+/**
+ * @param {string | null} id
+ */
+export function setForm(id) {
+  state.formId = id;
+  if (id) localStorage.setItem(KEYS.form, id);
+  else localStorage.removeItem(KEYS.form);
+  // Switching monitoring table resets faculty scope + selection.
   state.selectedId = null;
   localStorage.removeItem(KEYS.selected);
   emit();

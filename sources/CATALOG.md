@@ -1,14 +1,30 @@
-# External monitoring catalog (dormant)
+# BSU monitoring tables
 
-This product is currently scoped to **Институт бизнеса БГУ** only:
+Official hub:
+https://abiturient.bsu.by/priemnaia-kampaniia/monitoring-podachi-zaiavlenii
 
-- https://abit.bsu.by/formk1?id=7
+Catalog file: `sources/bsu-tables.json` (mirrored in `js/tables.js`).
 
-Заочная (`formk1?id=8`) currently has no Институт бизнеса block, so it is not enabled.
+| Track | id | Label |
+|-------|-----|--------|
+| 3 сертификата | 32 | Дневная · бюджет |
+| 3 сертификата | 29 | Военный · дневная · бюджет |
+| 3 сертификата | 2 | Заочная · бюджет |
+| 3 сертификата | **7** | **Дневная · платная (default)** |
+| 3 сертификата | 8 | Заочная · платная |
+| 2 сертификата | 34 | Дневная · бюджет |
+| 2 сертификата | 21 | Дневная · бюджет · СКК |
+| 2 сертификата | 22 | Дневная · платная · СКК |
+| Без сертификатов | 5 | Дневная · бюджет |
+| Без сертификатов | 6 | Заочная · бюджет |
+| Без сертификатов | 16 | Дневная · платная |
+| Без сертификатов | 17 | Заочная · платная |
+| Без сертификатов | 13 | Заочная · платная · 2-е ВО |
 
-Source confirmation: [sb.bsu.by](https://sb.bsu.by/novosty/podacha-dokumentov-v-institut-biznesa-bgu-vajnaia-informaciia-dlia-abiturientov)
+Default product path remains **id=7** + Институт бизнеса БГУ.
 
-Broader Belarus monitoring hub (for a future multi-uni mode):
-[kudapostupat.by/index/monitor](https://kudapostupat.by/index/monitor)
+Rollback before this expansion:
+- branch `cursor/checkpoint-pre-hub-be86`
+- tag `checkpoint/pre-hub-expansion-20260714`
 
-Adapters for other unis remain under `scripts/scrape/adapters/` but are not enabled in `universities.json`.
+See `docs/hub-expansion-plan.md`.

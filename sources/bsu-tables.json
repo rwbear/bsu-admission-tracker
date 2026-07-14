@@ -1,0 +1,133 @@
+{
+  "hubUrl": "https://abiturient.bsu.by/priemnaia-kampaniia/monitoring-podachi-zaiavlenii",
+  "baseUrl": "https://abit.bsu.by/formk1?id=",
+  "defaultId": "7",
+  "tracks": [
+    {
+      "id": "cert3",
+      "name": "3 сертификата ЦТ или ЦЭ",
+      "shortName": "3 сертификата"
+    },
+    {
+      "id": "cert2",
+      "name": "2 сертификата ЦТ или ЦЭ",
+      "shortName": "2 сертификата"
+    },
+    {
+      "id": "nocert",
+      "name": "Без сертификатов ЦТ или ЦЭ",
+      "shortName": "Без сертификатов"
+    }
+  ],
+  "tables": [
+    {
+      "id": "32",
+      "trackId": "cert3",
+      "name": "Дневная форма. Бюджет",
+      "shortName": "Дневная · бюджет",
+      "schedule": "day",
+      "finance": "budget",
+      "minBytes": 40000,
+      "minSections": 8
+    },
+    {
+      "id": "29",
+      "trackId": "cert3",
+      "name": "Военный факультет. Дневная форма. Бюджет",
+      "shortName": "Военный · дневная · бюджет",
+      "schedule": "day",
+      "finance": "budget"
+    },
+    {
+      "id": "2",
+      "trackId": "cert3",
+      "name": "Заочная форма. Бюджет",
+      "shortName": "Заочная · бюджет",
+      "schedule": "zaoch",
+      "finance": "budget"
+    },
+    {
+      "id": "7",
+      "trackId": "cert3",
+      "name": "Дневная платная форма",
+      "shortName": "Дневная · платная",
+      "schedule": "day",
+      "finance": "paid",
+      "default": true,
+      "minBytes": 40000,
+      "minSections": 8
+    },
+    {
+      "id": "8",
+      "trackId": "cert3",
+      "name": "Заочная платная форма",
+      "shortName": "Заочная · платная",
+      "schedule": "zaoch",
+      "finance": "paid"
+    },
+    {
+      "id": "34",
+      "trackId": "cert2",
+      "name": "Дневная форма. Бюджет",
+      "shortName": "Дневная · бюджет",
+      "schedule": "day",
+      "finance": "budget"
+    },
+    {
+      "id": "21",
+      "trackId": "cert2",
+      "name": "Дневная форма. Бюджет. Факультет социокультурных коммуникаций",
+      "shortName": "Дневная · бюджет · СКК",
+      "schedule": "day",
+      "finance": "budget"
+    },
+    {
+      "id": "22",
+      "trackId": "cert2",
+      "name": "Дневная платная форма. Факультет социокультурных коммуникаций",
+      "shortName": "Дневная · платная · СКК",
+      "schedule": "day",
+      "finance": "paid"
+    },
+    {
+      "id": "5",
+      "trackId": "nocert",
+      "name": "Дневная форма. Бюджет",
+      "shortName": "Дневная · бюджет",
+      "schedule": "day",
+      "finance": "budget"
+    },
+    {
+      "id": "6",
+      "trackId": "nocert",
+      "name": "Заочная форма. Бюджет",
+      "shortName": "Заочная · бюджет",
+      "schedule": "zaoch",
+      "finance": "budget"
+    },
+    {
+      "id": "16",
+      "trackId": "nocert",
+      "name": "Дневная платная форма",
+      "shortName": "Дневная · платная",
+      "schedule": "day",
+      "finance": "paid"
+    },
+    {
+      "id": "17",
+      "trackId": "nocert",
+      "name": "Заочная платная форма",
+      "shortName": "Заочная · платная",
+      "schedule": "zaoch",
+      "finance": "paid"
+    },
+    {
+      "id": "13",
+      "trackId": "nocert",
+      "name": "Заочная платная форма получения второго высшего образования",
+      "shortName": "Заочная · платная · 2-е ВО",
+      "schedule": "zaoch",
+      "finance": "paid"
+    }
+  ]
+}
