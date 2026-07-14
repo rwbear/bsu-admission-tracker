@@ -291,16 +291,6 @@ input {
   justify-content: space-between;
 }
 
-@media (max-width: 360px) {
-  .ascii-art-wide {
-    display: none;
-  }
-
-  .ascii-art-narrow {
-    display: block;
-  }
-}
-
 @media (min-width: 768px) {
   .master-detail {
     grid-template-columns: minmax(0, 0.42fr) minmax(0, 0.58fr);
@@ -327,7 +317,6 @@ input {
 
 @media (prefers-reduced-motion: reduce) {
   .live-dot,
-  .hero-title,
   .detail-inner {
     animation: none;
   }
