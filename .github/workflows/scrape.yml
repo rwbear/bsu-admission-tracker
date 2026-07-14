@@ -149,29 +149,34 @@ jobs:
         env:
           TIP_SHA: ${{ steps.commit.outputs.sha }}
 
-      # GitHub schedule is not trustworthy here (hours between fires). After every
-      # attempt, wait ~4.5 minutes on the runner (free for public repos) and push
-      # a tick that re-triggers this workflow — a reliable ~5-minute cadence.
+      # GitHub's schedule event is unreliable here. GITHUB_TOKEN pushes also cannot
+      # re-trigger workflows (by design). Prefer secrets.SCRAPE_PAT (fine-grained
+      # PAT: Actions write + Contents write) to dispatch the next run after a wait.
       - name: Arm next scrape
         if: always() && !cancelled()
         env:
           BRANCH: ${{ steps.target.outputs.branch }}
+          SCRAPE_PAT: ${{ secrets.SCRAPE_PAT }}
+          GH_TOKEN: ${{ secrets.SCRAPE_PAT || github.token }}
         run: |
           set -e
           echo "Waiting 270s before arming the next scrape…"
           sleep 270
+
           git config user.name "prohod-bot"
           git config user.email "prohod-bot@users.noreply.github.com"
           git fetch origin "$BRANCH"
           git reset --hard "origin/$BRANCH"
           mkdir -p data
-          date -u +%Y-%m-%dT%H:%M:%SZ > data/.scrape-tick
+          date -u +%Y-%m-%dT%H:%M:%S.%NZ > data/.scrape-tick
           git add data/.scrape-tick
-          if git diff --staged --quiet; then
-            # Force a new blob if the second resolution somehow matches.
-            echo "armed $(date -u +%Y-%m-%dT%H:%M:%S.%NZ)" > data/.scrape-tick
-            git add data/.scrape-tick
+          git commit -m "chore: arm next scrape" || true
+          git push origin "HEAD:$BRANCH" || true
+
+          if [ -n "$SCRAPE_PAT" ]; then
+            # PAT bypasses the GITHUB_TOKEN “no recursive workflow” rule.
+            GH_TOKEN="$SCRAPE_PAT" gh workflow run "Scrape admission tables" --ref main
+            echo "Dispatched next scrape via SCRAPE_PAT → main"
+          else
+            echo "::warning::Secret SCRAPE_PAT is not set. GITHUB_TOKEN cannot re-trigger this workflow, so the ~5-minute chain will stop until the next manual/code push or a rare schedule event. Create a fine-grained PAT (Actions: write, Contents: write) and add it as repository secret SCRAPE_PAT."
           fi
-          git commit -m "chore: arm next scrape"
-          git push origin "HEAD:$BRANCH"
-          echo "Armed next scrape on $BRANCH"
