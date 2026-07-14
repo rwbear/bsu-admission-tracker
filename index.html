@@ -17,10 +17,12 @@
     <header class="command" id="command">
       <div class="wrap command-inner">
         <a class="command-brand" href="#top">r.w.b. | production</a>
-        <button type="button" class="command-meta" id="live-refresh" title="Обновить данные" aria-label="Обновить данные">
+        <div class="command-meta" id="update-status" title="Автообновление каждые 5 минут">
           <span class="live-dot" aria-hidden="true"></span>
-          <span id="command-time">LIVE</span>
-        </button>
+          <span id="command-time">Загрузка</span>
+          <span class="command-sep" aria-hidden="true">·</span>
+          <span id="next-update"></span>
+        </div>
       </div>
     </header>
 

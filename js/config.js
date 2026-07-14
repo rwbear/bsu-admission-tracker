@@ -5,8 +5,8 @@ export const CONFIG = {
   /** Fallback if data/index.json has no origin yet. */
   repo: 'rwbear/bsu-admission-tracker',
   dataBranch: 'cursor/admission-tracker-rebuild-be86',
-  /** Background re-pull of snapshots (CDN may lag the scraper). */
-  pollMs: 45_000,
+  /** Client auto-refresh interval (match Actions scrape cadence). */
+  pollMs: 5 * 60_000,
   /**
    * Optional Node live-scrape API (`scripts/live-server.mjs`).
    * Override at runtime: window.__PROHOD_LIVE_API__ = 'https://host/live'

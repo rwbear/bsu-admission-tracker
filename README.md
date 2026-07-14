@@ -9,7 +9,7 @@
 - https://abit.bsu.by/formk1?id=7
 
 GitHub Actions скрейпит эти страницы в `data/sb-bsu.json` примерно каждые 5 минут днём по Минску (и реже ночью).  
-На загрузке и по клику **LIVE** клиент тянет самый новый закоммиченный снимок (GitHub commits API + raw-by-SHA), а не только кэш Pages. LIVE дополнительно пробует прямую таблицу через CORS; если поднят `scripts/live-server.mjs`, задай `window.__PROHOD_LIVE_API__`.  
+Клиент автообновляет снимок каждые 5 минут (GitHub commits API + raw-by-SHA, чтобы обойти кэш Pages) и показывает обратный отсчёт до следующего обновления.  
 `abit.bsu.by` часто рвёт TLS с GitHub/US cloud — сборщик пробует прямое соединение, затем `SCRAPE_PROXY` / региональные HTTP-прокси.
 
 Опционально: репозиторий → Settings → Secrets → `SCRAPE_PROXY` (`http://user:pass@host:port`) для стабильного выхода.

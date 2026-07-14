@@ -105,26 +105,19 @@ input {
   border-radius: var(--radius-sm);
   background: transparent;
   font-size: var(--text-xs);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-dim);
-  cursor: pointer;
-  transition: border-color var(--transition), background var(--transition),
-    color var(--transition);
+  user-select: none;
 }
 
-.command-meta:hover {
-  border-color: var(--line);
-  color: var(--ink);
+.command-sep {
+  opacity: 0.45;
 }
 
-.command-meta:active {
-  background: var(--soft);
-}
-
-.command-meta.is-refreshing {
-  color: var(--ink);
-  border-color: var(--line);
+#next-update {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
 }
 
 .live-dot {

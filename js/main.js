@@ -34,12 +34,14 @@ const $overview = $('#overview-list');
 const $detail = $('#detail-panel');
 const $summary = $('#summary-strip');
 const $commandTime = $('#command-time');
-const $liveRefresh = /** @type {HTMLButtonElement} */ ($('#live-refresh'));
+const $nextUpdate = $('#next-update');
 
 let pollTimer = null;
-/** Serialize refreshes so LIVE click never no-ops while a poll runs. */
+let countdownTimer = null;
+let nextRefreshAt = 0;
+let refreshing = false;
+/** Serialize refreshes so overlapping polls queue cleanly. */
 let fetchChain = Promise.resolve();
-let liveBusy = false;
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -85,7 +87,7 @@ function renderMasterDetail(specs, score) {
 }
 
 function renderBoard() {
-  tickClock();
+  renderCommandMeta();
   $sourceLink.href = SOURCE_URL;
 
   if (state.loading && !state.uniData) {
@@ -143,15 +145,56 @@ function snapshotChanged(next, prev) {
 }
 
 /**
- * @param {{ silent?: boolean, forceRemote?: boolean, tryLive?: boolean }} [opts]
+ * @param {number} totalSec
+ */
+function formatCountdown(totalSec) {
+  const s = Math.max(0, Math.floor(totalSec));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, '0')}`;
+}
+
+function renderCommandMeta() {
+  const stamp = state.uniData?.updatedAt;
+  $commandTime.textContent = stamp ? `Обновлено ${fmtTime(stamp)}` : 'Загрузка';
+
+  if (refreshing) {
+    $nextUpdate.textContent = 'обновляю…';
+    $nextUpdate.title = 'Тянем свежий снимок';
+    return;
+  }
+
+  if (!nextRefreshAt) {
+    $nextUpdate.textContent = '';
+    $nextUpdate.title = '';
+    return;
+  }
+
+  const leftMs = nextRefreshAt - Date.now();
+  const label = formatCountdown(leftMs / 1000);
+  $nextUpdate.textContent = `следующее через ${label}`;
+  $nextUpdate.title = stamp
+    ? `Данные от ${fmtTime(stamp)} · автообновление каждые 5 мин`
+    : 'Автообновление каждые 5 мин';
+}
+
+function scheduleNextRefresh(fromMs = Date.now()) {
+  nextRefreshAt = fromMs + POLL_MS;
+  renderCommandMeta();
+}
+
+/**
+ * @param {{ silent?: boolean, forceRemote?: boolean }} [opts]
  * @returns {Promise<{ ok: boolean, changed: boolean }>}
  */
 function fetchData(opts = {}) {
   const silent = Boolean(opts.silent);
-  const forceRemote = Boolean(opts.forceRemote);
-  const tryLive = Boolean(opts.tryLive);
+  const forceRemote = opts.forceRemote !== false;
 
   const run = async () => {
+    refreshing = true;
+    renderCommandMeta();
+
     if (!silent) {
       state.loading = true;
       state.error = null;
@@ -165,14 +208,14 @@ function fetchData(opts = {}) {
       const payload = await loadUniversity(UNI_ID, {
         bust: true,
         forceRemote,
-        tryLive,
+        tryLive: false,
       });
       changed = snapshotChanged(payload, prev);
       state.uniData = payload;
       state.error = null;
       applyBanner(payload);
       if (!silent || changed) emit();
-      else tickClock();
+      else renderCommandMeta();
       ok = true;
     } catch (err) {
       if (!state.uniData) {
@@ -183,7 +226,10 @@ function fetchData(opts = {}) {
       }
     } finally {
       state.loading = false;
+      refreshing = false;
+      scheduleNextRefresh();
       if (!silent) emit();
+      else renderCommandMeta();
     }
     return { ok, changed };
   };
@@ -196,73 +242,53 @@ function fetchData(opts = {}) {
   return queued;
 }
 
-function tickClock(extra = '') {
-  const stamp = state.uniData?.updatedAt;
-  const base = stamp ? `LIVE · ${fmtTime(stamp)}` : 'LIVE';
-  $commandTime.textContent = extra ? `${base}${extra}` : base;
-  $liveRefresh.title = stamp
-    ? `Обновлено ${fmtTime(stamp)} · нажми, чтобы обновить`
-    : 'Нажми, чтобы обновить';
-}
-
-async function refreshLive() {
-  if (liveBusy) return;
-  liveBusy = true;
-  $commandTime.textContent = 'LIVE · обновляю…';
-  $liveRefresh.classList.add('is-refreshing');
-  $liveRefresh.disabled = true;
-
-  try {
-    const prev = state.uniData;
-    const { ok, changed } = await fetchData({
-      silent: true,
-      forceRemote: true,
-      tryLive: true,
-    });
-    tickClock();
-    if (ok && !changed && prev) {
-      $commandTime.textContent = `LIVE · ${fmtTime(prev.updatedAt)} · актуально`;
-      $liveRefresh.title = `Снимок уже свежий · ${fmtTime(prev.updatedAt)}`;
-    }
-  } finally {
-    $liveRefresh.classList.remove('is-refreshing');
-    $liveRefresh.disabled = false;
-    liveBusy = false;
+async function runScheduledRefresh() {
+  if (document.visibilityState === 'hidden') {
+    // Keep the clock honest: push the next attempt forward until visible.
+    scheduleNextRefresh();
+    return;
   }
+  await fetchData({ silent: true, forceRemote: true });
 }
 
-function startLivePolling() {
+function startAutoRefresh() {
   if (pollTimer) clearInterval(pollTimer);
+  if (countdownTimer) clearInterval(countdownTimer);
+
+  scheduleNextRefresh();
+
   pollTimer = setInterval(() => {
-    if (document.visibilityState === 'hidden') return;
-    if (liveBusy) return;
-    fetchData({ silent: true, forceRemote: false, tryLive: false });
+    runScheduledRefresh();
   }, POLL_MS);
+
+  countdownTimer = setInterval(() => {
+    renderCommandMeta();
+  }, 1000);
 
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      fetchData({ silent: true, forceRemote: true, tryLive: false });
+      // Refresh immediately when returning if the slot already passed.
+      if (Date.now() >= nextRefreshAt) {
+        runScheduledRefresh();
+      } else {
+        renderCommandMeta();
+      }
     }
   });
 
-  window.addEventListener('online', () =>
-    fetchData({ silent: true, forceRemote: true, tryLive: false }),
-  );
+  window.addEventListener('online', () => {
+    runScheduledRefresh();
+  });
 }
 
 async function bootstrap() {
   loadPrefs();
   if (state.score != null) $scoreInput.value = String(state.score);
   $sourceLink.href = SOURCE_URL;
-  tickClock();
-  // Newest committed scrape on first paint (bypass Pages CDN lag).
-  await fetchData({ silent: false, forceRemote: true, tryLive: false });
-  startLivePolling();
+  renderCommandMeta();
+  await fetchData({ silent: false, forceRemote: true });
+  startAutoRefresh();
 }
-
-$liveRefresh.addEventListener('click', () => {
-  refreshLive();
-});
 
 $scoreForm.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -280,7 +306,7 @@ $scoreForm.addEventListener('submit', (e) => {
 });
 
 $('#retry-btn').addEventListener('click', () =>
-  fetchData({ silent: false, forceRemote: true, tryLive: true }),
+  fetchData({ silent: false, forceRemote: true }),
 );
 
 subscribe(() => renderBoard());
