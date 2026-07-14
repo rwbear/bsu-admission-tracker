@@ -78,7 +78,7 @@ export function renderChanceTrack(mount, row) {
 }
 
 /**
- * Short label for dense column axis.
+ * Short label for axis ticks.
  * @param {string} label
  */
 function shortRangeLabel(label) {
@@ -86,14 +86,14 @@ function shortRangeLabel(label) {
   const more = t.match(/^(\d+(?:\.\d+)?)\s*и более/i);
   if (more) return `${more[1]}+`;
   const less = t.match(/^(\d+(?:\.\d+)?)\s*и менее/i);
-  if (less) return `≤${less[1]}`;
+  if (less) return `≤${Math.round(Number(less[1]))}`;
   const range = t.match(/(\d+(?:\.\d+)?)\s*[-\u2013]\s*(\d+(?:\.\d+)?)/);
   if (range) return range[1];
   return t.slice(0, 6);
 }
 
 /**
- * Score-bucket histogram as a horizontal column strip (ranges L→R, bars grow up).
+ * Mobile-first histogram: full-width column strip, no horizontal scroll.
  * @param {HTMLElement} mount
  * @param {object} row
  * @param {number | null} score
@@ -102,6 +102,8 @@ export function renderHistogram(mount, row, score) {
   mount.innerHTML = '';
   const ranges = row.ranges || [];
   const buckets = row.buckets || [];
+  if (!ranges.length) return;
+
   const max = Math.max(...buckets, 1);
 
   let cum = 0;
@@ -112,38 +114,82 @@ export function renderHistogram(mount, row, score) {
     if (cutIdx === -1 && plan > 0 && cum >= plan) cutIdx = i;
   }
 
+  let mineIdx = -1;
+  if (score != null && row.chance?.segments) {
+    mineIdx = row.chance.segments.findIndex((s) => s.isMine);
+  }
+
   const chart = el('div', {
     className: 'hist-chart',
     role: 'img',
     'aria-label': 'Распределение по интервалам баллов',
   });
 
+  const bars = el('div', { className: 'hist-bars' });
+
   ranges.forEach((label, i) => {
     const count = buckets[i] || 0;
     const ratio = count / max;
-    const mine = score != null && row.chance?.segments?.[i]?.isMine;
+    const mine = i === mineIdx;
     const cut = i === cutIdx;
     const col = el('div', {
       className: `hist-col${mine ? ' is-mine' : ''}${cut ? ' is-cut' : ''}`,
       title: `${String(label).replace(/\s+/g, ' ')}: ${count}`,
     });
-
-    const barH = count > 0 ? Math.max(ratio * 100, 6) : 0;
+    const barH = count > 0 ? Math.max(ratio * 100, 8) : 0;
     col.append(
-      el('div', { className: 'hist-col-count', text: count > 0 ? String(count) : '' }),
-      el('div', { className: 'hist-col-track' }, [
-        el('div', {
-          className: 'hist-col-fill',
-          style: `height:${barH.toFixed(1)}%`,
-        }),
-      ]),
       el('div', {
-        className: 'hist-col-label',
-        text: shortRangeLabel(label),
+        className: 'hist-col-fill',
+        style: `height:${barH.toFixed(1)}%`,
       }),
     );
-    chart.append(col);
+    bars.append(col);
   });
 
+  const axis = el('div', { className: 'hist-axis' });
+  const n = ranges.length;
+  /** @type {{ i: number, text: string, kind: string }[]} */
+  const ticks = [
+    { i: 0, text: shortRangeLabel(ranges[0]), kind: 'edge' },
+  ];
+  if (mineIdx >= 0) {
+    ticks.push({ i: mineIdx, text: 'ты', kind: 'you' });
+  }
+  if (cutIdx >= 0 && cutIdx !== mineIdx) {
+    ticks.push({ i: cutIdx, text: 'мест', kind: 'cut' });
+  }
+  ticks.push({
+    i: n - 1,
+    text: shortRangeLabel(ranges[n - 1]),
+    kind: 'edge',
+  });
+
+  // Drop near-duplicates so ticks don't pile up on tiny screens
+  const placed = [];
+  for (const tick of ticks) {
+    if (placed.some((p) => Math.abs(p.i - tick.i) < Math.max(2, Math.floor(n / 16)))) {
+      if (tick.kind === 'edge') continue;
+      // keep you/cut over a nearby edge
+      const near = placed.findIndex(
+        (p) => Math.abs(p.i - tick.i) < Math.max(2, Math.floor(n / 16)),
+      );
+      if (near >= 0 && placed[near].kind === 'edge') placed.splice(near, 1);
+      else if (near >= 0) continue;
+    }
+    placed.push(tick);
+  }
+
+  for (const tick of placed) {
+    const pct = n === 1 ? 50 : (tick.i / (n - 1)) * 100;
+    axis.append(
+      el('span', {
+        className: `hist-tick is-${tick.kind}`,
+        text: tick.text,
+        style: `left:${pct.toFixed(2)}%`,
+      }),
+    );
+  }
+
+  chart.append(bars, axis);
   mount.append(chart);
 }
