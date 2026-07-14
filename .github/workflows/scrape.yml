@@ -1,8 +1,13 @@
 name: Scrape admission tables
 
-# Schedules only run from the default branch (main) — and GitHub routinely
-# drops high-frequency crons on public repos. We keep */5 as a backup, but the
-# real cadence is a self-arming push tick (see "Arm next scrape").
+# Schedules only run from the default branch (main). GitHub cron is unreliable
+# here (can skip for 30+ minutes). Cadence is a self-arming chain:
+# each run waits ~4.5 min, then `workflow_dispatch`s the next run.
+#
+# IMPORTANT: pushes with GITHUB_TOKEN do NOT start new workflow runs.
+# `workflow_dispatch` (and `repository_dispatch`) ALWAYS do — even when
+# invoked with GITHUB_TOKEN. See:
+# https://docs.github.com/en/actions/using-workflows/triggering-a-workflow
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -12,7 +17,6 @@ on:
       - main
       - "cursor/admission-tracker-rebuild-be86"
     paths:
-      - "data/.scrape-tick"
       - "scripts/scrape/**"
       - "sources/universities.json"
       - ".github/workflows/scrape.yml"
@@ -21,6 +25,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
   pages: read
 
 jobs:
@@ -59,9 +64,7 @@ jobs:
         run: npm install
 
       - name: Run tests
-        if: |
-          github.event_name != 'schedule' &&
-          !(github.event_name == 'push' && contains(github.event.head_commit.message, 'chore: arm next scrape'))
+        if: github.event_name != 'schedule' && github.event_name != 'workflow_dispatch'
         run: npm test
 
       - name: Scrape universities
@@ -149,34 +152,25 @@ jobs:
         env:
           TIP_SHA: ${{ steps.commit.outputs.sha }}
 
-      # GitHub's schedule event is unreliable here. GITHUB_TOKEN pushes also cannot
-      # re-trigger workflows (by design). Prefer secrets.SCRAPE_PAT (fine-grained
-      # PAT: Actions write + Contents write) to dispatch the next run after a wait.
+      # Keep ~5-minute cadence without trusting cron or push-tick recursion.
+      # workflow_dispatch always starts a run, even with GITHUB_TOKEN.
       - name: Arm next scrape
         if: always() && !cancelled()
         env:
-          BRANCH: ${{ steps.target.outputs.branch }}
-          SCRAPE_PAT: ${{ secrets.SCRAPE_PAT }}
-          GH_TOKEN: ${{ secrets.SCRAPE_PAT || github.token }}
+          GH_TOKEN: ${{ github.token }}
+          THIS_RUN: ${{ github.run_id }}
         run: |
           set -e
           echo "Waiting 270s before arming the next scrape…"
           sleep 270
 
-          git config user.name "prohod-bot"
-          git config user.email "prohod-bot@users.noreply.github.com"
-          git fetch origin "$BRANCH"
-          git reset --hard "origin/$BRANCH"
-          mkdir -p data
-          date -u +%Y-%m-%dT%H:%M:%S.%NZ > data/.scrape-tick
-          git add data/.scrape-tick
-          git commit -m "chore: arm next scrape" || true
-          git push origin "HEAD:$BRANCH" || true
-
-          if [ -n "$SCRAPE_PAT" ]; then
-            # PAT bypasses the GITHUB_TOKEN “no recursive workflow” rule.
-            GH_TOKEN="$SCRAPE_PAT" gh workflow run "Scrape admission tables" --ref main
-            echo "Dispatched next scrape via SCRAPE_PAT → main"
-          else
-            echo "::warning::Secret SCRAPE_PAT is not set. GITHUB_TOKEN cannot re-trigger this workflow, so the ~5-minute chain will stop until the next manual/code push or a rare schedule event. Create a fine-grained PAT (Actions: write, Contents: write) and add it as repository secret SCRAPE_PAT."
+          # Avoid piling up if cron/manual already queued another run.
+          QUEUED=$(gh run list --workflow="Scrape admission tables" --status queued --limit 5 --json databaseId --jq 'length')
+          INPROG=$(gh run list --workflow="Scrape admission tables" --status in_progress --limit 5 --json databaseId --jq "[.[] | select(.databaseId != ${THIS_RUN})] | length")
+          if [ "${QUEUED:-0}" -gt 0 ] || [ "${INPROG:-0}" -gt 0 ]; then
+            echo "Another scrape is already queued/in progress — skip dispatch (queued=${QUEUED}, other_in_progress=${INPROG})"
+            exit 0
           fi
+
+          gh workflow run "Scrape admission tables" --ref main
+          echo "Dispatched next scrape via workflow_dispatch → main"

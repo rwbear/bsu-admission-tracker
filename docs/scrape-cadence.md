@@ -1,20 +1,39 @@
 # Admission scrape cadence
 
-## Why scrapes go stale
-GitHub Actions `schedule` (cron) is **not reliable** on this repo — it can skip
-for 30+ minutes even with `*/5 * * * *`.
+## Why data went stale
 
-Pushing `data/.scrape-tick` with the default `GITHUB_TOKEN` also **does not**
-start a new workflow run (GitHub blocks recursive triggers).
+Three things stacked:
 
-## Fix: add secret `SCRAPE_PAT`
-1. GitHub → Settings → Developer settings → Fine-grained personal access token
-2. Resource owner: this repo’s owner, repository access: only this repo
-3. Permissions: **Contents: Read and write**, **Actions: Read and write**
-4. Repo → Settings → Secrets and variables → Actions → New repository secret
-   - Name: `SCRAPE_PAT`
-   - Value: the token
+1. **GitHub `schedule` cron is unreliable** on this repo — it can skip for
+   30+ minutes even with `*/5 * * * *`. Observed: hours between fires.
+2. **`GITHUB_TOKEN` pushes never re-trigger workflows.** The old “arm” step
+   committed `data/.scrape-tick` and pushed it. The commit landed; **no new
+   run started**. That is GitHub’s recursion guard for `push` events.
+3. Scrapes only re-started when someone pushed code / merged a PR. Between
+   those events, snapshots froze — the site looked “late.”
 
-The scrape workflow waits ~4.5 minutes after each run, then
-`gh workflow run "Scrape admission tables" --ref main` with that PAT.
-That keeps a ~5-minute cadence without trusting GitHub cron.
+The client is not the bottleneck: it polls every ~3 minutes and loads by
+commit SHA when possible. If Actions stops publishing, the UI can only show
+the last committed `updatedAt`.
+
+## Fix: self-arm via `workflow_dispatch`
+
+`workflow_dispatch` (and `repository_dispatch`) **always** create a workflow
+run — even when triggered with `GITHUB_TOKEN`. Official exception to the
+recursion rule.
+
+After each scrape the workflow:
+
+1. Waits ~270s on the runner
+2. Checks for an already-queued / other in-progress run (skip if so)
+3. Runs `gh workflow run "Scrape admission tables" --ref main`
+
+Permissions required on the job: `actions: write` (for dispatch) and
+`contents: write` (for publishing snapshots).
+
+No personal access token secret is required for the chain.
+
+## Kill switch
+
+Disable the workflow in the Actions tab, or cancel the in-progress run
+during its arm sleep — the next dispatch will not fire.
