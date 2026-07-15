@@ -311,32 +311,33 @@
 }
 
 /*
- * Column-major grid: each cell stays roughly square. Gap colour is the
- * gutter between cubes — without it the table reads as solid bars.
+ * True cubes: each cell is square (aspect-ratio 1). Column width sets
+ * size; rows follow. Larger gutter so the table doesn’t read as bars.
  */
 .hist-bars {
   --hist-cols: 1;
   --hist-rows: 16;
-  --hist-gap: 2px;
+  --hist-gap: 4px;
   display: grid;
   grid-auto-flow: column;
   grid-template-columns: repeat(var(--hist-cols), minmax(0, 1fr));
-  grid-template-rows: repeat(var(--hist-rows), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--hist-rows), auto);
   gap: var(--hist-gap);
   width: 100%;
-  aspect-ratio: var(--hist-cols) / var(--hist-rows);
-  max-height: 11rem;
-  min-height: 6.5rem;
+  height: auto;
   min-width: 0;
   padding: var(--hist-gap);
   box-sizing: border-box;
   background: color-mix(in srgb, var(--ink) 14%, var(--bg-elev));
   border-bottom: 1px solid var(--line);
+  align-content: start;
 }
 
 .hist-cube {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
   min-width: 0;
-  min-height: 0;
   border-radius: 0;
 }
 
@@ -420,7 +421,6 @@
   }
 
   .hist-bars {
-    max-height: 9.5rem;
-    min-height: 5.75rem;
+    --hist-gap: 3px;
   }
 }
