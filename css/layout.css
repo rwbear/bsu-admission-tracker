@@ -15,7 +15,7 @@ body {
   font-size: var(--text-base);
   line-height: 1.45;
   color: var(--ink);
-  /* Blank paper — light arrives through surfaces, not a painted wash */
+  /* Cool-lit ground — whites on top read as sunstruck */
   background: var(--bg);
 }
 
@@ -62,23 +62,23 @@ input {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg-elev);
-  box-shadow: var(--shadow-ground);
+  box-shadow: var(--shadow-ground), var(--sun-rim);
 }
 
 .hidden {
   display: none !important;
 }
 
-/* Top bar — mid cast (lighter than panels) */
+/* Top bar — mid cast (shorter throw than panels) */
 .command {
   position: sticky;
   top: 0;
   z-index: 40;
   height: var(--command-h);
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg-elev) 88%, transparent);
+  background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
   backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-mid);
+  box-shadow: var(--shadow-mid), var(--sun-rim);
 }
 
 .command-inner {
@@ -603,12 +603,18 @@ html.faculty-overlay-open {
   font-variant-numeric: tabular-nums;
   font-size: var(--text-lg);
   font-weight: 500;
-  box-shadow: var(--shadow-ground);
+  box-shadow: var(--shadow-ground), var(--sun-rim);
+  transition: box-shadow var(--transition), transform var(--transition);
 }
 
 .score-input::placeholder {
   color: var(--ink-faint);
   font-weight: 400;
+}
+
+.score-input:focus {
+  outline: 2px solid var(--ink);
+  outline-offset: 1px;
 }
 
 .btn-apply {
@@ -624,15 +630,24 @@ html.faculty-overlay-open {
   text-transform: uppercase;
   font-size: var(--text-sm);
   cursor: pointer;
-  transition: opacity var(--transition), transform var(--transition);
+  box-shadow: var(--shadow-cta);
+  transition:
+    opacity var(--transition),
+    transform var(--transition),
+    box-shadow var(--transition);
 }
 
 .btn-apply:hover {
-  opacity: 0.92;
+  opacity: 0.96;
+  box-shadow: var(--shadow-cta-hover);
 }
 
 .btn-apply:active {
   transform: translateY(1px);
+  box-shadow:
+    1px 1px 0 rgba(var(--umbra), 0.28),
+    2px 4px 0 rgba(var(--umbra), 0.16),
+    5px 10px 0 rgba(var(--umbra), 0.1);
 }
 
 .banner {

@@ -1,31 +1,76 @@
 :root {
-  --bg: #f7f7f5;
+  /*
+   * Hard sun experiment — parallel rays, sharp umbra.
+   * Cooler ground so bright panes feel irradiated. Accent stays ink.
+   */
+  --bg: #eef0ec;
   --bg-elev: #ffffff;
   --ink: #1a1a1a;
   --ink-dim: #6b6b6b;
   --ink-faint: #a3a3a3;
-  --line: #d4d4d0;
+  --line: #c9ccc4;
   --line-strong: #1a1a1a;
   --fill: #1a1a1a;
   --fill-ink: #ffffff;
-  --soft: #efefec;
+  --soft: #e8ebe5;
   --safe: #1a1a1a;
   --risk: #1a1a1a;
   --below: #1a1a1a;
-  --select: #f0f0ed;
+  --select: #eceee9;
   --select-line: #1a1a1a;
 
+  /* Umbra pigment — warm dark, never pure black */
+  --umbra: 32, 30, 26;
+  /* Cool bounce under the long cast (sky fill, almost invisible) */
+  --sky-fill: 70, 85, 95;
+
   /*
-   * Daylight cast ladder — soft TL → BR. Accent stays ink (not sun-glow).
+   * Ground cast — razor contact + stepped hard umbra along TL → BR.
+   * Near-zero blur = distant sun / parallel rays. Tiny last blur = air.
    */
   --shadow-ground:
-    5px 12px 30px rgba(36, 32, 26, 0.065),
-    2px 4px 10px rgba(36, 32, 26, 0.035);
+    1px 1px 0 rgba(var(--umbra), 0.28),
+    2px 4px 0 rgba(var(--umbra), 0.2),
+    5px 10px 0 rgba(var(--umbra), 0.15),
+    9px 18px 0 rgba(var(--umbra), 0.11),
+    14px 28px 0 rgba(var(--umbra), 0.085),
+    20px 40px 1px rgba(var(--umbra), 0.065),
+    28px 56px 1px rgba(var(--umbra), 0.045),
+    38px 76px 2px rgba(var(--umbra), 0.03),
+    18px 48px 40px rgba(var(--sky-fill), 0.045);
+
+  /* Mid (command) — shorter hard throw */
   --shadow-mid:
-    3px 8px 20px rgba(36, 32, 26, 0.048),
-    1px 3px 7px rgba(36, 32, 26, 0.028);
+    1px 1px 0 rgba(var(--umbra), 0.22),
+    2px 4px 0 rgba(var(--umbra), 0.14),
+    5px 10px 0 rgba(var(--umbra), 0.1),
+    10px 20px 0 rgba(var(--umbra), 0.07),
+    16px 32px 1px rgba(var(--umbra), 0.045),
+    10px 28px 28px rgba(var(--sky-fill), 0.035);
+
+  /* High (popovers) — almost coplanar with the light */
   --shadow-high:
-    1px 2px 6px rgba(36, 32, 26, 0.018);
+    1px 1px 0 rgba(var(--umbra), 0.1),
+    3px 6px 0 rgba(var(--umbra), 0.05);
+
+  /* Lit lip — sun kissing the top-left edge */
+  --sun-rim:
+    -1px -1px 0 rgba(255, 255, 255, 0.75),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.55);
+
+  /* CTA hard cast — graphic, confident */
+  --shadow-cta:
+    1px 1px 0 rgba(var(--umbra), 0.32),
+    3px 6px 0 rgba(var(--umbra), 0.22),
+    7px 14px 0 rgba(var(--umbra), 0.15),
+    12px 24px 0 rgba(var(--umbra), 0.1),
+    18px 36px 1px rgba(var(--umbra), 0.06);
+  --shadow-cta-hover:
+    1px 1px 0 rgba(var(--umbra), 0.34),
+    4px 8px 0 rgba(var(--umbra), 0.24),
+    9px 18px 0 rgba(var(--umbra), 0.16),
+    16px 32px 0 rgba(var(--umbra), 0.11),
+    24px 48px 1px rgba(var(--umbra), 0.07);
 
   --font: "Outfit", "Segoe UI", sans-serif;
   --font-num: "Outfit", "Segoe UI", sans-serif;
