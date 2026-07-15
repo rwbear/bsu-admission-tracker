@@ -15,13 +15,8 @@ body {
   font-size: var(--text-base);
   line-height: 1.45;
   color: var(--ink);
-  /*
-   * Quiet directional sun in the room — bright from TL, cooler into BR.
-   * Surfaces then cast into that light. Not a painted diagonal wash.
-   */
-  background:
-    radial-gradient(100% 80% at 4% -14%, rgba(255, 250, 235, 1) 0%, transparent 48%),
-    linear-gradient(155deg, #f8f5ee 0%, var(--bg) 38%, #d8ddd4 100%);
+  /* Blank paper — light arrives through surfaces, not a painted wash */
+  background: var(--bg);
 }
 
 a {
@@ -66,31 +61,24 @@ input {
 .panel {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  /* Brilliance toward the sun (TL) */
-  background: linear-gradient(
-    145deg,
-    #fffefb 0%,
-    #ffffff 42%,
-    #f7f7f4 100%
-  );
-  /* ONE continuous umbra + ONE opposite sun fill — no layer banding */
-  box-shadow: var(--shadow-ground), var(--sun-fill);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-ground);
 }
 
 .hidden {
   display: none !important;
 }
 
-/* Sticky command: box-shadow only (pseudo casts under sticky paint over the page) */
+/* Top bar — mid cast (lighter than panels) */
 .command {
   position: sticky;
   top: 0;
   z-index: 40;
   height: var(--command-h);
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, #fffefb 88%, transparent);
+  background: color-mix(in srgb, var(--bg-elev) 88%, transparent);
   backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-mid), var(--sun-fill-soft);
+  box-shadow: var(--shadow-mid);
 }
 
 .command-inner {
@@ -615,18 +603,12 @@ html.faculty-overlay-open {
   font-variant-numeric: tabular-nums;
   font-size: var(--text-lg);
   font-weight: 500;
-  box-shadow: var(--shadow-control), var(--sun-fill-soft);
-  transition: box-shadow var(--transition), transform var(--transition);
+  box-shadow: var(--shadow-ground);
 }
 
 .score-input::placeholder {
   color: var(--ink-faint);
   font-weight: 400;
-}
-
-.score-input:focus {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
 }
 
 .btn-apply {
@@ -642,21 +624,15 @@ html.faculty-overlay-open {
   text-transform: uppercase;
   font-size: var(--text-sm);
   cursor: pointer;
-  box-shadow: var(--shadow-cta);
-  transition:
-    opacity var(--transition),
-    transform var(--transition),
-    box-shadow var(--transition);
+  transition: opacity var(--transition), transform var(--transition);
 }
 
 .btn-apply:hover {
-  opacity: 0.97;
-  box-shadow: var(--shadow-cta-hover);
+  opacity: 0.92;
 }
 
 .btn-apply:active {
   transform: translateY(1px);
-  box-shadow: var(--shadow-cta-active);
 }
 
 .banner {

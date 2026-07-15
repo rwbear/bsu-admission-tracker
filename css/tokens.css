@@ -1,51 +1,31 @@
 :root {
-  /*
-   * Hard sunlight v3 — single continuous umbra + readable sun fill.
-   *
-   * Segmentation fix: ONE umbra layer only. Multi mid-opacity stacks band.
-   * Sun fill sits on the opposite corner so it never stairs the cast.
-   *
-   * Sun fix: cooler floor + directional ambient + soft TL luminosity on
-   * elevated planes (fill light, not a plastic bevel stroke).
-   *
-   * Accent stays ink.
-   */
-  --bg: #e6e8e2;
+  --bg: #f7f7f5;
   --bg-elev: #ffffff;
   --ink: #1a1a1a;
   --ink-dim: #6b6b6b;
   --ink-faint: #a3a3a3;
-  --line: #d0d3cc;
+  --line: #d4d4d0;
   --line-strong: #1a1a1a;
   --fill: #1a1a1a;
   --fill-ink: #ffffff;
-  --soft: #e4e7e1;
+  --soft: #efefec;
   --safe: #1a1a1a;
   --risk: #1a1a1a;
   --below: #1a1a1a;
-  --select: #edf0ea;
+  --select: #f0f0ed;
   --select-line: #1a1a1a;
 
-  --umbra: 28, 26, 22;
-
   /*
-   * Continuous hard cast — ONE umbra layer only (multi-layer stacks band).
-   * Sun fill sits on the opposite corner so it never stairs the cast.
-   * Hard sun: blur ≈ 0.22–0.28 × offset.
+   * Daylight cast ladder — soft TL → BR. Accent stays ink (not sun-glow).
    */
-  --shadow-ground: 20px 44px 12px rgba(var(--umbra), 0.21);
-  --shadow-control: 11px 24px 8px rgba(var(--umbra), 0.17);
-  --shadow-mid: 9px 18px 8px rgba(var(--umbra), 0.13);
-  --shadow-high: 2px 5px 7px rgba(var(--umbra), 0.08);
-  --shadow-inset-plate: 10px 22px 8px rgba(var(--umbra), 0.13);
-
-  --shadow-cta: 12px 26px 9px rgba(var(--umbra), 0.26);
-  --shadow-cta-hover: 14px 30px 10px rgba(var(--umbra), 0.28);
-  --shadow-cta-active: 4px 8px 5px rgba(var(--umbra), 0.18);
-
-  /* Lit-face sun — warm pool, actually readable */
-  --sun-fill: -16px -22px 40px rgba(255, 246, 225, 1);
-  --sun-fill-soft: -10px -12px 26px rgba(255, 246, 225, 0.75);
+  --shadow-ground:
+    5px 12px 30px rgba(36, 32, 26, 0.065),
+    2px 4px 10px rgba(36, 32, 26, 0.035);
+  --shadow-mid:
+    3px 8px 20px rgba(36, 32, 26, 0.048),
+    1px 3px 7px rgba(36, 32, 26, 0.028);
+  --shadow-high:
+    1px 2px 6px rgba(36, 32, 26, 0.018);
 
   --font: "Outfit", "Segoe UI", sans-serif;
   --font-num: "Outfit", "Segoe UI", sans-serif;
