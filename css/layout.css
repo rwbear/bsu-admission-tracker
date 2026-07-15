@@ -15,9 +15,8 @@ body {
   font-size: var(--text-base);
   line-height: 1.45;
   color: var(--ink);
-  background:
-    radial-gradient(120% 80% at 50% -10%, #ffffff 0%, transparent 55%),
-    linear-gradient(180deg, #fbfbfa 0%, var(--bg) 40%, #f3f3f0 100%);
+  /* Blank paper — light arrives through surfaces, not a painted wash */
+  background: var(--bg);
 }
 
 a {
@@ -33,8 +32,8 @@ input {
 }
 
 :focus-visible {
-  outline: 1.5px solid var(--line-strong);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--glow-focus);
 }
 
 .sr-only {
@@ -60,17 +59,23 @@ input {
 }
 
 .panel {
+  --elev-shadow: var(--shadow-ground);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg-elev);
+  box-shadow: var(--elev-shadow), var(--pulse-glow);
+  transition:
+    box-shadow var(--transition-sun),
+    border-color var(--transition-sun);
 }
 
 .hidden {
   display: none !important;
 }
 
-/* Top bar */
+/* Top bar — mid cast (lighter than panels) */
 .command {
+  --elev-shadow: var(--shadow-mid);
   position: sticky;
   top: 0;
   z-index: 40;
@@ -78,6 +83,41 @@ input {
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-elev) 88%, transparent);
   backdrop-filter: blur(10px);
+  box-shadow: var(--elev-shadow), var(--pulse-glow);
+  transition:
+    box-shadow var(--transition-sun),
+    border-color var(--transition-sun);
+}
+
+/*
+ * Whole-stage sun breath — only when a real snapshot changes.
+ * Soft luminosity; never a flash. Fades via --transition-sun.
+ */
+.site.is-data-pulse .command,
+.site.is-data-pulse .panel {
+  --pulse-glow: 0 0 40px var(--sun-glow-soft), 0 0 18px rgba(255, 252, 247, 0.28);
+  border-color: var(--sun-edge);
+}
+
+.site.is-data-pulse .command {
+  border-bottom-color: var(--sun-edge);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel,
+  .command {
+    transition: none;
+  }
+
+  .site.is-data-pulse .command,
+  .site.is-data-pulse .panel {
+    --pulse-glow: 0 0 transparent;
+    border-color: var(--line);
+  }
+
+  .site.is-data-pulse .command {
+    border-bottom-color: var(--line);
+  }
 }
 
 .command-inner {
@@ -160,8 +200,11 @@ input {
   width: 0.35rem;
   height: 0.35rem;
   border-radius: 50%;
-  background: var(--ink);
-  animation: pulse 1.8s ease-in-out infinite;
+  background: var(--sun);
+  box-shadow:
+    0 0 7px var(--sun-glow),
+    0 0 1px color-mix(in srgb, var(--sun-edge) 70%, transparent);
+  animation: pulse 2.2s ease-in-out infinite;
 }
 
 @keyframes pulse {
@@ -170,7 +213,7 @@ input {
     opacity: 1;
   }
   50% {
-    opacity: 0.28;
+    opacity: 0.5;
   }
 }
 
@@ -221,8 +264,8 @@ input {
 }
 
 .table-trigger:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--glow-focus);
 }
 
 .table-trigger-label {
@@ -292,8 +335,8 @@ html.table-overlay-open {
 }
 
 .faculty-trigger:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: var(--glow-focus);
 }
 
 .faculty-trigger-label {
@@ -363,7 +406,8 @@ html.faculty-overlay-open {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg-elev);
-  box-shadow: 0 18px 48px color-mix(in srgb, var(--ink) 16%, transparent);
+  /* High layer — cast almost gone; popover sits in the light, not under it */
+  box-shadow: var(--shadow-high);
   animation: faculty-popover-in 180ms ease-out both;
 }
 
@@ -466,8 +510,9 @@ html.faculty-overlay-open {
 }
 
 .faculty-search-input:focus {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
+  outline: none;
+  border-color: var(--sun-edge);
+  box-shadow: var(--glow-focus);
 }
 
 .faculty-overlay-list {
@@ -508,17 +553,33 @@ html.faculty-overlay-open {
 
 .faculty-option:focus-visible {
   background: var(--soft);
-  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  box-shadow: inset 0 0 0 1.5px var(--sun-edge);
 }
 
 .faculty-option.is-active {
-  background: var(--select);
+  /* Light enters from the left, soft-fills the row, touches the edge */
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--sun-bright) 92%, transparent) 0%,
+    color-mix(in srgb, var(--sun) 55%, transparent) 42%,
+    transparent 86%
+  );
+  box-shadow:
+    inset 2px 0 0 var(--sun-edge),
+    inset 14px 0 28px -10px var(--sun-glow-soft);
 }
 
 .faculty-option.is-active:hover,
 .faculty-option.is-active:focus-visible {
-  background: var(--select);
-  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--sun-bright) 92%, transparent) 0%,
+    color-mix(in srgb, var(--sun) 55%, transparent) 42%,
+    transparent 86%
+  );
+  box-shadow:
+    inset 2px 0 0 var(--sun-edge),
+    inset 14px 0 28px -10px var(--sun-glow-soft);
 }
 
 .faculty-option-name {
@@ -601,11 +662,21 @@ html.faculty-overlay-open {
   font-variant-numeric: tabular-nums;
   font-size: var(--text-lg);
   font-weight: 500;
+  box-shadow: var(--shadow-ground);
+  transition:
+    box-shadow var(--transition),
+    border-color var(--transition);
 }
 
 .score-input::placeholder {
   color: var(--ink-faint);
   font-weight: 400;
+}
+
+.score-input:focus {
+  outline: none;
+  border-color: var(--sun-edge);
+  box-shadow: var(--glow-focus), var(--shadow-ground);
 }
 
 .btn-apply {
@@ -621,11 +692,20 @@ html.faculty-overlay-open {
   text-transform: uppercase;
   font-size: var(--text-sm);
   cursor: pointer;
-  transition: opacity var(--transition), transform var(--transition);
+  box-shadow: var(--glow-sun);
+  transition:
+    box-shadow var(--transition),
+    transform var(--transition),
+    opacity var(--transition);
 }
 
 .btn-apply:hover {
-  opacity: 0.92;
+  box-shadow: var(--glow-sun-hover);
+}
+
+.btn-apply:focus-visible {
+  outline: none;
+  box-shadow: var(--glow-sun-hover), var(--glow-focus);
 }
 
 .btn-apply:active {
