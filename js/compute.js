@@ -75,6 +75,10 @@ export function calcPassing(ranges, buckets, plan) {
 
 /**
  * Count of applicants with scores strictly above the given score.
+ * Higher bands count in full. Inside the own band, assume a uniform spread
+ * over integer scores so a bottom-of-band pin (e.g. 391 in «395–391») is not
+ * falsely treated as «inside plan» while «на грани» says otherwise.
+ * Open-ended top bands («N и более») stay unknown within-band → 0 extra.
  * @param {string[]} ranges
  * @param {number[]} buckets
  * @param {number} score
@@ -94,12 +98,13 @@ export function peopleAbove(ranges, buckets, score) {
       continue;
     }
     if (hi < score) continue;
-    // Overlapping bucket: estimate fraction of applicants above mid-split is unclear;
-    // count full bucket only when the entire interval is above score.
-    // If score is inside the bucket, people still "above" within the same band
-    // are unknown — treat as 0 from this band (conservative for the student).
+    // Own band: uniform over integer scores in [lo, hi].
+    if (Number.isFinite(hi) && hi >= lo) {
+      const span = hi - lo + 1;
+      if (span > 0) above += ((hi - score) / span) * count;
+    }
   }
-  return above;
+  return Math.round(above);
 }
 
 /**
@@ -169,8 +174,8 @@ export function buildChanceTrack(spec, score) {
   if (score != null && totalInBuckets > 0) {
     /*
      * Pin must match «над тобой / мест»: place ≈ peopleAbove + you.
-     * Mid-band (before + count/2) disagrees — a wide own bucket can put «ты»
-     * past the seat cut while peopleAbove still says you’re inside the plan.
+     * Mid-band width alone is not the source of truth — peopleAbove already
+     * estimates within-band competition when score sits inside a closed range.
      */
     if (above != null) {
       myMarkerRatio = Math.min(1, (above + 0.5) / denom);
