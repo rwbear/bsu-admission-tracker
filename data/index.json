@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-15T05:14:59.942Z",
+  "generatedAt": "2026-07-15T05:21:06.590Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
     "branch": "cursor/admission-tracker-rebuild-be86"
@@ -9,8 +9,8 @@
       "id": "sb-bsu",
       "name": "БГУ",
       "fullName": "Белорусский государственный университет",
-      "specialtyCount": 193,
-      "updatedAt": "2026-07-15T05:14:59.946Z",
+      "specialtyCount": 200,
+      "updatedAt": "2026-07-15T05:21:06.592Z",
       "available": true,
       "faculties": [
         {
@@ -21,7 +21,7 @@
         {
           "id": "биологический-факультет",
           "name": "Биологический факультет",
-          "specialtyCount": 17
+          "specialtyCount": 20
         },
         {
           "id": "военный-факультет",
@@ -31,17 +31,17 @@
         {
           "id": "институт-теологии",
           "name": "Институт теологии",
-          "specialtyCount": 2
+          "specialtyCount": 3
         },
         {
           "id": "исторический-факультет",
           "name": "Исторический факультет",
-          "specialtyCount": 8
+          "specialtyCount": 9
         },
         {
           "id": "мгэи-им-сахарова",
           "name": "МГЭИ им. Сахарова",
-          "specialtyCount": 20
+          "specialtyCount": 21
         },
         {
           "id": "мехмат-пми-си",
@@ -101,7 +101,7 @@
         {
           "id": "юридический-факультет",
           "name": "Юридический факультет",
-          "specialtyCount": 8
+          "specialtyCount": 9
         }
       ],
       "tables": [
@@ -132,7 +132,7 @@
         {
           "id": "8",
           "name": "Заочная платная форма",
-          "specialtyCount": 0,
+          "specialtyCount": 4,
           "trackId": "cert3"
         },
         {
@@ -174,7 +174,7 @@
         {
           "id": "17",
           "name": "Заочная платная форма",
-          "specialtyCount": 0,
+          "specialtyCount": 3,
           "trackId": "nocert"
         },
         {
