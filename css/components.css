@@ -290,11 +290,11 @@
   bottom: calc(-1 * var(--space-2));
   pointer-events: none;
   z-index: 0;
-  background-color: color-mix(in srgb, var(--ink) 2.5%, var(--bg-elev));
+  background-color: color-mix(in srgb, var(--ink) 1%, var(--bg-elev));
   background-image: repeating-linear-gradient(
     -45deg,
-    color-mix(in srgb, var(--ink) 9%, transparent) 0 1px,
-    transparent 1px 5px
+    color-mix(in srgb, var(--ink) 4.5%, transparent) 0 0.5px,
+    transparent 0.5px 7px
   );
 }
 
@@ -306,7 +306,7 @@
   margin-left: -0.5px;
   pointer-events: none;
   z-index: 2;
-  background: color-mix(in srgb, var(--ink) 55%, transparent);
+  background: color-mix(in srgb, var(--ink) 42%, transparent);
 }
 
 .hist-bars,
