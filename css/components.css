@@ -280,8 +280,8 @@
 }
 
 /*
- * Out field + cut line bleed to the chart box edges. Out side is a soft
- * wash — cube columns past the cut are also lightened in CSS.
+ * Out wash + cut line bleed to the chart box edges. Cubes past the cut
+ * are also lightened so the out side reads as one dimmed field.
  */
 .hist-out-region {
   position: absolute;
@@ -290,7 +290,7 @@
   bottom: calc(-1 * var(--space-2));
   pointer-events: none;
   z-index: 2;
-  background: color-mix(in srgb, var(--bg-elev) 58%, transparent);
+  background: color-mix(in srgb, var(--bg-elev) 52%, transparent);
 }
 
 .hist-cut-line {
@@ -310,56 +310,54 @@
   z-index: 1;
 }
 
+/*
+ * Column-major grid: each cell stays roughly square. Gap colour is the
+ * gutter between cubes — without it the table reads as solid bars.
+ */
 .hist-bars {
-  display: flex;
-  align-items: stretch;
-  gap: 1px;
+  --hist-cols: 1;
+  --hist-rows: 16;
+  --hist-gap: 2px;
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-columns: repeat(var(--hist-cols), minmax(0, 1fr));
+  grid-template-rows: repeat(var(--hist-rows), minmax(0, 1fr));
+  gap: var(--hist-gap);
   width: 100%;
-  height: 8rem;
+  aspect-ratio: var(--hist-cols) / var(--hist-rows);
+  max-height: 11rem;
+  min-height: 6.5rem;
   min-width: 0;
-  padding-top: var(--space-1);
+  padding: var(--hist-gap);
+  box-sizing: border-box;
+  background: color-mix(in srgb, var(--ink) 14%, var(--bg-elev));
   border-bottom: 1px solid var(--line);
 }
 
-.hist-col {
-  flex: 1 1 0;
-  min-width: 0;
-  height: 100%;
-}
-
-.hist-col-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  width: 100%;
-  height: 100%;
-}
-
 .hist-cube {
-  flex: 1 1 0;
+  min-width: 0;
   min-height: 0;
-  width: 100%;
   border-radius: 0;
 }
 
 .hist-cube.is-off {
-  background: color-mix(in srgb, var(--ink) 7%, var(--bg-elev));
+  background: color-mix(in srgb, var(--ink) 5%, var(--bg-elev));
 }
 
 .hist-cube.is-on {
-  background: color-mix(in srgb, var(--ink) 52%, var(--bg-elev));
+  background: color-mix(in srgb, var(--ink) 58%, var(--bg-elev));
 }
 
-.hist-col.is-mine .hist-cube.is-on {
+.hist-cube.is-on.is-mine {
   background: var(--ink);
 }
 
-.hist-col.is-out .hist-cube.is-off {
-  background: color-mix(in srgb, var(--ink) 3.5%, var(--bg-elev));
+.hist-cube.is-out.is-off {
+  background: color-mix(in srgb, var(--ink) 2.5%, var(--bg-elev));
 }
 
-.hist-col.is-out .hist-cube.is-on {
-  background: color-mix(in srgb, var(--ink) 22%, var(--bg-elev));
+.hist-cube.is-out.is-on {
+  background: color-mix(in srgb, var(--ink) 20%, var(--bg-elev));
 }
 
 .hist-axis {
@@ -422,6 +420,7 @@
   }
 
   .hist-bars {
-    height: 7rem;
+    max-height: 9.5rem;
+    min-height: 5.75rem;
   }
 }

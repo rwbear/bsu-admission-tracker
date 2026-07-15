@@ -342,10 +342,9 @@ export function histCubeFilled(count, maxCount, levels) {
 }
 
 /**
- * Mobile-first histogram as a dense cube table: tiny cells with a 1px
- * interval, dark = active (applicants), light = empty. Display window
- * tracks real applicants (low edge = lowest − 60). Seat cut is a
- * full-height line; out side is dimmed.
+ * Mobile-first histogram as a dense cube table: a CSS grid of nearly
+ * square cells with a visible gutter. Dark = applicants, light = empty.
+ * Seat cut is a full-height line; out side is dimmed.
  * @param {HTMLElement} mount
  * @param {object} row
  * @param {number | null} score
@@ -418,33 +417,28 @@ export function renderHistogram(mount, row, score) {
     );
   }
 
-  const bars = el('div', { className: 'hist-bars' });
+  // Flat column-major grid → real square cells (not stretched bar slices).
+  const bars = el('div', {
+    className: 'hist-bars',
+    style: `--hist-cols:${ranges.length};--hist-rows:${levels}`,
+  });
 
   ranges.forEach((label, i) => {
     const count = buckets[i] || 0;
     const filled = histCubeFilled(count, max, levels);
     const mine = i === mineIdx;
-    const cut = i === cutIdx;
     const out = outLeft != null && cutIdx >= 0 && i > cutIdx;
-    const col = el('div', {
-      className: `hist-col${mine ? ' is-mine' : ''}${cut ? ' is-cut' : ''}${out ? ' is-out' : ''}`,
-      title: `${String(label).replace(/\s+/g, ' ')}: ${count}`,
-    });
-    const stack = el('div', {
-      className: 'hist-col-stack',
-      'aria-hidden': 'true',
-    });
-    // Top → bottom: empty light cubes, then dark active cubes.
+    const tip = `${String(label).replace(/\s+/g, ' ')}: ${count}`;
+
+    // Top → bottom within each column (grid-auto-flow: column).
     for (let r = levels - 1; r >= 0; r -= 1) {
       const on = r < filled;
-      stack.append(
-        el('div', {
-          className: `hist-cube${on ? ' is-on' : ' is-off'}`,
-        }),
-      );
+      const cube = el('div', {
+        className: `hist-cube${on ? ' is-on' : ' is-off'}${mine && on ? ' is-mine' : ''}${out ? ' is-out' : ''}`,
+      });
+      if (r === 0) cube.title = tip;
+      bars.append(cube);
     }
-    col.append(stack);
-    bars.append(col);
   });
 
   const axis = el('div', { className: 'hist-axis' });
