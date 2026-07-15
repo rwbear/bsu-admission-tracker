@@ -62,7 +62,7 @@ input {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg-elev);
-  box-shadow: var(--shadow-ground), var(--light-glow);
+  box-shadow: var(--shadow-ground);
 }
 
 .hidden {
@@ -78,7 +78,7 @@ input {
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--bg-elev) 88%, transparent);
   backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-mid), var(--light-glow);
+  box-shadow: var(--shadow-mid);
 }
 
 .command-inner {
@@ -603,19 +603,12 @@ html.faculty-overlay-open {
   font-variant-numeric: tabular-nums;
   font-size: var(--text-lg);
   font-weight: 500;
-  box-shadow: var(--shadow-ground), var(--light-glow);
-  transition: box-shadow var(--transition);
+  box-shadow: var(--shadow-ground);
 }
 
 .score-input::placeholder {
   color: var(--ink-faint);
   font-weight: 400;
-}
-
-.score-input:focus {
-  outline: 2px solid var(--ink);
-  outline-offset: 1px;
-  box-shadow: var(--shadow-ground), var(--light-glow-strong);
 }
 
 .btn-apply {
@@ -631,16 +624,11 @@ html.faculty-overlay-open {
   text-transform: uppercase;
   font-size: var(--text-sm);
   cursor: pointer;
-  box-shadow: var(--glow-cta);
-  transition:
-    opacity var(--transition),
-    transform var(--transition),
-    box-shadow var(--transition);
+  transition: opacity var(--transition), transform var(--transition);
 }
 
 .btn-apply:hover {
-  opacity: 0.96;
-  box-shadow: var(--glow-cta-hover);
+  opacity: 0.92;
 }
 
 .btn-apply:active {
