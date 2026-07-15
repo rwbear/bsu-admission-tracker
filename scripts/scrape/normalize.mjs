@@ -256,14 +256,16 @@ export function parseScoreBucketTables(html, meta) {
       const estimatedPassing = calcPassing(ranges, buckets, plan || 0);
       const facultyPart = meta.facultyId || meta.form || 'main';
       const safeSpec = slug(specName).slice(0, 48);
-      const id = `${meta.universityId}:${facultyPart}:${safeSpec}:${plan}`;
+      const form = meta.form || '';
+      // Include form so budget/paid (and military) rows never share an id.
+      const id = `${meta.universityId}:${form || 'x'}:${facultyPart}:${safeSpec}:${plan}`;
 
       results.push({
         id,
         universityId: meta.universityId,
         facultyId: meta.facultyId || meta.form || '',
         facultyName: meta.facultyName || meta.formName || '',
-        form: meta.form || '',
+        form,
         formName: meta.formName || '',
         groupName: groupName !== specName ? groupName : '',
         specName: cleanSpecName(specName),
@@ -321,13 +323,14 @@ export function parseSimpleCompetitionTables(html, meta) {
 
       const facultyPart = meta.facultyId || meta.form || 'main';
       const safeSpec = slug(specName).slice(0, 48);
-      const id = `${meta.universityId}:${facultyPart}:${safeSpec}:${plan}`;
+      const form = meta.form || '';
+      const id = `${meta.universityId}:${form || 'x'}:${facultyPart}:${safeSpec}:${plan}`;
       results.push({
         id,
         universityId: meta.universityId,
         facultyId: meta.facultyId || meta.form || '',
         facultyName: meta.facultyName || meta.formName || '',
-        form: meta.form || '',
+        form,
         formName: meta.formName || '',
         groupName: '',
         specName,

@@ -1,26 +1,23 @@
 # Проход — БГУ
 
-Радар конкурса для **БГУ** (дневная форма): выбираешь факультет, вводишь сумму баллов → видишь, сколько заявлений выше тебя относительно мест.
+Радар конкурса для **БГУ**: выбираешь таблицу мониторинга и факультет, вводишь сумму баллов → видишь, сколько заявлений выше тебя относительно мест.
+
+Живой сайт: https://rwbear.github.io/bsu-admission-tracker/
 
 ## Данные
 
-Официальная таблица мониторинга:
+Источник — официальный мониторинг БГУ (13 таблиц с хаба приёмной кампании), по умолчанию **3 сертификата · дневная платная** (`formk1?id=7`) и **Институт бизнеса БГУ**.
 
-- https://abit.bsu.by/formk1?id=7
+**Как обновляется:** GitHub Actions roughly каждые **5 минут** скрейпит таблицы через HTTP-прокси и коммитит `data/*.json` в ветку GitHub Pages. Сайт тянет самый новый снимок (сначала SHA-pinned raw) и чаще опрашивает, если снимок устарел. Браузер **не** ходит на `abit.bsu.by` напрямую.
 
-**Как обновляется:** GitHub Actions раз в **10 минут** скрейпит таблицу (все факультеты дневной формы) через региональные HTTP-прокси и коммитит `data/sb-bsu.json` в ветку GitHub Pages.  
-Сайт на загрузке и каждые 10 минут тянет самый новый снимок и показывает обратный отсчёт. По умолчанию выбран **Институт бизнеса БГУ**; клик по названию открывает список факультетов.
-
-Браузер **не** ходит на `abit.bsu.by` напрямую.
-
-Опционально: репозиторий → Settings → Secrets → `SCRAPE_PROXY` (`http://user:pass@host:port`) для стабильного выхода сборщика.
+Опционально: Settings → Secrets → `SCRAPE_PROXY` (`http://user:pass@host:port`).
 
 ## Локально
 
 ```bash
 npm test
 npm run fixtures   # демо-снимок, если БГУ недоступен
-npm run scrape     # живой сбор id=7
+npm run scrape     # живой сбор
 python3 -m http.server 8080
 ```
 
@@ -29,15 +26,13 @@ python3 -m http.server 8080
 ## GitHub Pages
 
 1. Settings → Pages → Deploy from a branch  
-2. Branch: `cursor/admission-tracker-rebuild-be86` (или актуальная Pages-ветка), folder `/ (root)`  
+2. Branch: `cursor/admission-tracker-rebuild-be86` (актуальная Pages-ветка), folder `/ (root)`  
 3. **Важно:** workflow `scrape.yml` должен быть на **default branch (`main`)**, иначе schedule не запустится. Actions → **Scrape admission tables** → Run workflow
 
-## Дизайн
-
-Минимальный line UI: тонкие рамки, мягкие скругления, hairline-список, визуальные бары.
+Подробнее про каденс: `docs/scrape-cadence.md`.
 
 ## Стек
 
 - Static HTML / CSS / ES modules
-- Node 20 scraper (`scripts/scrape`)
+- Node scraper (`scripts/scrape`)
 - Chance math in `js/compute.js`

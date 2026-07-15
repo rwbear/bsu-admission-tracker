@@ -12,6 +12,7 @@ import { prepareSpecs } from './compute.js';
 import { loadUniversity } from './load-data.js';
 import { CONFIG } from './config.js';
 import { resolveFacultyId, sortFaculties } from './faculties.js';
+import { normalizeUniversityPayload } from './spec-id.js';
 import {
   DEFAULT_TABLE_ID,
   facultiesForTable,
@@ -330,7 +331,7 @@ function renderBoard() {
       if (h2) h2.textContent = 'Введи балл';
       if (p) {
         p.textContent =
-          'Сверху — Институт бизнеса БГУ (можно сменить). Затем — обзор и детали.';
+          'Сверху — таблица мониторинга и факультет. Дальше — обзор и детали.';
       }
       return;
     }
@@ -515,7 +516,9 @@ function fetchData(opts = {}) {
     let changed = false;
     try {
       const prev = state.uniData;
-      const payload = await loadUniversity(UNI_ID, { bust: true });
+      const payload = normalizeUniversityPayload(
+        await loadUniversity(UNI_ID, { bust: true }),
+      );
       changed = snapshotChanged(payload, prev);
       state.uniData = payload;
       syncTableSelection();
