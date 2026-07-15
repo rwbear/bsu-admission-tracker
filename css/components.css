@@ -309,6 +309,26 @@
   box-shadow: inset 0 0 0 1px var(--ink);
 }
 
+/* Past the seat cut (“мест”) — lightly hatched so “out” reads at a glance. */
+.hist-col.is-out:not(.is-mine) .hist-col-fill {
+  background-color: color-mix(in srgb, var(--ink) 12%, transparent);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--ink) 26%, transparent) 0 1px,
+    transparent 1px 4px
+  );
+}
+
+.hist-col.is-out-start {
+  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--ink) 35%, transparent);
+}
+
+.hist-col.is-mine.is-out .hist-col-fill {
+  /* You still read as a solid pin even when sitting in the hatched zone. */
+  background: var(--ink);
+  background-image: none;
+}
+
 .hist-axis {
   position: relative;
   height: 1.1rem;
