@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-15T04:39:12.390Z",
+  "generatedAt": "2026-07-15T04:46:44.770Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
     "branch": "cursor/admission-tracker-rebuild-be86"
@@ -9,8 +9,8 @@
       "id": "sb-bsu",
       "name": "БГУ",
       "fullName": "Белорусский государственный университет",
-      "specialtyCount": 200,
-      "updatedAt": "2026-07-15T04:39:12.392Z",
+      "specialtyCount": 192,
+      "updatedAt": "2026-07-15T04:46:44.773Z",
       "available": true,
       "faculties": [
         {
@@ -61,7 +61,7 @@
         {
           "id": "факультет-журналистики",
           "name": "Факультет журналистики",
-          "specialtyCount": 2
+          "specialtyCount": 1
         },
         {
           "id": "факультет-международных-отношений",
@@ -71,7 +71,7 @@
         {
           "id": "факультет-социокультурных-коммуникаций",
           "name": "Факультет социокультурных коммуникаций",
-          "specialtyCount": 18
+          "specialtyCount": 15
         },
         {
           "id": "факультет-философии-и-социальных-наук",
@@ -86,7 +86,7 @@
         {
           "id": "филологический-факультет",
           "name": "Филологический факультет",
-          "specialtyCount": 14
+          "specialtyCount": 10
         },
         {
           "id": "химический-факультет",
@@ -138,7 +138,7 @@
         {
           "id": "34",
           "name": "Дневная форма. Бюджет",
-          "specialtyCount": 8,
+          "specialtyCount": 0,
           "trackId": "cert2"
         },
         {
