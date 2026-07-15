@@ -15,7 +15,7 @@ body {
   font-size: var(--text-base);
   line-height: 1.45;
   color: var(--ink);
-  /* Cool-lit ground — whites on top read as sunstruck */
+  /* Quiet paper — sun is told by casts, not a painted floor */
   background: var(--bg);
 }
 
@@ -62,7 +62,8 @@ input {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--bg-elev);
-  box-shadow: var(--shadow-ground), var(--sun-rim);
+  /* Lit lip: sun hits the top edge of the plane — no outer bevel */
+  box-shadow: var(--shadow-ground), inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
 .hidden {
@@ -76,9 +77,9 @@ input {
   z-index: 40;
   height: var(--command-h);
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
+  background: color-mix(in srgb, var(--bg-elev) 90%, transparent);
   backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-mid), var(--sun-rim);
+  box-shadow: var(--shadow-mid), inset 0 1px 0 rgba(255, 255, 255, 0.75);
 }
 
 .command-inner {
@@ -603,7 +604,7 @@ html.faculty-overlay-open {
   font-variant-numeric: tabular-nums;
   font-size: var(--text-lg);
   font-weight: 500;
-  box-shadow: var(--shadow-ground), var(--sun-rim);
+  box-shadow: var(--shadow-control);
   transition: box-shadow var(--transition), transform var(--transition);
 }
 
@@ -638,16 +639,13 @@ html.faculty-overlay-open {
 }
 
 .btn-apply:hover {
-  opacity: 0.96;
+  opacity: 0.97;
   box-shadow: var(--shadow-cta-hover);
 }
 
 .btn-apply:active {
   transform: translateY(1px);
-  box-shadow:
-    1px 1px 0 rgba(var(--umbra), 0.28),
-    2px 4px 0 rgba(var(--umbra), 0.16),
-    5px 10px 0 rgba(var(--umbra), 0.1);
+  box-shadow: var(--shadow-cta-active);
 }
 
 .banner {
