@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   summarizeStatuses,
   resolveHistCutIndex,
-  isHistOutBucket,
+  histOutZoneLeftPct,
 } from '../js/ui/charts.js';
 import { enrichSpec } from '../js/compute.js';
 
@@ -32,15 +32,12 @@ describe('chart helpers', () => {
     assert.equal(typeof row.chance.seatCutRatio, 'number');
   });
 
-  it('marks buckets after the seat cut as out (hatched zone)', () => {
-    // High → low: 5+10 cover plan 12 inside bucket 1; bucket 2+ are out.
+  it('places the out-zone at the right edge of the seat-cut bucket', () => {
+    // High → low: plan 12 lands in bucket 1 → out region starts at 2/4 = 50%.
     assert.equal(resolveHistCutIndex([5, 10, 20, 8], 12), 1);
-    assert.equal(isHistOutBucket(0, 1), false);
-    assert.equal(isHistOutBucket(1, 1), false);
-    assert.equal(isHistOutBucket(2, 1), true);
-    assert.equal(isHistOutBucket(3, 1), true);
+    assert.equal(histOutZoneLeftPct(1, 4), 50);
+    assert.equal(histOutZoneLeftPct(-1, 4), null);
+    assert.equal(histOutZoneLeftPct(3, 4), null); // last bucket — nothing out
     assert.equal(resolveHistCutIndex([5, 10], 0), -1);
-    assert.equal(resolveHistCutIndex([5, 10], 100), -1);
-    assert.equal(isHistOutBucket(2, -1), false);
   });
 });

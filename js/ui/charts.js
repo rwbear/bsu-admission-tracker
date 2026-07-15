@@ -161,7 +161,7 @@ function chanceAria(chance, youPct, seatPct) {
 
 /**
  * Index of the bucket where cumulative applicants (high→low) first cover the plan.
- * That bucket is still “in”; everything after it is out of seats.
+ * That bucket is still “in”; the out zone starts at its right edge.
  * @param {number[]} buckets
  * @param {number} plan
  * @returns {number} cut index, or -1 when there is no seat cut
@@ -177,12 +177,15 @@ export function resolveHistCutIndex(buckets, plan) {
 }
 
 /**
- * Buckets after the seat-cut bucket are beyond the plan (out).
- * @param {number} index
+ * Left edge % of the out zone (right edge of the seat-cut bucket).
  * @param {number} cutIdx
+ * @param {number} bucketCount
+ * @returns {number | null}
  */
-export function isHistOutBucket(index, cutIdx) {
-  return cutIdx >= 0 && index > cutIdx;
+export function histOutZoneLeftPct(cutIdx, bucketCount) {
+  if (cutIdx < 0 || !bucketCount || bucketCount <= 0) return null;
+  if (cutIdx >= bucketCount - 1) return null; // plan covers all buckets — nothing “out”
+  return ((cutIdx + 1) / bucketCount) * 100;
 }
 
 /**
@@ -202,8 +205,8 @@ function shortRangeLabel(label) {
 
 /**
  * Mobile-first histogram: full-width column strip, no horizontal scroll.
- * Solid bars cover score bands that still fit in the plan; lightly hatched
- * bars are past the seat cut (out of it).
+ * Bars stay solid. When a seat cut exists, a vertical line splits the box —
+ * the right (out) region is lightly hatched as a background field.
  * @param {HTMLElement} mount
  * @param {object} row
  * @param {number | null} score
@@ -217,21 +220,39 @@ export function renderHistogram(mount, row, score) {
   const max = Math.max(...buckets, 1);
   const plan = row.plan || 0;
   const cutIdx = resolveHistCutIndex(buckets, plan);
+  const outLeft = histOutZoneLeftPct(cutIdx, ranges.length);
 
   let mineIdx = -1;
   if (score != null && row.chance?.segments) {
     mineIdx = row.chance.segments.findIndex((s) => s.isMine);
   }
 
-  const outCount = cutIdx >= 0 ? ranges.length - cutIdx - 1 : 0;
   const chart = el('div', {
-    className: 'hist-chart',
+    className: `hist-chart${outLeft != null ? ' has-out-zone' : ''}`,
     role: 'img',
     'aria-label':
-      outCount > 0
-        ? `Распределение по баллам: план ${plan}, после «мест» — ${outCount} интервала вне набора (штриховка)`
+      outLeft != null
+        ? `Распределение по баллам: слева места по плану ${plan}, справа — вне набора`
         : 'Распределение по интервалам баллов',
   });
+
+  const body = el('div', { className: 'hist-chart-body' });
+
+  if (outLeft != null) {
+    body.append(
+      el('div', {
+        className: 'hist-out-region',
+        'aria-hidden': 'true',
+        style: `left:${outLeft.toFixed(3)}%`,
+      }),
+      el('div', {
+        className: 'hist-cut-line',
+        'aria-hidden': 'true',
+        style: `left:${outLeft.toFixed(3)}%`,
+        title: `План приёма: ${plan}`,
+      }),
+    );
+  }
 
   const bars = el('div', { className: 'hist-bars' });
 
@@ -240,21 +261,9 @@ export function renderHistogram(mount, row, score) {
     const ratio = count / max;
     const mine = i === mineIdx;
     const cut = i === cutIdx;
-    const out = isHistOutBucket(i, cutIdx);
-    const outStart = out && i === cutIdx + 1;
     const col = el('div', {
-      className: [
-        'hist-col',
-        mine ? 'is-mine' : '',
-        cut ? 'is-cut' : '',
-        out ? 'is-out' : '',
-        outStart ? 'is-out-start' : '',
-      ]
-        .filter(Boolean)
-        .join(' '),
-      title: out
-        ? `${String(label).replace(/\s+/g, ' ')}: ${count} · вне плана`
-        : `${String(label).replace(/\s+/g, ' ')}: ${count}`,
+      className: `hist-col${mine ? ' is-mine' : ''}${cut ? ' is-cut' : ''}`,
+      title: `${String(label).replace(/\s+/g, ' ')}: ${count}`,
     });
     const barH = count > 0 ? Math.max(ratio * 100, 8) : 0;
     col.append(
@@ -282,7 +291,6 @@ export function renderHistogram(mount, row, score) {
     kind: 'edge',
   });
 
-  // Drop near-duplicates so ticks don't pile up on tiny screens
   const placed = [];
   for (const tick of ticks) {
     if (
@@ -311,6 +319,7 @@ export function renderHistogram(mount, row, score) {
     );
   }
 
-  chart.append(bars, axis);
+  body.append(bars, axis);
+  chart.append(body);
   mount.append(chart);
 }
