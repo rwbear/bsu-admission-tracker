@@ -261,7 +261,8 @@
 
 /* Histogram — full-width, no scroll on mobile */
 .hist-chart {
-  position: relative;
+  display: grid;
+  gap: var(--space-2);
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -272,96 +273,40 @@
   overflow: hidden;
 }
 
-.hist-chart-body {
-  position: relative;
-  display: grid;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-/*
- * Out wash + cut line bleed to the chart box edges. Cubes past the cut
- * are also lightened so the out side reads as one dimmed field.
- */
-.hist-out-region {
-  position: absolute;
-  top: calc(-1 * var(--space-3));
-  right: calc(-1 * var(--space-3));
-  bottom: calc(-1 * var(--space-2));
-  pointer-events: none;
-  z-index: 2;
-  background: color-mix(in srgb, var(--bg-elev) 62%, transparent);
-}
-
-.hist-cut-line {
-  position: absolute;
-  top: calc(-1 * var(--space-3));
-  bottom: calc(-1 * var(--space-2));
-  width: 1px;
-  margin-left: -0.5px;
-  pointer-events: none;
-  z-index: 3;
-  background: color-mix(in srgb, var(--ink) 28%, transparent);
-}
-
-.hist-bars,
-.hist-axis {
-  position: relative;
-  z-index: 1;
-}
-
-/*
- * Cube table: square cells, airy base, soft corners.
- * Gutter is a whisper of grey so the board feels light, not a mesh cage.
- * On/off still contrast — just further up the greyscale.
- */
 .hist-bars {
-  --hist-cols: 1;
-  --hist-rows: 16;
-  --hist-gap: 4px;
-  --hist-cube-r: clamp(1.5px, 26%, 3.5px);
-  display: grid;
-  grid-auto-flow: column;
-  grid-template-columns: repeat(var(--hist-cols), minmax(0, 1fr));
-  grid-template-rows: repeat(var(--hist-rows), auto);
-  gap: var(--hist-gap);
+  display: flex;
+  align-items: flex-end;
+  gap: 1px;
   width: 100%;
-  height: auto;
+  height: 7.5rem;
   min-width: 0;
-  padding: var(--hist-gap);
-  box-sizing: border-box;
-  background: color-mix(in srgb, var(--soft) 55%, var(--bg-elev));
-  border: 1px solid color-mix(in srgb, var(--line) 70%, var(--bg-elev));
-  border-radius: var(--radius-sm);
-  align-content: start;
+  padding-top: var(--space-1);
+  border-bottom: 1px solid var(--line);
 }
 
-.hist-cube {
+.hist-col {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.hist-col-fill {
   width: 100%;
-  aspect-ratio: 1 / 1;
-  height: auto;
-  min-width: 0;
-  border-radius: var(--hist-cube-r);
+  max-width: 100%;
+  border-radius: 1px 1px 0 0;
+  background: color-mix(in srgb, var(--ink) 38%, transparent);
+  min-height: 0;
 }
 
-.hist-cube.is-off {
-  background: color-mix(in srgb, var(--ink) 3.5%, var(--bg-elev));
+.hist-col.is-mine .hist-col-fill {
+  background: var(--ink);
 }
 
-.hist-cube.is-on {
-  background: color-mix(in srgb, var(--ink) 32%, var(--bg-elev));
-}
-
-.hist-cube.is-on.is-mine {
-  background: color-mix(in srgb, var(--ink) 70%, var(--bg-elev));
-}
-
-.hist-cube.is-out.is-off {
-  background: color-mix(in srgb, var(--ink) 1.5%, var(--bg-elev));
-}
-
-.hist-cube.is-out.is-on {
-  background: color-mix(in srgb, var(--ink) 14%, var(--bg-elev));
+.hist-col.is-cut .hist-col-fill {
+  box-shadow: inset 0 0 0 1px var(--ink);
 }
 
 .hist-axis {
@@ -424,6 +369,6 @@
   }
 
   .hist-bars {
-    --hist-gap: 3px;
+    height: 6.5rem;
   }
 }
