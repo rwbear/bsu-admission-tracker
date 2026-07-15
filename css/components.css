@@ -261,8 +261,7 @@
 
 /* Histogram — full-width, no scroll on mobile */
 .hist-chart {
-  display: grid;
-  gap: var(--space-2);
+  position: relative;
   width: 100%;
   max-width: 100%;
   min-width: 0;
@@ -271,6 +270,49 @@
   border-radius: var(--radius-sm);
   background: var(--bg-elev);
   overflow: hidden;
+}
+
+.hist-chart-body {
+  position: relative;
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/*
+ * Out field + cut line are sized to the bar row width, then bled to the
+ * chart box edges so the hatch fills the whole panel cleanly.
+ */
+.hist-out-region {
+  position: absolute;
+  top: calc(-1 * var(--space-3));
+  right: calc(-1 * var(--space-3));
+  bottom: calc(-1 * var(--space-2));
+  pointer-events: none;
+  z-index: 0;
+  background-color: color-mix(in srgb, var(--ink) 2.5%, var(--bg-elev));
+  background-image: repeating-linear-gradient(
+    -45deg,
+    color-mix(in srgb, var(--ink) 9%, transparent) 0 1px,
+    transparent 1px 5px
+  );
+}
+
+.hist-cut-line {
+  position: absolute;
+  top: calc(-1 * var(--space-3));
+  bottom: calc(-1 * var(--space-2));
+  width: 1px;
+  margin-left: -0.5px;
+  pointer-events: none;
+  z-index: 2;
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+.hist-bars,
+.hist-axis {
+  position: relative;
+  z-index: 1;
 }
 
 .hist-bars {
@@ -297,7 +339,7 @@
   width: 100%;
   max-width: 100%;
   border-radius: 1px 1px 0 0;
-  background: color-mix(in srgb, var(--ink) 38%, transparent);
+  background: color-mix(in srgb, var(--ink) 38%, var(--bg-elev));
   min-height: 0;
 }
 
@@ -307,26 +349,6 @@
 
 .hist-col.is-cut .hist-col-fill {
   box-shadow: inset 0 0 0 1px var(--ink);
-}
-
-/* Past the seat cut (“мест”) — lightly hatched so “out” reads at a glance. */
-.hist-col.is-out:not(.is-mine) .hist-col-fill {
-  background-color: color-mix(in srgb, var(--ink) 12%, transparent);
-  background-image: repeating-linear-gradient(
-    -45deg,
-    color-mix(in srgb, var(--ink) 26%, transparent) 0 1px,
-    transparent 1px 4px
-  );
-}
-
-.hist-col.is-out-start {
-  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--ink) 35%, transparent);
-}
-
-.hist-col.is-mine.is-out .hist-col-fill {
-  /* You still read as a solid pin even when sitting in the hatched zone. */
-  background: var(--ink);
-  background-image: none;
 }
 
 .hist-axis {
