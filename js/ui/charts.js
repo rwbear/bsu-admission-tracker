@@ -312,9 +312,40 @@ function shortRangeLabel(label) {
 }
 
 /**
- * Mobile-first histogram: full-width column strip, no horizontal scroll.
- * Bars stay solid. Display window tracks real applicants (low edge =
- * lowest − 60). Seat cut is a full-height line; out side is a light field.
+ * How many cube rows to draw for a given peak count.
+ * Keeps cubes tiny when peeks are small; caps height when popular.
+ * @param {number} maxCount
+ */
+export function histCubeLevels(maxCount) {
+  const CAP = 28;
+  const FLOOR = 16;
+  const m = Math.max(0, Math.floor(Number(maxCount) || 0));
+  if (m <= 0) return FLOOR;
+  if (m >= CAP) return CAP;
+  if (m >= FLOOR) return m;
+  return FLOOR;
+}
+
+/**
+ * Active cubes from the bottom for one score column.
+ * @param {number} count
+ * @param {number} maxCount
+ * @param {number} levels
+ */
+export function histCubeFilled(count, maxCount, levels) {
+  const c = Math.max(0, Number(count) || 0);
+  const m = Math.max(1, Number(maxCount) || 1);
+  const L = Math.max(1, Math.floor(Number(levels) || 1));
+  if (c <= 0) return 0;
+  if (L === m) return Math.min(L, Math.round(c));
+  return Math.min(L, Math.round((c / m) * L));
+}
+
+/**
+ * Mobile-first histogram as a dense cube table: tiny cells with a 1px
+ * interval, dark = active (applicants), light = empty. Display window
+ * tracks real applicants (low edge = lowest − 60). Seat cut is a
+ * full-height line; out side is dimmed.
  * @param {HTMLElement} mount
  * @param {object} row
  * @param {number | null} score
@@ -344,6 +375,7 @@ export function renderHistogram(mount, row, score) {
   if (!ranges.length) return;
 
   const max = Math.max(...buckets, 1);
+  const levels = histCubeLevels(max);
   const cutIdx =
     cutIdxAll >= window.start && cutIdxAll < window.end
       ? cutIdxAll - window.start
@@ -390,20 +422,28 @@ export function renderHistogram(mount, row, score) {
 
   ranges.forEach((label, i) => {
     const count = buckets[i] || 0;
-    const ratio = count / max;
+    const filled = histCubeFilled(count, max, levels);
     const mine = i === mineIdx;
     const cut = i === cutIdx;
+    const out = outLeft != null && cutIdx >= 0 && i > cutIdx;
     const col = el('div', {
-      className: `hist-col${mine ? ' is-mine' : ''}${cut ? ' is-cut' : ''}`,
+      className: `hist-col${mine ? ' is-mine' : ''}${cut ? ' is-cut' : ''}${out ? ' is-out' : ''}`,
       title: `${String(label).replace(/\s+/g, ' ')}: ${count}`,
     });
-    const barH = count > 0 ? Math.max(ratio * 100, 8) : 0;
-    col.append(
-      el('div', {
-        className: 'hist-col-fill',
-        style: `height:${barH.toFixed(1)}%`,
-      }),
-    );
+    const stack = el('div', {
+      className: 'hist-col-stack',
+      'aria-hidden': 'true',
+    });
+    // Top → bottom: empty light cubes, then dark active cubes.
+    for (let r = levels - 1; r >= 0; r -= 1) {
+      const on = r < filled;
+      stack.append(
+        el('div', {
+          className: `hist-cube${on ? ' is-on' : ' is-off'}`,
+        }),
+      );
+    }
+    col.append(stack);
     bars.append(col);
   });
 

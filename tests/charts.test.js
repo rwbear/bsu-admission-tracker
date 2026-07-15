@@ -5,6 +5,8 @@ import {
   resolveHistCutIndex,
   histOutZoneLeftPct,
   resolveHistDisplayWindow,
+  histCubeLevels,
+  histCubeFilled,
 } from '../js/ui/charts.js';
 import { enrichSpec } from '../js/compute.js';
 
@@ -75,5 +77,21 @@ describe('chart helpers', () => {
     });
     assert.ok(win.start <= 0);
     assert.ok(win.end > 1);
+  });
+
+  it('keeps cube rows dense for small peaks and caps tall ones', () => {
+    assert.equal(histCubeLevels(0), 16);
+    assert.equal(histCubeLevels(3), 16);
+    assert.equal(histCubeLevels(16), 16);
+    assert.equal(histCubeLevels(20), 20);
+    assert.equal(histCubeLevels(40), 28);
+  });
+
+  it('maps bucket counts onto cube fills from the bottom', () => {
+    assert.equal(histCubeFilled(0, 3, 16), 0);
+    assert.equal(histCubeFilled(3, 3, 16), 16);
+    assert.equal(histCubeFilled(1, 3, 16), 5);
+    assert.equal(histCubeFilled(10, 10, 10), 10);
+    assert.equal(histCubeFilled(20, 40, 28), 14);
   });
 });
