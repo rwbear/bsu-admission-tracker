@@ -15,8 +15,13 @@ body {
   font-size: var(--text-base);
   line-height: 1.45;
   color: var(--ink);
-  /* Quiet paper — sun is told by casts, not a painted floor */
-  background: var(--bg);
+  /*
+   * Quiet directional sun in the room — bright from TL, cooler into BR.
+   * Surfaces then cast into that light. Not a painted diagonal wash.
+   */
+  background:
+    radial-gradient(100% 80% at 4% -14%, rgba(255, 250, 235, 1) 0%, transparent 48%),
+    linear-gradient(155deg, #f8f5ee 0%, var(--bg) 38%, #d8ddd4 100%);
 }
 
 a {
@@ -61,25 +66,31 @@ input {
 .panel {
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  background: var(--bg-elev);
-  /* Lit lip: sun hits the top edge of the plane — no outer bevel */
-  box-shadow: var(--shadow-ground), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  /* Brilliance toward the sun (TL) */
+  background: linear-gradient(
+    145deg,
+    #fffefb 0%,
+    #ffffff 42%,
+    #f7f7f4 100%
+  );
+  /* ONE continuous umbra + ONE opposite sun fill — no layer banding */
+  box-shadow: var(--shadow-ground), var(--sun-fill);
 }
 
 .hidden {
   display: none !important;
 }
 
-/* Top bar — mid cast (shorter throw than panels) */
+/* Sticky command: box-shadow only (pseudo casts under sticky paint over the page) */
 .command {
   position: sticky;
   top: 0;
   z-index: 40;
   height: var(--command-h);
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--bg-elev) 90%, transparent);
+  background: color-mix(in srgb, #fffefb 88%, transparent);
   backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-mid), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  box-shadow: var(--shadow-mid), var(--sun-fill-soft);
 }
 
 .command-inner {
@@ -604,7 +615,7 @@ html.faculty-overlay-open {
   font-variant-numeric: tabular-nums;
   font-size: var(--text-lg);
   font-weight: 500;
-  box-shadow: var(--shadow-control), inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  box-shadow: var(--shadow-control), var(--sun-fill-soft);
   transition: box-shadow var(--transition), transform var(--transition);
 }
 
