@@ -1,11 +1,11 @@
 # БГУ · live-таблицы конкурса
 
+**[rwbear.github.io/bsu-admission-tracker](https://rwbear.github.io/bsu-admission-tracker/)**
+
 Визуализация проходных таблиц в live формате.  
 Введите свой проходной балл и увидите своё место в конкурсе.
 
 made by: **r.w.b. | production**
-
-Живой сайт: https://rwbear.github.io/bsu-admission-tracker/
 
 ## Данные
 
@@ -33,6 +33,16 @@ python3 -m http.server 8080
 3. **Важно:** workflow `scrape.yml` должен быть на **default branch (`main`)**, иначе schedule не запустится. Actions → **Scrape admission tables** → Run workflow
 
 Подробнее про каденс: `docs/scrape-cadence.md`.
+
+### Repo About (description + Website)
+
+Cursor’s GitHub App token cannot edit Administration fields. From your own machine (logged in as repo owner):
+
+```bash
+./scripts/set-github-about.sh
+```
+
+Or paste manually in GitHub → Settings → General → **Description** / **Website**.
 
 ## Стек
 
