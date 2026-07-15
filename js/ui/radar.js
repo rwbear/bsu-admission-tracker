@@ -4,7 +4,7 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js';
+} from './charts.js?v=20260715i';
 
 /**
  * @param {object} row

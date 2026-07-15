@@ -1,6 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { summarizeStatuses } from '../js/ui/charts.js';
+import {
+  summarizeStatuses,
+  resolveHistCutIndex,
+  histOutZoneLeftPct,
+} from '../js/ui/charts.js';
 import { enrichSpec } from '../js/compute.js';
 
 describe('chart helpers', () => {
@@ -26,5 +30,13 @@ describe('chart helpers', () => {
     assert.ok(row.chance);
     assert.ok(row.chance.segments.length >= 1);
     assert.equal(typeof row.chance.seatCutRatio, 'number');
+  });
+
+  it('places the out-zone at the right edge of the seat-cut bucket', () => {
+    assert.equal(resolveHistCutIndex([5, 10, 20, 8], 12), 1);
+    assert.equal(histOutZoneLeftPct(1, 4), 50);
+    assert.equal(histOutZoneLeftPct(-1, 4), null);
+    assert.equal(histOutZoneLeftPct(3, 4), null);
+    assert.equal(resolveHistCutIndex([5, 10], 0), -1);
   });
 });
