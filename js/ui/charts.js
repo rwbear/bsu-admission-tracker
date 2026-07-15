@@ -1,4 +1,5 @@
 import { el } from './dom.js';
+import { bucketHigh, bucketLow } from '../compute.js';
 
 /**
  * Status counters for the summary strip.
@@ -177,15 +178,122 @@ export function resolveHistCutIndex(buckets, plan) {
 }
 
 /**
- * Left edge % of the out zone (right edge of the seat-cut bucket).
- * @param {number} cutIdx
+ * Left edge % of the out zone (right edge of the seat-cut bucket),
+ * in window-local indices.
+ * @param {number} cutIdxLocal
  * @param {number} bucketCount
  * @returns {number | null}
  */
-export function histOutZoneLeftPct(cutIdx, bucketCount) {
-  if (cutIdx < 0 || !bucketCount || bucketCount <= 0) return null;
-  if (cutIdx >= bucketCount - 1) return null; // plan covers all buckets — nothing “out”
-  return ((cutIdx + 1) / bucketCount) * 100;
+export function histOutZoneLeftPct(cutIdxLocal, bucketCount) {
+  if (cutIdxLocal < 0 || !bucketCount || bucketCount <= 0) return null;
+  if (cutIdxLocal >= bucketCount - 1) return null;
+  return ((cutIdxLocal + 1) / bucketCount) * 100;
+}
+
+/**
+ * Tangible low edge of applicants in a populated bucket.
+ * @param {string} label
+ */
+function appsFloorInBucket(label) {
+  const lo = bucketLow(label);
+  const hi = bucketHigh(label);
+  if (lo != null && lo > 0) return lo;
+  if (hi != null && Number.isFinite(hi)) return hi;
+  if (lo != null) return lo;
+  return null;
+}
+
+/**
+ * Crop the published high→low band to the data that actually exists.
+ * Low edge = lowest occupied score − padDown (default 60), so the chart
+ * no longer always dies at BSU’s fixed «120 и менее» dump bucket.
+ *
+ * @param {string[]} ranges
+ * @param {number[]} buckets
+ * @param {{
+ *   padDown?: number,
+ *   padHighBuckets?: number,
+ *   mustInclude?: number[],
+ * }} [opts]
+ * @returns {{
+ *   start: number,
+ *   end: number,
+ *   appsFloor: number | null,
+ *   targetFloor: number | null,
+ *   clippedLow: boolean,
+ * }}
+ */
+export function resolveHistDisplayWindow(ranges, buckets, opts = {}) {
+  const padDown = opts.padDown ?? 60;
+  const padHighBuckets = opts.padHighBuckets ?? 1;
+  const mustInclude = (opts.mustInclude || []).filter(
+    (i) => Number.isFinite(i) && i >= 0,
+  );
+  const n = Math.min(ranges?.length || 0, buckets?.length || 0);
+  if (!n) {
+    return {
+      start: 0,
+      end: 0,
+      appsFloor: null,
+      targetFloor: null,
+      clippedLow: false,
+    };
+  }
+
+  let first = -1;
+  let last = -1;
+  for (let i = 0; i < n; i += 1) {
+    if ((Number(buckets[i]) || 0) > 0) {
+      if (first < 0) first = i;
+      last = i;
+    }
+  }
+
+  if (first < 0) {
+    return {
+      start: 0,
+      end: n,
+      appsFloor: null,
+      targetFloor: null,
+      clippedLow: false,
+    };
+  }
+
+  for (const i of mustInclude) {
+    if (i < n) {
+      first = Math.min(first, i);
+      last = Math.max(last, i);
+    }
+  }
+
+  const appsFloor = appsFloorInBucket(ranges[last]);
+  const targetFloor =
+    appsFloor == null ? null : Math.max(0, Math.round(appsFloor - padDown));
+
+  let start = Math.max(0, first - padHighBuckets);
+  let end = last + 1;
+
+  if (targetFloor != null) {
+    for (let i = last + 1; i < n; i += 1) {
+      const hi = bucketHigh(ranges[i]);
+      if (hi == null) break;
+      if (!Number.isFinite(hi)) break;
+      if (hi >= targetFloor) end = i + 1;
+      else break;
+    }
+  }
+
+  for (const i of mustInclude) {
+    if (i < n) end = Math.max(end, i + 1);
+  }
+
+  return {
+    start,
+    end,
+    appsFloor,
+    targetFloor,
+    clippedLow: end < n,
+  };
 }
 
 /**
@@ -205,35 +313,59 @@ function shortRangeLabel(label) {
 
 /**
  * Mobile-first histogram: full-width column strip, no horizontal scroll.
- * Bars stay solid. When a seat cut exists, a vertical line splits the box —
- * the right (out) region is lightly hatched as a background field.
+ * Bars stay solid. Display window tracks real applicants (low edge =
+ * lowest − 60). Seat cut is a full-height line; out side is a light field.
  * @param {HTMLElement} mount
  * @param {object} row
  * @param {number | null} score
  */
 export function renderHistogram(mount, row, score) {
   mount.innerHTML = '';
-  const ranges = row.ranges || [];
-  const buckets = row.buckets || [];
+  const rangesAll = row.ranges || [];
+  const bucketsAll = row.buckets || [];
+  if (!rangesAll.length) return;
+
+  const plan = row.plan || 0;
+  const cutIdxAll = resolveHistCutIndex(bucketsAll, plan);
+
+  let mineIdxAll = -1;
+  if (score != null && row.chance?.segments) {
+    mineIdxAll = row.chance.segments.findIndex((s) => s.isMine);
+  }
+
+  const window = resolveHistDisplayWindow(rangesAll, bucketsAll, {
+    padDown: 60,
+    padHighBuckets: 1,
+    mustInclude: [cutIdxAll, mineIdxAll].filter((i) => i >= 0),
+  });
+
+  const ranges = rangesAll.slice(window.start, window.end);
+  const buckets = bucketsAll.slice(window.start, window.end);
   if (!ranges.length) return;
 
   const max = Math.max(...buckets, 1);
-  const plan = row.plan || 0;
-  const cutIdx = resolveHistCutIndex(buckets, plan);
+  const cutIdx =
+    cutIdxAll >= window.start && cutIdxAll < window.end
+      ? cutIdxAll - window.start
+      : -1;
+  const mineIdx =
+    mineIdxAll >= window.start && mineIdxAll < window.end
+      ? mineIdxAll - window.start
+      : -1;
   const outLeft = histOutZoneLeftPct(cutIdx, ranges.length);
 
-  let mineIdx = -1;
-  if (score != null && row.chance?.segments) {
-    mineIdx = row.chance.segments.findIndex((s) => s.isMine);
-  }
+  const lowLabel =
+    window.targetFloor != null
+      ? `≤${window.targetFloor}`
+      : shortRangeLabel(ranges[ranges.length - 1]);
 
   const chart = el('div', {
     className: `hist-chart${outLeft != null ? ' has-out-zone' : ''}`,
     role: 'img',
     'aria-label':
       outLeft != null
-        ? `Распределение по баллам: слева места по плану ${plan}, справа — вне набора`
-        : 'Распределение по интервалам баллов',
+        ? `Распределение по баллам до ${lowLabel}: слева места по плану ${plan}, справа — вне набора`
+        : `Распределение по интервалам баллов до ${lowLabel}`,
   });
 
   const body = el('div', { className: 'hist-chart-body' });
@@ -287,7 +419,7 @@ export function renderHistogram(mount, row, score) {
   }
   ticks.push({
     i: n - 1,
-    text: shortRangeLabel(ranges[n - 1]),
+    text: lowLabel,
     kind: 'edge',
   });
 
