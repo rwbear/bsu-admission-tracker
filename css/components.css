@@ -28,36 +28,9 @@
   background: var(--soft);
 }
 
-.overview-row:focus-visible {
-  outline: none;
-  background: var(--soft);
-  box-shadow: inset 0 0 0 1.5px var(--sun-edge);
-}
-
 .overview-row.selected {
-  /* Light enters from the left, soft-fills, touches the border edge */
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--sun-bright) 94%, transparent) 0%,
-    color-mix(in srgb, var(--sun) 58%, transparent) 40%,
-    transparent 84%
-  );
-  box-shadow:
-    inset 2px 0 0 var(--sun-edge),
-    inset 16px 0 32px -12px var(--sun-glow-soft);
-}
-
-.overview-row.selected:hover,
-.overview-row.selected:focus-visible {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--sun-bright) 94%, transparent) 0%,
-    color-mix(in srgb, var(--sun) 58%, transparent) 40%,
-    transparent 84%
-  );
-  box-shadow:
-    inset 2px 0 0 var(--sun-edge),
-    inset 16px 0 32px -12px var(--sun-glow-soft);
+  background: var(--select);
+  box-shadow: inset 2px 0 0 var(--select-line);
 }
 
 .ov-mark {
