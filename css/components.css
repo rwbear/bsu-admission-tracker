@@ -269,10 +269,11 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--bg-elev);
-  /* Soft inner-plate lift — lighter than panel ground (avoids double cast) */
+  /* Inner plate — sharper lift + a touch of lit glow */
   box-shadow:
-    2px 5px 14px rgba(36, 32, 26, 0.04),
-    1px 2px 4px rgba(36, 32, 26, 0.02);
+    1px 2px 3px rgba(36, 32, 26, 0.08),
+    3px 8px 16px rgba(36, 32, 26, 0.07),
+    -1px -2px 8px rgba(255, 252, 247, 0.65);
   overflow: hidden;
 }
 
