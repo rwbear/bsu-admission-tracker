@@ -40,11 +40,27 @@ export function emit() {
   listeners.forEach((fn) => fn(state));
 }
 
+/**
+ * @param {unknown} raw
+ * @returns {number | null}
+ */
+export function parseStoredScore(raw) {
+  if (raw == null || raw === '') return null;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return null;
+  if (n < 0 || n > 500) return null;
+  return n;
+}
+
 export function loadPrefs() {
-  const score = localStorage.getItem(KEYS.score);
-  if (score != null && score !== '') {
-    state.score = Number(score);
+  const score = parseStoredScore(localStorage.getItem(KEYS.score));
+  if (score != null) {
+    state.score = score;
     state.scoreSubmitted = true;
+  } else {
+    state.score = null;
+    state.scoreSubmitted = false;
+    localStorage.removeItem(KEYS.score);
   }
 
   state.selectedId = localStorage.getItem(KEYS.selected);
@@ -60,9 +76,16 @@ export function setScore(value) {
     state.scoreSubmitted = false;
     localStorage.removeItem(KEYS.score);
   } else {
-    state.score = Number(value);
-    state.scoreSubmitted = true;
-    localStorage.setItem(KEYS.score, String(state.score));
+    const n = parseStoredScore(value);
+    if (n == null) {
+      state.score = null;
+      state.scoreSubmitted = false;
+      localStorage.removeItem(KEYS.score);
+    } else {
+      state.score = n;
+      state.scoreSubmitted = true;
+      localStorage.setItem(KEYS.score, String(state.score));
+    }
   }
   emit();
 }

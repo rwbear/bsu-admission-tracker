@@ -239,23 +239,33 @@ export function enrichSpec(spec, score) {
   const buckets = spec.buckets || [];
   const estimatedPassing =
     spec.estimatedPassing ?? calcPassing(ranges, buckets, plan);
-  const above = score != null ? peopleAbove(ranges, buckets, score) : null;
-  const atOrAbove = score != null ? peopleAtOrAbove(ranges, buckets, score) : null;
-  const status = getStatus(score, estimatedPassing);
+  const scoreOk = score != null && Number.isFinite(Number(score));
+  const above = scoreOk ? peopleAbove(ranges, buckets, Number(score)) : null;
+  const atOrAbove = scoreOk
+    ? peopleAtOrAbove(ranges, buckets, Number(score))
+    : null;
+  let status = getStatus(scoreOk ? Number(score) : null, estimatedPassing);
   const apps = Number(spec.inCompetition ?? spec.totalApps) || 0;
+  const bucketSum = buckets.reduce((a, b) => a + (Number(b) || 0), 0);
+  const competition = Math.max(apps, bucketSum);
+  // Seats still open: no passing score has formed — every applicant is in.
+  if (status === 'neutral' && scoreOk && plan > 0 && competition < plan) {
+    status = 'safe';
+  }
   const pressure = contestRatio(apps, plan);
   const chance = buildChanceTrack(
     { ranges, buckets, plan, inCompetition: apps },
-    score,
+    scoreOk ? Number(score) : null,
   );
 
-  const delta = score != null && estimatedPassing != null
-    ? score - estimatedPassing
-    : null;
+  const delta =
+    scoreOk && estimatedPassing != null
+      ? Number(score) - estimatedPassing
+      : null;
 
   // Lower sort key = better chance for the student
   let sortKey = 5000;
-  if (score != null && above != null && plan > 0) {
+  if (scoreOk && above != null && plan > 0) {
     sortKey = above / plan;
   } else if (delta != null) {
     sortKey = -delta;

@@ -4,7 +4,7 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js?v=20260715i';
+} from './charts.js?v=20260715j';
 
 /**
  * @param {object} row
@@ -109,10 +109,16 @@ export function renderDetailPanel(container, row, score, meta = {}) {
     row.pressure == null ? '—' : `${row.pressure.toFixed(1)}×`;
 
   const updatedAt = meta.updatedAt || row.updatedAt;
-  const note = `Обновлено ${fmtTime(updatedAt)} · расчётный проходной — оценка по таблице`;
+  const apps = Number(row.inCompetition ?? row.totalApps) || 0;
+  const plan = Number(row.plan) || 0;
+  const note =
+    row.estimatedPassing == null && plan > 0 && apps < plan
+      ? `Обновлено ${fmtTime(updatedAt)} · заявлений меньше мест — расчётный проходной ещё не сложился`
+      : `Обновлено ${fmtTime(updatedAt)} · расчётный проходной — оценка по таблице`;
 
   const trackMount = el('div');
   const histMount = el('div');
+  const statusBits = [row.statusLabel, row.facultyName].filter(Boolean);
 
   const inner = el('div', { className: 'detail-inner' }, [
     el('h3', {
@@ -121,7 +127,7 @@ export function renderDetailPanel(container, row, score, meta = {}) {
     }),
     el('div', {
       className: 'detail-status',
-      text: `${row.statusLabel || '—'} · ${row.facultyName || ''}`.trim(),
+      text: statusBits.join(' · ') || '—',
     }),
     el('div', { className: 'metric-grid' }, [
       metric('Над тобой / мест', people),
