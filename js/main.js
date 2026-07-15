@@ -397,6 +397,24 @@ function prefersReducedMotion() {
   }
 }
 
+/** Soft whole-stage luminosity when a real snapshot lands — never countdown ticks. */
+let sunPulseTimer = 0;
+
+function triggerSunPulse() {
+  if (prefersReducedMotion()) return;
+  const stage = document.querySelector('.site');
+  if (!stage) return;
+  stage.classList.remove('is-data-pulse');
+  // Reflow so re-adding the class retriggers the transition even on back-to-back updates
+  void stage.offsetWidth;
+  stage.classList.add('is-data-pulse');
+  if (sunPulseTimer) clearTimeout(sunPulseTimer);
+  sunPulseTimer = globalThis.setTimeout(() => {
+    sunPulseTimer = 0;
+    stage.classList.remove('is-data-pulse');
+  }, 420);
+}
+
 function applyMetaClasses(phase) {
   const showAge = phase === 'age';
   $commandTime.classList.toggle('is-active', showAge);
@@ -527,6 +545,9 @@ function fetchData(opts = {}) {
         renderCommandMeta();
       }
       ok = true;
+      if (changed) {
+        requestAnimationFrame(() => triggerSunPulse());
+      }
     } catch (err) {
       if (!state.uniData) {
         state.error = err.message || String(err);
