@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-15T13:39:40.728Z",
+  "generatedAt": "2026-07-15T13:52:15.129Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
     "branch": "cursor/admission-tracker-rebuild-be86"
@@ -9,8 +9,8 @@
       "id": "sb-bsu",
       "name": "БГУ",
       "fullName": "Белорусский государственный университет",
-      "specialtyCount": 197,
-      "updatedAt": "2026-07-15T13:39:40.731Z",
+      "specialtyCount": 200,
+      "updatedAt": "2026-07-15T13:52:15.132Z",
       "available": true,
       "faculties": [
         {
@@ -71,7 +71,7 @@
         {
           "id": "факультет-социокультурных-коммуникаций",
           "name": "Факультет социокультурных коммуникаций",
-          "specialtyCount": 15
+          "specialtyCount": 18
         },
         {
           "id": "факультет-философии-и-социальных-наук",
@@ -150,7 +150,7 @@
         {
           "id": "22",
           "name": "Дневная платная форма. Факультет социокультурных коммуникаций",
-          "specialtyCount": 0,
+          "specialtyCount": 3,
           "trackId": "cert2"
         },
         {
