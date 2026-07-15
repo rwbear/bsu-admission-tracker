@@ -4,8 +4,7 @@
   --ink: #1a1a1a;
   --ink-dim: #6b6b6b;
   --ink-faint: #a3a3a3;
-  /* Softer line — sun cast carries more of the shape */
-  --line: #e0e0da;
+  --line: #d4d4d0;
   --line-strong: #1a1a1a;
   --fill: #1a1a1a;
   --fill-ink: #ffffff;
@@ -13,24 +12,11 @@
   --safe: #1a1a1a;
   --risk: #1a1a1a;
   --below: #1a1a1a;
+  --select: #f0f0ed;
+  --select-line: #1a1a1a;
 
   /*
-   * Sunlight — clean luminosity, barely warm.
-   * Not candy yellow. Not brand red. Sparse glow, not paint.
-   */
-  --sun: #f6f3ec;
-  --sun-bright: #fffcf7;
-  --sun-edge: #e4ddd0;
-  --sun-glow: rgba(255, 252, 247, 0.72);
-  --sun-glow-soft: rgba(255, 252, 247, 0.42);
-
-  /* Selection: soft left-entering light (overrides hard ink bar) */
-  --select: color-mix(in srgb, var(--sun-bright) 78%, var(--bg-elev));
-  --select-line: var(--sun-edge);
-
-  /*
-   * Daylight cast ladder — long from top-left → bottom-right.
-   * Low contrast, inviting. Ground strongest; high almost gone.
+   * Daylight cast ladder — soft TL → BR. Accent stays ink (not sun-glow).
    */
   --shadow-ground:
     5px 12px 30px rgba(36, 32, 26, 0.065),
@@ -40,25 +26,6 @@
     1px 3px 7px rgba(36, 32, 26, 0.028);
   --shadow-high:
     1px 2px 6px rgba(36, 32, 26, 0.018);
-
-  /* Balanced sun glow for CTA — stronger on hover */
-  --glow-sun:
-    0 0 0 1px color-mix(in srgb, var(--sun-edge) 55%, transparent),
-    0 0 20px var(--sun-glow),
-    4px 10px 22px rgba(36, 32, 26, 0.08);
-  --glow-sun-hover:
-    0 0 0 1px color-mix(in srgb, var(--sun-edge) 70%, transparent),
-    0 0 28px rgba(255, 252, 247, 0.9),
-    5px 12px 26px rgba(36, 32, 26, 0.09);
-
-  /* Soft focus ring — luminous, not ink-hard */
-  --glow-focus:
-    0 0 0 2px var(--bg-elev),
-    0 0 0 4px color-mix(in srgb, var(--sun-edge) 72%, transparent),
-    0 0 18px var(--sun-glow-soft);
-
-  /* Pulse layer (toggled on .site.is-data-pulse) */
-  --pulse-glow: 0 0 transparent;
 
   --font: "Outfit", "Segoe UI", sans-serif;
   --font-num: "Outfit", "Segoe UI", sans-serif;
@@ -85,5 +52,4 @@
   --max: 44rem;
   --command-h: 3.25rem;
   --transition: 160ms ease;
-  --transition-sun: 550ms ease;
 }
