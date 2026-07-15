@@ -290,7 +290,7 @@
   bottom: calc(-1 * var(--space-2));
   pointer-events: none;
   z-index: 2;
-  background: color-mix(in srgb, var(--bg-elev) 52%, transparent);
+  background: color-mix(in srgb, var(--bg-elev) 62%, transparent);
 }
 
 .hist-cut-line {
@@ -301,7 +301,7 @@
   margin-left: -0.5px;
   pointer-events: none;
   z-index: 3;
-  background: color-mix(in srgb, var(--ink) 42%, transparent);
+  background: color-mix(in srgb, var(--ink) 28%, transparent);
 }
 
 .hist-bars,
@@ -311,13 +311,15 @@
 }
 
 /*
- * True cubes: each cell is square (aspect-ratio 1). Column width sets
- * size; rows follow. Larger gutter so the table doesn’t read as bars.
+ * Cube table: square cells, airy base, soft corners.
+ * Gutter is a whisper of grey so the board feels light, not a mesh cage.
+ * On/off still contrast — just further up the greyscale.
  */
 .hist-bars {
   --hist-cols: 1;
   --hist-rows: 16;
   --hist-gap: 4px;
+  --hist-cube-r: clamp(1.5px, 26%, 3.5px);
   display: grid;
   grid-auto-flow: column;
   grid-template-columns: repeat(var(--hist-cols), minmax(0, 1fr));
@@ -328,8 +330,9 @@
   min-width: 0;
   padding: var(--hist-gap);
   box-sizing: border-box;
-  background: color-mix(in srgb, var(--ink) 14%, var(--bg-elev));
-  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--soft) 55%, var(--bg-elev));
+  border: 1px solid color-mix(in srgb, var(--line) 70%, var(--bg-elev));
+  border-radius: var(--radius-sm);
   align-content: start;
 }
 
@@ -338,27 +341,27 @@
   aspect-ratio: 1 / 1;
   height: auto;
   min-width: 0;
-  border-radius: 0;
+  border-radius: var(--hist-cube-r);
 }
 
 .hist-cube.is-off {
-  background: color-mix(in srgb, var(--ink) 5%, var(--bg-elev));
+  background: color-mix(in srgb, var(--ink) 3.5%, var(--bg-elev));
 }
 
 .hist-cube.is-on {
-  background: color-mix(in srgb, var(--ink) 58%, var(--bg-elev));
+  background: color-mix(in srgb, var(--ink) 32%, var(--bg-elev));
 }
 
 .hist-cube.is-on.is-mine {
-  background: var(--ink);
+  background: color-mix(in srgb, var(--ink) 70%, var(--bg-elev));
 }
 
 .hist-cube.is-out.is-off {
-  background: color-mix(in srgb, var(--ink) 2.5%, var(--bg-elev));
+  background: color-mix(in srgb, var(--ink) 1.5%, var(--bg-elev));
 }
 
 .hist-cube.is-out.is-on {
-  background: color-mix(in srgb, var(--ink) 20%, var(--bg-elev));
+  background: color-mix(in srgb, var(--ink) 14%, var(--bg-elev));
 }
 
 .hist-axis {
