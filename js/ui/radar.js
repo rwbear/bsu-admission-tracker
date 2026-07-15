@@ -4,7 +4,7 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js?v=20260715ai';
+} from './charts.js?v=20260715aj';
 
 /**
  * @param {object} row
@@ -64,6 +64,14 @@ export function renderOverviewList(container, specialties, score, opts) {
       'aria-hidden': 'true',
     });
 
+    const ariaBits = [
+      row.specName,
+      row.statusLabel,
+      score == null ? null : `${fmtNum(row.peopleAbove)} из ${fmtNum(row.plan)} мест выше тебя`,
+      row.delta == null ? null : `дельта ${deltaText(row)}`,
+    ].filter(Boolean);
+    btn.setAttribute('aria-label', ariaBits.join(', '));
+
     btn.append(
       mark,
       el('span', { className: 'ov-name', text: row.specName }),
@@ -109,12 +117,29 @@ export function renderDetailPanel(container, row, score, meta = {}) {
     row.pressure == null ? '—' : `${row.pressure.toFixed(1)}×`;
 
   const updatedAt = meta.updatedAt || row.updatedAt;
-  const apps = Number(row.inCompetition ?? row.totalApps) || 0;
   const plan = Number(row.plan) || 0;
-  const note =
-    row.estimatedPassing == null && plan > 0 && apps < plan
+  const competition =
+    row.competition != null
+      ? Number(row.competition)
+      : Math.max(
+          Number(row.inCompetition ?? row.totalApps) || 0,
+          (row.buckets || []).reduce((a, b) => a + (Number(b) || 0), 0),
+        );
+  let note =
+    row.estimatedPassing == null && plan > 0 && competition < plan
       ? `Обновлено ${fmtTime(updatedAt)} · заявлений меньше мест — расчётный балл набора ещё не сложился`
       : `Обновлено ${fmtTime(updatedAt)} · расчётный балл — оценка по таблице`;
+  if (
+    score != null &&
+    row.peopleAbove != null &&
+    plan > 0 &&
+    row.peopleAbove >= plan &&
+    row.status === 'risk' &&
+    row.estimatedPassing != null
+  ) {
+    note +=
+      ' · место по интервалам уже за чертой мест, статус — по расчётному баллу';
+  }
 
   const trackMount = el('div');
   const histMount = el('div');
@@ -130,10 +155,10 @@ export function renderDetailPanel(container, row, score, meta = {}) {
       text: statusBits.join(' · ') || '—',
     }),
     el('div', { className: 'metric-grid' }, [
-      metric('Над тобой / мест', people),
-      metric('Расчётный', pass),
-      metric('Дельта', deltaText(row)),
-      metric('Конкурс', pressure),
+      metric('Над тобой / мест', people, 'is-primary'),
+      metric('Расчётный балл', pass, 'is-primary'),
+      metric('Дельта', deltaText(row), 'is-secondary'),
+      metric('Конкурс', pressure, 'is-secondary'),
     ]),
     el('div', { className: 'chart-block' }, [
       el('div', { className: 'chart-caption', text: 'Дорожка конкурса' }),
@@ -176,8 +201,8 @@ export function renderSummary(elSummary, enrichedRows) {
   elSummary.textContent = `В зоне ${c.safe}  ·  На грани ${c.risk}  ·  Ниже ${c.below}`;
 }
 
-function metric(label, value) {
-  return el('div', { className: 'metric-cell' }, [
+function metric(label, value, tone = 'is-primary') {
+  return el('div', { className: `metric-cell ${tone}`.trim() }, [
     el('div', { className: 'metric-val', text: value }),
     el('div', { className: 'metric-lbl', text: label }),
   ]);

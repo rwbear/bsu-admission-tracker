@@ -1,6 +1,19 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseScoreBucketTables, isRangeHeader, dedupeSpecs } from '../scripts/scrape/normalize.mjs';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import {
+  parseScoreBucketTables,
+  resolvePlanApps,
+  extractTables,
+  isRangeHeader,
+  dedupeSpecs,
+} from '../scripts/scrape/normalize.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const fixture = (name) =>
+  readFileSync(join(here, 'fixtures', 'formk1', name), 'utf8');
 
 const sampleHtml = `
 <table>
@@ -52,5 +65,91 @@ describe('parseScoreBucketTables', () => {
     const out = dedupeSpecs([a, b]);
     assert.equal(out.length, 1);
     assert.deepEqual(out[0].buckets, [1, 2, 3]);
+  });
+});
+
+describe('resolvePlanApps', () => {
+  it('uses Всего (≥ bucket sum) and aligns inCompetition to bands', () => {
+    // form2 биология left nums: plan, target, ?, Всего, … mid junk
+    const out = resolvePlanApps([9, 0, 5, 11, 1, 1], 10);
+    assert.equal(out.plan, 9);
+    assert.equal(out.totalApps, 11);
+    assert.equal(out.inCompetition, 10);
+  });
+
+  it('does not steal целевое when apps are honestly zero', () => {
+    const out = resolvePlanApps([10, 5, 0, 0], 0);
+    assert.equal(out.plan, 10);
+    assert.equal(out.totalApps, 0);
+    assert.equal(out.inCompetition, 0);
+  });
+});
+
+describe('extractTables rowspan', () => {
+  it('keeps rowspan cells occupying subsequent rows', () => {
+    const html = `
+      <table>
+        <tr><td rowspan="2">Spec</td><td>A</td><td>B</td></tr>
+        <tr><td>1</td><td>2</td></tr>
+      </table>`;
+    const [rows] = extractTables(html);
+    assert.equal(rows.length, 2);
+    assert.equal(rows[0].length, 3);
+    assert.equal(rows[1].length, 3);
+    assert.match(rows[0][0], /Spec/);
+    assert.match(rows[1][0], /Spec/);
+    assert.match(rows[1][1], /1/);
+  });
+});
+
+describe('formk1 golden slices', () => {
+  it('form 2 биология: Всего / band sum', () => {
+    const rows = parseScoreBucketTables(fixture('slice-2-biology.html'), {
+      universityId: 'sb-bsu',
+      form: '2',
+      sourceUrl: 'https://abit.bsu.by/formk1?id=2',
+      updatedAt: '2026-07-15T00:00:00.000Z',
+    });
+    const bio = rows.find((r) => r.specName === 'биология');
+    assert.ok(bio);
+    assert.equal(bio.plan, 9);
+    assert.equal(bio.totalApps, 11);
+    const bsum = bio.buckets.reduce((a, b) => a + b, 0);
+    assert.equal(bio.inCompetition, bsum);
+    assert.ok(bio.totalApps >= bio.inCompetition);
+  });
+
+  it('form 32 биология: Всего 37 / по конкурсу ≈ bands', () => {
+    const rows = parseScoreBucketTables(fixture('slice-32-biology.html'), {
+      universityId: 'sb-bsu',
+      form: '32',
+      sourceUrl: 'https://abit.bsu.by/formk1?id=32',
+      updatedAt: '2026-07-15T00:00:00.000Z',
+    });
+    const bio = rows.find((r) => r.specName === 'биология');
+    assert.ok(bio);
+    assert.equal(bio.plan, 55);
+    assert.equal(bio.totalApps, 37);
+    const bsum = bio.buckets.reduce((a, b) => a + b, 0);
+    assert.equal(bio.inCompetition, bsum);
+    assert.equal(bsum, 18);
+  });
+
+  it('form 29 правоведение (м): Всего 19 / bands 14', () => {
+    const rows = parseScoreBucketTables(fixture('slice-29-military.html'), {
+      universityId: 'sb-bsu',
+      form: '29',
+      sourceUrl: 'https://abit.bsu.by/formk1?id=29',
+      updatedAt: '2026-07-15T00:00:00.000Z',
+    });
+    const law = rows.find((r) =>
+      /правоведение/i.test(r.specName) && /\(м\)/i.test(r.specName),
+    );
+    assert.ok(law, 'expected male правоведение row');
+    assert.equal(law.plan, 10);
+    assert.equal(law.totalApps, 19);
+    const bsum = law.buckets.reduce((a, b) => a + b, 0);
+    assert.equal(law.inCompetition, bsum);
+    assert.equal(bsum, 14);
   });
 });

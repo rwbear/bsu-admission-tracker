@@ -68,6 +68,57 @@ describe('underfilled specialties', () => {
     assert.equal(row.status, 'safe');
     assert.equal(row.statusLabel, 'В зоне');
   });
+
+  it('never leaves blank status when score is set and seats are full', () => {
+    const simple = enrichSpec(
+      {
+        id: 'simple',
+        specName: 'психология',
+        plan: 25,
+        totalApps: 26,
+        inCompetition: 26,
+        ranges: [],
+        buckets: [],
+        estimatedPassing: null,
+      },
+      350,
+    );
+    assert.notEqual(simple.status, 'neutral');
+    assert.equal(simple.status, 'risk');
+
+    const mismatched = enrichSpec(
+      {
+        id: 'phys',
+        specName: 'прикладная физика',
+        plan: 20,
+        totalApps: 23,
+        inCompetition: 23,
+        ranges: ['400-391', '390-381', '320-316', '120 и менее'],
+        buckets: [2, 5, 3, 1], // bsum 11 < plan, but apps ≥ plan → no passing
+        estimatedPassing: null,
+      },
+      350,
+    );
+    assert.notEqual(mismatched.status, 'neutral');
+  });
+
+  it('uses max(apps, bucketSum) for contest pressure', () => {
+    const row = enrichSpec(
+      {
+        id: 'bio',
+        specName: 'биология',
+        plan: 9,
+        totalApps: 5,
+        inCompetition: 1,
+        ranges: ['400-391', '390-381', '320-316', '120 и менее'],
+        buckets: [2, 5, 3, 0],
+        estimatedPassing: 381,
+      },
+      300,
+    );
+    assert.equal(row.competition, 10);
+    assert.ok(Math.abs(row.pressure - 10 / 9) < 1e-9);
+  });
 });
 
 describe('stored score prefs', () => {
