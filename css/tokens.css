@@ -1,76 +1,95 @@
 :root {
   /*
-   * Hard sun experiment — parallel rays, sharp umbra.
-   * Cooler ground so bright panes feel irradiated. Accent stays ink.
+   * Hard sunlight v2 — quality rebuild.
+   *
+   * Physics (distant sun ≈ parallel rays):
+   *  - Contact lip: short, dense, very tight blur
+   *  - Key umbra: long TL→BR throw, blur ≈ 0.10–0.18 × offset (stays hard)
+   *  - Penumbra: slightly longer, a touch softer — one continuous fade
+   *  - Sky bounce: one cool, very quiet fill under the cast
+   *
+   * What we deliberately dropped from v1:
+   *  - Stacked blur:0 “stair” shadows (reads as a stamp, not light)
+   *  - Outer white bevel rim (plastic, not sun)
+   *  - Muddy cool wallpaper fighting the whites
+   *
+   * Accent stays ink.
    */
-  --bg: #eef0ec;
+  --bg: #f1f2ef;
   --bg-elev: #ffffff;
   --ink: #1a1a1a;
   --ink-dim: #6b6b6b;
   --ink-faint: #a3a3a3;
-  --line: #c9ccc4;
+  --line: #d2d4ce;
   --line-strong: #1a1a1a;
   --fill: #1a1a1a;
   --fill-ink: #ffffff;
-  --soft: #e8ebe5;
+  --soft: #eceee9;
   --safe: #1a1a1a;
   --risk: #1a1a1a;
   --below: #1a1a1a;
-  --select: #eceee9;
+  --select: #eff0ec;
   --select-line: #1a1a1a;
 
-  /* Umbra pigment — warm dark, never pure black */
-  --umbra: 32, 30, 26;
-  /* Cool bounce under the long cast (sky fill, almost invisible) */
-  --sky-fill: 70, 85, 95;
+  /* Warm umbra + cool sky bounce (RGB channels for alpha stacking) */
+  --umbra: 30, 28, 24;
+  --sky: 68, 84, 98;
 
   /*
-   * Ground cast — razor contact + stepped hard umbra along TL → BR.
-   * Near-zero blur = distant sun / parallel rays. Tiny last blur = air.
+   * Ground — large panels on the table (taller → longer throw).
+   * Hard sun: few layers, blur ≈ 0.10–0.18 × offset, strong contact.
    */
   --shadow-ground:
-    1px 1px 0 rgba(var(--umbra), 0.28),
-    2px 4px 0 rgba(var(--umbra), 0.2),
-    5px 10px 0 rgba(var(--umbra), 0.15),
-    9px 18px 0 rgba(var(--umbra), 0.11),
-    14px 28px 0 rgba(var(--umbra), 0.085),
-    20px 40px 1px rgba(var(--umbra), 0.065),
-    28px 56px 1px rgba(var(--umbra), 0.045),
-    38px 76px 2px rgba(var(--umbra), 0.03),
-    18px 48px 40px rgba(var(--sky-fill), 0.045);
+    1px 2px 1.5px rgba(var(--umbra), 0.26),
+    6px 14px 3px rgba(var(--umbra), 0.16),
+    14px 32px 7px rgba(var(--umbra), 0.095),
+    26px 58px 14px rgba(var(--umbra), 0.05),
+    12px 40px 36px rgba(var(--sky), 0.03);
 
-  /* Mid (command) — shorter hard throw */
+  /* Controls — score field is short; shorter throw than panels */
+  --shadow-control:
+    1px 2px 1.5px rgba(var(--umbra), 0.24),
+    4px 10px 3px rgba(var(--umbra), 0.14),
+    10px 22px 6px rgba(var(--umbra), 0.08),
+    18px 40px 12px rgba(var(--umbra), 0.04);
+
+  /* Mid — command: elevated strip, medium throw */
   --shadow-mid:
-    1px 1px 0 rgba(var(--umbra), 0.22),
-    2px 4px 0 rgba(var(--umbra), 0.14),
-    5px 10px 0 rgba(var(--umbra), 0.1),
-    10px 20px 0 rgba(var(--umbra), 0.07),
-    16px 32px 1px rgba(var(--umbra), 0.045),
-    10px 28px 28px rgba(var(--sky-fill), 0.035);
+    1px 2px 1.5px rgba(var(--umbra), 0.2),
+    4px 10px 3px rgba(var(--umbra), 0.12),
+    10px 24px 7px rgba(var(--umbra), 0.07),
+    18px 42px 14px rgba(var(--umbra), 0.04),
+    8px 32px 30px rgba(var(--sky), 0.025);
 
-  /* High (popovers) — almost coplanar with the light */
+  /* High — popovers almost coplanar */
   --shadow-high:
-    1px 1px 0 rgba(var(--umbra), 0.1),
-    3px 6px 0 rgba(var(--umbra), 0.05);
+    1px 1px 1px rgba(var(--umbra), 0.1),
+    3px 6px 4px rgba(var(--umbra), 0.04);
 
-  /* Lit lip — sun kissing the top-left edge */
-  --sun-rim:
-    -1px -1px 0 rgba(255, 255, 255, 0.75),
-    inset 1px 1px 0 rgba(255, 255, 255, 0.55);
+  /* Inner plate — shorter cast, same family */
+  --shadow-inset-plate:
+    1px 2px 1.5px rgba(var(--umbra), 0.16),
+    4px 10px 3px rgba(var(--umbra), 0.09),
+    10px 22px 6px rgba(var(--umbra), 0.05),
+    16px 36px 12px rgba(var(--umbra), 0.03);
 
-  /* CTA hard cast — graphic, confident */
+  /* CTA — ink brick under the same sun */
   --shadow-cta:
-    1px 1px 0 rgba(var(--umbra), 0.32),
-    3px 6px 0 rgba(var(--umbra), 0.22),
-    7px 14px 0 rgba(var(--umbra), 0.15),
-    12px 24px 0 rgba(var(--umbra), 0.1),
-    18px 36px 1px rgba(var(--umbra), 0.06);
+    1px 2px 1.5px rgba(var(--umbra), 0.32),
+    5px 12px 3px rgba(var(--umbra), 0.2),
+    12px 28px 7px rgba(var(--umbra), 0.11),
+    22px 48px 14px rgba(var(--umbra), 0.06),
+    10px 36px 32px rgba(var(--sky), 0.028);
   --shadow-cta-hover:
-    1px 1px 0 rgba(var(--umbra), 0.34),
-    4px 8px 0 rgba(var(--umbra), 0.24),
-    9px 18px 0 rgba(var(--umbra), 0.16),
-    16px 32px 0 rgba(var(--umbra), 0.11),
-    24px 48px 1px rgba(var(--umbra), 0.07);
+    1px 2px 1.5px rgba(var(--umbra), 0.34),
+    6px 14px 3px rgba(var(--umbra), 0.22),
+    14px 32px 8px rgba(var(--umbra), 0.12),
+    26px 56px 16px rgba(var(--umbra), 0.065),
+    12px 40px 36px rgba(var(--sky), 0.032);
+  --shadow-cta-active:
+    1px 1px 1px rgba(var(--umbra), 0.26),
+    3px 6px 2px rgba(var(--umbra), 0.16),
+    7px 14px 5px rgba(var(--umbra), 0.09);
 
   --font: "Outfit", "Segoe UI", sans-serif;
   --font-num: "Outfit", "Segoe UI", sans-serif;
