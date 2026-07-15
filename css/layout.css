@@ -604,7 +604,7 @@ html.faculty-overlay-open {
   font-variant-numeric: tabular-nums;
   font-size: var(--text-lg);
   font-weight: 500;
-  box-shadow: var(--shadow-control);
+  box-shadow: var(--shadow-control), inset 0 1px 0 rgba(255, 255, 255, 0.85);
   transition: box-shadow var(--transition), transform var(--transition);
 }
 
