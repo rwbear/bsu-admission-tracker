@@ -269,7 +269,7 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--bg-elev);
-  box-shadow: var(--shadow-inset-plate);
+  box-shadow: var(--shadow-inset-plate), var(--sun-fill-soft);
   overflow: hidden;
 }
 
