@@ -47,9 +47,14 @@ describe('peopleAbove / atOrAbove', () => {
   const ranges = ['400-391', '390-381', '380-371', '370-361'];
   const buckets = [2, 5, 8, 10];
 
-  it('counts only fully higher buckets', () => {
-    assert.equal(peopleAbove(ranges, buckets, 385), 2);
+  it('counts higher bands plus a uniform share of the own band', () => {
+    // hi=390, lo=381, span=10, score=385 → (390-385)/10 * 5 = 2.5 → round 2+2.5 = 5
+    assert.equal(peopleAbove(ranges, buckets, 385), 5);
     assert.equal(peopleAtOrAbove(ranges, buckets, 385), 2 + 5);
+  });
+
+  it('adds no own-band share at the top of a closed band', () => {
+    assert.equal(peopleAbove(ranges, buckets, 390), 2);
   });
 
   it('returns null without score', () => {
@@ -139,19 +144,35 @@ describe('enrich + prepare', () => {
     assert.equal(track.plan, 10);
   });
 
-  it('pins «ты» with peopleAbove so inside-plan stays left of seat cut', () => {
-    // 6 strictly above, plan 10, own band wide — old mid-band pin sat past the cut.
+  it('pins «ты» left of seat cut when estimated peopleAbove < plan', () => {
+    // Top of own band → almost no within-band competition above you.
     const ranges = ['420-500', '400-419', '380-399', '300-379'];
     const buckets = [3, 3, 15, 8];
     const plan = 10;
-    const score = 380; // on estimated passing → «на грани», δ 0
+    const score = 399;
     const track = buildChanceTrack({ ranges, buckets, plan }, score);
     assert.equal(track.peopleAbove, 6);
-    assert.equal(calcPassing(ranges, buckets, plan), 380);
     assert.ok(track.peopleAbove < plan);
     assert.ok(
       track.myMarkerRatio < track.seatCutRatio,
       `expected pin ${track.myMarkerRatio} left of cut ${track.seatCutRatio}`,
+    );
+  });
+
+  it('MO-style bottom-of-cut-band: metric, pin and «на грани» agree you’re past seats', () => {
+    // Real FMO shape: 6 above at 396+, 10 in 395–391, plan 10, score=passing=391.
+    // Strict higher-bands only said 6/10 (inside); uniform own-band says past the cut.
+    const ranges = ['396 и более', '395 - 391', '390 - 386', '385 - 381'];
+    const buckets = [6, 10, 3, 3];
+    const plan = 10;
+    const score = 391;
+    assert.equal(calcPassing(ranges, buckets, plan), 391);
+    const track = buildChanceTrack({ ranges, buckets, plan }, score);
+    assert.equal(track.peopleAbove, 14);
+    assert.ok(track.peopleAbove >= plan);
+    assert.ok(
+      track.myMarkerRatio > track.seatCutRatio,
+      `expected pin ${track.myMarkerRatio} right of cut ${track.seatCutRatio}`,
     );
     const row = enrichSpec(
       {
@@ -166,7 +187,8 @@ describe('enrich + prepare', () => {
     );
     assert.equal(row.status, 'risk');
     assert.equal(row.delta, 0);
-    assert.ok(row.chance.myMarkerRatio < row.chance.seatCutRatio);
+    assert.equal(row.peopleAbove, 14);
+    assert.ok(row.chance.myMarkerRatio > row.chance.seatCutRatio);
   });
 
   it('keeps «ты» right of seat cut when peopleAbove ≥ plan', () => {
