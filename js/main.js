@@ -209,8 +209,11 @@ function closeFacultyMenu() {
   facultyMenuOpen = false;
   facultySearchQuery = '';
   renderFacultyChrome();
-  const trigger = document.getElementById('faculty-trigger');
-  if (trigger instanceof HTMLElement) trigger.focus();
+  window.setTimeout(() => {
+    if (facultyMenuOpen) return;
+    const trigger = document.getElementById('faculty-trigger');
+    if (trigger instanceof HTMLElement) trigger.focus();
+  }, 220);
 }
 
 function openFacultyMenu() {
@@ -238,24 +241,17 @@ function onSelectFaculty(id) {
   facultySearchQuery = '';
   if (id !== state.facultyId) setFaculty(id);
   else renderFacultyChrome();
-  const trigger = document.getElementById('faculty-trigger');
-  if (trigger instanceof HTMLElement) trigger.focus();
+  window.setTimeout(() => {
+    if (facultyMenuOpen) return;
+    const trigger = document.getElementById('faculty-trigger');
+    if (trigger instanceof HTMLElement) trigger.focus();
+  }, 220);
 }
 
 function onFacultyQuery(q) {
   facultySearchQuery = q;
-  const active = document.activeElement;
-  const keepSearch =
-    active instanceof HTMLInputElement && active.id === 'faculty-search-input';
-  const caret = keepSearch ? active.selectionStart : null;
+  // Overlay stays mounted — picker only repaints the option list.
   renderFacultyChrome();
-  if (keepSearch) {
-    const search = document.getElementById('faculty-search-input');
-    if (search instanceof HTMLInputElement) {
-      search.focus();
-      if (caret != null) search.setSelectionRange(caret, caret);
-    }
-  }
 }
 
 function renderFacultyChrome() {
