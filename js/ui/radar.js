@@ -4,7 +4,7 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js?v=20260715k';
+} from './charts.js?v=20260715m';
 
 /**
  * @param {object} row
@@ -113,8 +113,8 @@ export function renderDetailPanel(container, row, score, meta = {}) {
   const plan = Number(row.plan) || 0;
   const note =
     row.estimatedPassing == null && plan > 0 && apps < plan
-      ? `Обновлено ${fmtTime(updatedAt)} · заявлений меньше мест — расчётный проходной ещё не сложился`
-      : `Обновлено ${fmtTime(updatedAt)} · расчётный проходной — оценка по таблице`;
+      ? `Обновлено ${fmtTime(updatedAt)} · заявлений меньше мест — расчётный балл набора ещё не сложился`
+      : `Обновлено ${fmtTime(updatedAt)} · расчётный балл — оценка по таблице`;
 
   const trackMount = el('div');
   const histMount = el('div');
