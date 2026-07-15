@@ -160,6 +160,32 @@ function chanceAria(chance, youPct, seatPct) {
 }
 
 /**
+ * Index of the bucket where cumulative applicants (high→low) first cover the plan.
+ * That bucket is still “in”; everything after it is out of seats.
+ * @param {number[]} buckets
+ * @param {number} plan
+ * @returns {number} cut index, or -1 when there is no seat cut
+ */
+export function resolveHistCutIndex(buckets, plan) {
+  if (!plan || plan <= 0 || !buckets?.length) return -1;
+  let cum = 0;
+  for (let i = 0; i < buckets.length; i += 1) {
+    cum += Number(buckets[i]) || 0;
+    if (cum >= plan) return i;
+  }
+  return -1;
+}
+
+/**
+ * Buckets after the seat-cut bucket are beyond the plan (out).
+ * @param {number} index
+ * @param {number} cutIdx
+ */
+export function isHistOutBucket(index, cutIdx) {
+  return cutIdx >= 0 && index > cutIdx;
+}
+
+/**
  * Short label for axis ticks.
  * @param {string} label
  */
@@ -176,6 +202,8 @@ function shortRangeLabel(label) {
 
 /**
  * Mobile-first histogram: full-width column strip, no horizontal scroll.
+ * Solid bars cover score bands that still fit in the plan; lightly hatched
+ * bars are past the seat cut (out of it).
  * @param {HTMLElement} mount
  * @param {object} row
  * @param {number | null} score
@@ -187,24 +215,22 @@ export function renderHistogram(mount, row, score) {
   if (!ranges.length) return;
 
   const max = Math.max(...buckets, 1);
-
-  let cum = 0;
-  let cutIdx = -1;
   const plan = row.plan || 0;
-  for (let i = 0; i < buckets.length; i += 1) {
-    cum += buckets[i] || 0;
-    if (cutIdx === -1 && plan > 0 && cum >= plan) cutIdx = i;
-  }
+  const cutIdx = resolveHistCutIndex(buckets, plan);
 
   let mineIdx = -1;
   if (score != null && row.chance?.segments) {
     mineIdx = row.chance.segments.findIndex((s) => s.isMine);
   }
 
+  const outCount = cutIdx >= 0 ? ranges.length - cutIdx - 1 : 0;
   const chart = el('div', {
     className: 'hist-chart',
     role: 'img',
-    'aria-label': 'Распределение по интервалам баллов',
+    'aria-label':
+      outCount > 0
+        ? `Распределение по баллам: план ${plan}, после «мест» — ${outCount} интервала вне набора (штриховка)`
+        : 'Распределение по интервалам баллов',
   });
 
   const bars = el('div', { className: 'hist-bars' });
@@ -214,9 +240,21 @@ export function renderHistogram(mount, row, score) {
     const ratio = count / max;
     const mine = i === mineIdx;
     const cut = i === cutIdx;
+    const out = isHistOutBucket(i, cutIdx);
+    const outStart = out && i === cutIdx + 1;
     const col = el('div', {
-      className: `hist-col${mine ? ' is-mine' : ''}${cut ? ' is-cut' : ''}`,
-      title: `${String(label).replace(/\s+/g, ' ')}: ${count}`,
+      className: [
+        'hist-col',
+        mine ? 'is-mine' : '',
+        cut ? 'is-cut' : '',
+        out ? 'is-out' : '',
+        outStart ? 'is-out-start' : '',
+      ]
+        .filter(Boolean)
+        .join(' '),
+      title: out
+        ? `${String(label).replace(/\s+/g, ' ')}: ${count} · вне плана`
+        : `${String(label).replace(/\s+/g, ' ')}: ${count}`,
     });
     const barH = count > 0 ? Math.max(ratio * 100, 8) : 0;
     col.append(
@@ -231,9 +269,7 @@ export function renderHistogram(mount, row, score) {
   const axis = el('div', { className: 'hist-axis' });
   const n = ranges.length;
   /** @type {{ i: number, text: string, kind: string }[]} */
-  const ticks = [
-    { i: 0, text: shortRangeLabel(ranges[0]), kind: 'edge' },
-  ];
+  const ticks = [{ i: 0, text: shortRangeLabel(ranges[0]), kind: 'edge' }];
   if (mineIdx >= 0) {
     ticks.push({ i: mineIdx, text: 'ты', kind: 'you' });
   }
@@ -249,9 +285,12 @@ export function renderHistogram(mount, row, score) {
   // Drop near-duplicates so ticks don't pile up on tiny screens
   const placed = [];
   for (const tick of ticks) {
-    if (placed.some((p) => Math.abs(p.i - tick.i) < Math.max(2, Math.floor(n / 16)))) {
+    if (
+      placed.some(
+        (p) => Math.abs(p.i - tick.i) < Math.max(2, Math.floor(n / 16)),
+      )
+    ) {
       if (tick.kind === 'edge') continue;
-      // keep you/cut over a nearby edge
       const near = placed.findIndex(
         (p) => Math.abs(p.i - tick.i) < Math.max(2, Math.floor(n / 16)),
       );
