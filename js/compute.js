@@ -124,7 +124,8 @@ export function peopleAtOrAbove(ranges, buckets, score) {
 
 /**
  * Build segments for the chance track visualization.
- * Left = stronger scores. Seat cut at `plan`. Marker at user's score.
+ * Left = stronger scores. Seat cut at `plan`. Marker ≈ peopleAbove + you
+ * (aligned with «над тобой / мест», not the mid-point of the score band).
  * @param {SpecBuckets} spec
  * @param {number | null} score
  * @returns {{
@@ -166,16 +167,22 @@ export function buildChanceTrack(spec, score) {
 
   let myMarkerRatio = null;
   if (score != null && totalInBuckets > 0) {
-    let before = 0;
-    for (const seg of segments) {
-      if (seg.isMine) {
-        myMarkerRatio = (before + seg.count / 2) / denom;
-        break;
+    /*
+     * Pin must match «над тобой / мест»: place ≈ peopleAbove + you.
+     * Mid-band (before + count/2) disagrees — a wide own bucket can put «ты»
+     * past the seat cut while peopleAbove still says you’re inside the plan.
+     */
+    if (above != null) {
+      myMarkerRatio = Math.min(1, (above + 0.5) / denom);
+    } else {
+      let before = 0;
+      for (const seg of segments) {
+        if (seg.isMine) {
+          myMarkerRatio = Math.min(1, (before + 0.5) / denom);
+          break;
+        }
+        before += seg.count;
       }
-      before += seg.count;
-    }
-    if (myMarkerRatio === null && above != null) {
-      myMarkerRatio = Math.min(1, above / denom);
     }
   }
 
