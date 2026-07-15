@@ -160,6 +160,35 @@ function chanceAria(chance, youPct, seatPct) {
 }
 
 /**
+ * Index of the bucket where cumulative applicants (high→low) first cover the plan.
+ * That bucket is still “in”; the out zone starts at its right edge.
+ * @param {number[]} buckets
+ * @param {number} plan
+ * @returns {number} cut index, or -1 when there is no seat cut
+ */
+export function resolveHistCutIndex(buckets, plan) {
+  if (!plan || plan <= 0 || !buckets?.length) return -1;
+  let cum = 0;
+  for (let i = 0; i < buckets.length; i += 1) {
+    cum += Number(buckets[i]) || 0;
+    if (cum >= plan) return i;
+  }
+  return -1;
+}
+
+/**
+ * Left edge % of the out zone (right edge of the seat-cut bucket).
+ * @param {number} cutIdx
+ * @param {number} bucketCount
+ * @returns {number | null}
+ */
+export function histOutZoneLeftPct(cutIdx, bucketCount) {
+  if (cutIdx < 0 || !bucketCount || bucketCount <= 0) return null;
+  if (cutIdx >= bucketCount - 1) return null;
+  return ((cutIdx + 1) / bucketCount) * 100;
+}
+
+/**
  * Short label for axis ticks.
  * @param {string} label
  */
@@ -175,7 +204,10 @@ function shortRangeLabel(label) {
 }
 
 /**
- * Mobile-first histogram: full-width column strip, no horizontal scroll.
+ * Mobile-first histogram: solid full-width columns.
+ * When the plan ends inside the band, a quiet vertical line splits the
+ * panel — right of it is a whisper of hatch. No cut label on the axis;
+ * the line is the only name the cut gets.
  * @param {HTMLElement} mount
  * @param {object} row
  * @param {number | null} score
@@ -187,14 +219,9 @@ export function renderHistogram(mount, row, score) {
   if (!ranges.length) return;
 
   const max = Math.max(...buckets, 1);
-
-  let cum = 0;
-  let cutIdx = -1;
   const plan = row.plan || 0;
-  for (let i = 0; i < buckets.length; i += 1) {
-    cum += buckets[i] || 0;
-    if (cutIdx === -1 && plan > 0 && cum >= plan) cutIdx = i;
-  }
+  const cutIdx = resolveHistCutIndex(buckets, plan);
+  const outLeft = histOutZoneLeftPct(cutIdx, ranges.length);
 
   let mineIdx = -1;
   if (score != null && row.chance?.segments) {
@@ -202,10 +229,31 @@ export function renderHistogram(mount, row, score) {
   }
 
   const chart = el('div', {
-    className: 'hist-chart',
+    className: `hist-chart${outLeft != null ? ' has-out-zone' : ''}`,
     role: 'img',
-    'aria-label': 'Распределение по интервалам баллов',
+    'aria-label':
+      outLeft != null
+        ? `Распределение по баллам: слева места по плану ${plan}, справа — вне набора`
+        : 'Распределение по интервалам баллов',
   });
+
+  const body = el('div', { className: 'hist-chart-body' });
+
+  if (outLeft != null) {
+    body.append(
+      el('div', {
+        className: 'hist-out-region',
+        'aria-hidden': 'true',
+        style: `left:${outLeft.toFixed(3)}%`,
+      }),
+      el('div', {
+        className: 'hist-cut-line',
+        'aria-hidden': 'true',
+        style: `left:${outLeft.toFixed(3)}%`,
+        title: `План приёма: ${plan}`,
+      }),
+    );
+  }
 
   const bars = el('div', { className: 'hist-bars' });
 
@@ -213,9 +261,8 @@ export function renderHistogram(mount, row, score) {
     const count = buckets[i] || 0;
     const ratio = count / max;
     const mine = i === mineIdx;
-    const cut = i === cutIdx;
     const col = el('div', {
-      className: `hist-col${mine ? ' is-mine' : ''}${cut ? ' is-cut' : ''}`,
+      className: `hist-col${mine ? ' is-mine' : ''}`,
       title: `${String(label).replace(/\s+/g, ' ')}: ${count}`,
     });
     const barH = count > 0 ? Math.max(ratio * 100, 8) : 0;
@@ -231,14 +278,9 @@ export function renderHistogram(mount, row, score) {
   const axis = el('div', { className: 'hist-axis' });
   const n = ranges.length;
   /** @type {{ i: number, text: string, kind: string }[]} */
-  const ticks = [
-    { i: 0, text: shortRangeLabel(ranges[0]), kind: 'edge' },
-  ];
+  const ticks = [{ i: 0, text: shortRangeLabel(ranges[0]), kind: 'edge' }];
   if (mineIdx >= 0) {
     ticks.push({ i: mineIdx, text: 'ты', kind: 'you' });
-  }
-  if (cutIdx >= 0 && cutIdx !== mineIdx) {
-    ticks.push({ i: cutIdx, text: 'мест', kind: 'cut' });
   }
   ticks.push({
     i: n - 1,
@@ -246,12 +288,14 @@ export function renderHistogram(mount, row, score) {
     kind: 'edge',
   });
 
-  // Drop near-duplicates so ticks don't pile up on tiny screens
   const placed = [];
   for (const tick of ticks) {
-    if (placed.some((p) => Math.abs(p.i - tick.i) < Math.max(2, Math.floor(n / 16)))) {
+    if (
+      placed.some(
+        (p) => Math.abs(p.i - tick.i) < Math.max(2, Math.floor(n / 16)),
+      )
+    ) {
       if (tick.kind === 'edge') continue;
-      // keep you/cut over a nearby edge
       const near = placed.findIndex(
         (p) => Math.abs(p.i - tick.i) < Math.max(2, Math.floor(n / 16)),
       );
@@ -272,6 +316,7 @@ export function renderHistogram(mount, row, score) {
     );
   }
 
-  chart.append(bars, axis);
+  body.append(bars, axis);
+  chart.append(body);
   mount.append(chart);
 }
