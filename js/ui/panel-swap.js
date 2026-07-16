@@ -17,10 +17,10 @@ const EASE_RESHAPE = "cubic-bezier(0.22, 1, 0.36, 1)";
 const EASE_ENTER = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 const STAGE = {
-  outMs: 150,
-  gapMs: 70,
-  heightMs: 300,
-  inMs: 260,
+  outMs: 120,
+  gapMs: 50,
+  heightMs: 240,
+  inMs: 210,
 };
 
 /**
