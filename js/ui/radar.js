@@ -4,7 +4,7 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js?v=20260715am';
+} from './charts.js?v=20260715an';
 
 /**
  * @param {object} row
@@ -26,6 +26,7 @@ function deltaText(row) {
 
 /**
  * Compact overview rows (master).
+ * When the row id set is unchanged, only patch selection — keep focus.
  * @param {HTMLElement} container
  * @param {object[]} specialties
  * @param {number | null} score
@@ -34,6 +35,28 @@ function deltaText(row) {
  */
 export function renderOverviewList(container, specialties, score, opts) {
   const rows = prepareSpecs(specialties, score);
+  const existing = container.querySelector('.overview-list');
+  const existingIds = existing
+    ? [...existing.querySelectorAll('.overview-row')].map((n) =>
+        n.getAttribute('data-id'),
+      )
+    : [];
+  const nextIds = rows.map((r) => r.id);
+  const sameShape =
+    existing instanceof HTMLElement &&
+    existingIds.length === nextIds.length &&
+    existingIds.every((id, i) => id === nextIds[i]);
+
+  if (sameShape) {
+    for (const btn of existing.querySelectorAll('.overview-row')) {
+      if (!(btn instanceof HTMLElement)) continue;
+      const selected = opts.selectedId === btn.getAttribute('data-id');
+      btn.classList.toggle('selected', selected);
+      btn.setAttribute('aria-selected', selected ? 'true' : 'false');
+    }
+    return rows;
+  }
+
   container.innerHTML = '';
   const list = el('div', { className: 'overview-list', role: 'listbox' });
 
@@ -147,7 +170,29 @@ export function renderDetailPanel(container, row, score, meta = {}) {
   const histMount = el('div');
   const statusBits = [row.statusLabel, row.facultyName].filter(Boolean);
 
+  const back = el('button', {
+    className: 'detail-back',
+    type: 'button',
+    text: '← Обзор',
+  });
+  back.addEventListener('click', () => {
+    const reduce = (() => {
+      try {
+        return Boolean(
+          globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
+        );
+      } catch {
+        return false;
+      }
+    })();
+    document.getElementById('overview-list')?.closest('.overview-col')?.scrollIntoView({
+      behavior: reduce ? 'auto' : 'smooth',
+      block: 'start',
+    });
+  });
+
   const inner = el('div', { className: 'detail-inner' }, [
+    back,
     el('h3', {
       className: 'detail-title',
       text: row.specName,

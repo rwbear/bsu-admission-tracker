@@ -386,7 +386,16 @@ function snapshotChanged(next, prev) {
   if (!next) return false;
   if (!prev) return true;
   if (next.updatedAt !== prev.updatedAt) return true;
-  return JSON.stringify(next.specialties) !== JSON.stringify(prev.specialties);
+  if (next.specialtyCount !== prev.specialtyCount) return true;
+  // Equal timestamp: compare id↔passing signature instead of dual JSON.stringify (~280KB).
+  const sig = (payload) =>
+    (payload.specialties || [])
+      .map(
+        (s) =>
+          `${s.id}:${s.estimatedPassing ?? ''}:${s.inCompetition ?? ''}:${s.totalApps ?? ''}`,
+      )
+      .join('|');
+  return sig(next) !== sig(prev);
 }
 
 function prefersReducedMotion() {
