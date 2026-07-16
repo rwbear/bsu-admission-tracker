@@ -398,16 +398,6 @@ function snapshotChanged(next, prev) {
   return sig(next) !== sig(prev);
 }
 
-function prefersReducedMotion() {
-  try {
-    return Boolean(
-      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
-    );
-  } catch {
-    return false;
-  }
-}
-
 function applyMetaClasses(phase) {
   const showAge = phase === 'age';
   $commandTime.classList.toggle('is-active', showAge);
