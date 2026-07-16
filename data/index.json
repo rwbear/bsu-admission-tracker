@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-07-15T23:37:59.264Z",
+  "generatedAt": "2026-07-15T23:59:03.901Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
-    "branch": "cursor/admission-tracker-rebuild-be86"
+    "branch": "cursor/overnight-quality-be86"
   },
   "universities": [
     {
       "id": "sb-bsu",
       "name": "БГУ",
       "fullName": "Белорусский государственный университет",
-      "specialtyCount": 200,
-      "updatedAt": "2026-07-15T23:37:59.266Z",
+      "specialtyCount": 197,
+      "updatedAt": "2026-07-15T23:59:03.906Z",
       "available": true,
       "faculties": [
         {
@@ -36,12 +36,12 @@
         {
           "id": "исторический-факультет",
           "name": "Исторический факультет",
-          "specialtyCount": 9
+          "specialtyCount": 8
         },
         {
           "id": "мгэи-им-сахарова",
           "name": "МГЭИ им. Сахарова",
-          "specialtyCount": 21
+          "specialtyCount": 20
         },
         {
           "id": "мехмат-пми-си",
@@ -101,7 +101,7 @@
         {
           "id": "юридический-факультет",
           "name": "Юридический факультет",
-          "specialtyCount": 9
+          "specialtyCount": 8
         }
       ],
       "tables": [
@@ -162,7 +162,7 @@
         {
           "id": "6",
           "name": "Заочная форма. Бюджет",
-          "specialtyCount": 3,
+          "specialtyCount": 0,
           "trackId": "nocert"
         },
         {

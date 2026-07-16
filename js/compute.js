@@ -274,7 +274,7 @@ export function enrichSpec(spec, score) {
   }
   const pressure = contestRatio(competition, plan);
   const chance = buildChanceTrack(
-    { ranges, buckets, plan, inCompetition: apps },
+    { ranges, buckets, plan, inCompetition: competition },
     scoreOk ? Number(score) : null,
   );
 
