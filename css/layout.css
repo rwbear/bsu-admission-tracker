@@ -63,6 +63,8 @@ input {
   border-radius: var(--radius);
   background: var(--bg-elev);
   box-shadow: var(--shadow-ground);
+  /* Clip flush children (selected overview rows, etc.) to the rounded edge. */
+  overflow: hidden;
 }
 
 .hidden {

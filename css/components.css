@@ -20,8 +20,17 @@
   transition: background var(--transition);
 }
 
+/* Match the parent .panel radius so selection fill curves with the box,
+   not only via overflow clip (cleaner at the top/bottom edges). */
+.overview-row:first-child {
+  border-top-left-radius: var(--radius);
+  border-top-right-radius: var(--radius);
+}
+
 .overview-row:last-child {
   border-bottom: 0;
+  border-bottom-left-radius: var(--radius);
+  border-bottom-right-radius: var(--radius);
 }
 
 .overview-row:hover {
