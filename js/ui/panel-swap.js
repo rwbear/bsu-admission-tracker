@@ -1,27 +1,49 @@
 /**
- * Panel content transitions — sequential dissolve, never a crossfade.
+ * Panel content transitions — sequential dissolve foundation.
  *
- * Stages (non-overlapping on purpose):
- *   1. Exit    — current content fades out (panel chrome stays)
- *   2. Gap     — brief empty settle
- *   3. Reshape — height eases to the next content size (invisible)
- *   4. Enter   — new content fades in
+ * Contract (do not break for callers / next features):
+ * - Never crossfade: old and new content are never both visible.
+ * - Panel chrome (border, fill, radius) stays put; only inner content fades.
+ * - Stages are ordered; height may still settle while new content enters
+ *   (settle-reveal) — that is not a content crossfade.
+ * - Selection highlight may update immediately when the overview list
+ *   shape is unchanged (`animateOverview: false` → paintOverview first).
+ * - `signal` aborts mid-flight: animations cancel, inline styles clear,
+ *   DOM is left as-is (caller runs the next transition).
+ * - `prefers-reduced-motion`: paint once, no motion.
  *
- * No translate / scale on tall panels. No simultaneous old+new blend.
- * View Transitions are intentionally unused here: their default model is
- * a crossfade, which reads muddy for this master–detail swap.
+ * Non-linear: opacity uses multi-stop keyframes (effect easing = linear
+ * so the curve is the keyframe path). Height uses an ease-out cubic.
  */
 
-const EASE_EXIT = "cubic-bezier(0.55, 0, 1, 1)";
-const EASE_RESHAPE = "cubic-bezier(0.22, 1, 0.36, 1)";
-const EASE_ENTER = "cubic-bezier(0.16, 1, 0.3, 1)";
+/** @typedef {{ outMs: number, gapMs: number, heightMs: number, inMs: number, enterAfterHeightMs: number }} PanelSwapTiming */
 
-const STAGE = {
-  outMs: 120,
-  gapMs: 50,
-  heightMs: 240,
-  inMs: 210,
-};
+/** Tuned stage budget — wall-clock ≈ out+gap+max(height, enterAfter+in). */
+export const PANEL_SWAP_TIMING = Object.freeze({
+  outMs: 90,
+  gapMs: 32,
+  heightMs: 190,
+  inMs: 170,
+  /** Start enter this far into the height stage (0 = after height). */
+  enterAfterHeightMs: 85,
+});
+
+/** Explicit opacity path — effect uses linear easing so these offsets are the curve. */
+export const EXIT_OPACITY = Object.freeze([
+  { opacity: 1, offset: 0 },
+  { opacity: 0.78, offset: 0.22 },
+  { opacity: 0.28, offset: 0.55 },
+  { opacity: 0, offset: 1 },
+]);
+
+export const ENTER_OPACITY = Object.freeze([
+  { opacity: 0, offset: 0 },
+  { opacity: 0.18, offset: 0.28 },
+  { opacity: 0.72, offset: 0.62 },
+  { opacity: 1, offset: 1 },
+]);
+
+const EASE_HEIGHT = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 /**
  * @param {object} opts
@@ -32,6 +54,7 @@ const STAGE = {
  * @param {boolean} opts.animateOverview
  * @param {boolean} opts.animateDetail
  * @param {boolean} opts.reduceMotion
+ * @param {AbortSignal} [opts.signal]
  */
 export async function runPanelTransition(opts) {
   const {
@@ -42,6 +65,7 @@ export async function runPanelTransition(opts) {
     animateOverview,
     animateDetail,
     reduceMotion,
+    signal,
   } = opts;
 
   const needAnim = !reduceMotion && (animateOverview || animateDetail);
@@ -52,7 +76,9 @@ export async function runPanelTransition(opts) {
     return;
   }
 
-  // Selection highlight should flip immediately; list rebuild waits for the dissolve.
+  throwIfAborted(signal);
+
+  // Instant selection feedback when the list shape is unchanged.
   if (!animateOverview) {
     paintOverview();
   }
@@ -62,6 +88,11 @@ export async function runPanelTransition(opts) {
   if (animateOverview) panels.push(overviewEl);
   if (animateDetail) panels.push(detailEl);
 
+  /** @type {Animation[]} */
+  const live = [];
+  /** @type {HTMLElement[]} */
+  const opacityNodes = [];
+
   const locks = panels.map((panel) => {
     const fromH = Math.max(panel.getBoundingClientRect().height, 1);
     panel.style.height = `${fromH}px`;
@@ -70,67 +101,104 @@ export async function runPanelTransition(opts) {
     return { panel, fromH, outgoing: contentRoot(panel) };
   });
 
-  /** @type {HTMLElement[]} */
-  const faded = [];
-
   try {
-    // 1 — Exit (panel chrome stays put)
+    // 1 — Exit along a non-linear opacity path
     await Promise.all(
       locks.map(({ outgoing }) => {
         if (!outgoing) return Promise.resolve();
-        faded.push(outgoing);
-        return fadeOpacity(outgoing, 0, STAGE.outMs, EASE_EXIT);
+        opacityNodes.push(outgoing);
+        return runOpacity(outgoing, EXIT_OPACITY, PANEL_SWAP_TIMING.outMs, live, signal);
       }),
     );
+    throwIfAborted(signal);
 
     // 2 — Empty settle
-    await wait(STAGE.gapMs);
+    await wait(PANEL_SWAP_TIMING.gapMs, signal);
+    throwIfAborted(signal);
 
     // Swap DOM while invisible
     if (animateOverview) paintOverview();
     paintDetail();
+    throwIfAborted(signal);
 
-    // New content starts invisible — no overlap with the old frame
+    await afterLayout();
+    throwIfAborted(signal);
+
     const incoming = locks.map(({ panel, fromH }) => {
       const content = contentRoot(panel);
       if (content) {
         content.style.opacity = "0";
-        faded.push(content);
+        opacityNodes.push(content);
       }
-      return { panel, fromH, content };
+      panel.style.height = "auto";
+      const nextH = Math.max(panel.getBoundingClientRect().height, 1);
+      panel.style.height = `${fromH}px`;
+      // Force the locked height into the used style before WAAPI reads it.
+      void panel.offsetHeight;
+      return { panel, fromH, nextH, content };
     });
 
-    // 3 — Reshape height with content still at opacity 0
-    await Promise.all(
-      incoming.map(async ({ panel, fromH }) => {
-        panel.style.height = "auto";
-        const nextH = Math.max(panel.getBoundingClientRect().height, 1);
-        panel.style.height = `${fromH}px`;
-        void panel.offsetHeight;
-        if (Math.abs(fromH - nextH) >= 0.5) {
-          await animateHeight(panel, nextH, STAGE.heightMs, EASE_RESHAPE);
+    // 3 + 4 — Reshape, then settle-reveal enter (no content overlap)
+    const heightRuns = incoming.some(({ fromH, nextH }) => Math.abs(fromH - nextH) >= 0.5);
+
+    const heightPromise = Promise.all(
+      incoming.map(({ panel, fromH, nextH }) => {
+        if (Math.abs(fromH - nextH) < 0.5) {
+          panel.style.height = "auto";
+          return Promise.resolve();
         }
-        panel.style.height = "auto";
+        return runHeight(panel, fromH, nextH, PANEL_SWAP_TIMING.heightMs, live, signal).then(
+          () => {
+            panel.style.height = "auto";
+          },
+        );
       }),
     );
 
-    // 4 — Enter
-    await Promise.all(
+    if (heightRuns) {
+      await wait(PANEL_SWAP_TIMING.enterAfterHeightMs, signal);
+      throwIfAborted(signal);
+    }
+
+    const enterPromise = Promise.all(
       incoming.map(({ content }) => {
         if (!content) return Promise.resolve();
-        return fadeOpacity(content, 1, STAGE.inMs, EASE_ENTER);
+        return runOpacity(content, ENTER_OPACITY, PANEL_SWAP_TIMING.inMs, live, signal);
       }),
     );
+
+    await Promise.all([heightPromise, enterPromise]);
+    throwIfAborted(signal);
   } finally {
+    for (const anim of live) {
+      try {
+        anim.cancel();
+      } catch {
+        /* already finished */
+      }
+    }
     for (const { panel } of locks) {
       panel.style.height = "";
       panel.style.overflow = "";
       panel.classList.remove("is-panel-swapping");
     }
-    for (const node of faded) {
+    for (const node of opacityNodes) {
       if (node.isConnected) node.style.opacity = "";
     }
   }
+}
+
+/**
+ * Wall-clock estimate for tests / orchestration docs.
+ * @param {PanelSwapTiming} [t]
+ * @param {{ heightChanges?: boolean }} [opts]
+ */
+export function panelSwapDurationMs(t = PANEL_SWAP_TIMING, opts = {}) {
+  const heightChanges = opts.heightChanges !== false;
+  if (!heightChanges) {
+    return t.outMs + t.gapMs + t.inMs;
+  }
+  return t.outMs + t.gapMs + Math.max(t.heightMs, t.enterAfterHeightMs + t.inMs);
 }
 
 /**
@@ -144,59 +212,139 @@ function contentRoot(panel) {
 
 /**
  * @param {HTMLElement} el
- * @param {number} to
+ * @param {readonly { opacity: number, offset: number }[]} keyframes
  * @param {number} ms
- * @param {string} ease
+ * @param {Animation[]} live
+ * @param {AbortSignal} [signal]
  */
-function fadeOpacity(el, to, ms, ease) {
-  return new Promise((resolve) => {
-    const from = Number.parseFloat(getComputedStyle(el).opacity);
-    const start = Number.isFinite(from) ? from : to === 0 ? 1 : 0;
-    if (Math.abs(start - to) < 0.01) {
-      el.style.opacity = String(to);
-      resolve();
-      return;
-    }
-    const anim = el.animate([{ opacity: start }, { opacity: to }], {
-      duration: ms,
-      easing: ease,
-      fill: "forwards",
-    });
-    anim.finished.then(() => {
-      el.style.opacity = String(to);
-      anim.cancel();
-      resolve();
-    }, resolve);
+function runOpacity(el, keyframes, ms, live, signal) {
+  throwIfAborted(signal);
+  const frames = keyframes.map((k) => ({ opacity: String(k.opacity), offset: k.offset }));
+  const anim = el.animate(frames, {
+    duration: ms,
+    easing: "linear",
+    fill: "forwards",
   });
+  live.push(anim);
+  return settleAnimation(anim, el, "opacity", frames[frames.length - 1].opacity, signal);
 }
 
 /**
  * @param {HTMLElement} el
+ * @param {number} fromPx
  * @param {number} toPx
  * @param {number} ms
- * @param {string} ease
+ * @param {Animation[]} live
+ * @param {AbortSignal} [signal]
  */
-function animateHeight(el, toPx, ms, ease) {
-  return new Promise((resolve) => {
-    const from = el.getBoundingClientRect().height;
-    if (Math.abs(from - toPx) < 0.5) {
-      el.style.height = `${toPx}px`;
+function runHeight(el, fromPx, toPx, ms, live, signal) {
+  throwIfAborted(signal);
+  el.style.height = `${fromPx}px`;
+  const anim = el.animate(
+    [{ height: `${fromPx}px` }, { height: `${toPx}px` }],
+    {
+      duration: ms,
+      easing: EASE_HEIGHT,
+      fill: "forwards",
+    },
+  );
+  live.push(anim);
+  return settleAnimation(anim, el, "height", `${toPx}px`, signal);
+}
+
+/**
+ * @param {Animation} anim
+ * @param {HTMLElement} el
+ * @param {string} prop
+ * @param {string} endValue
+ * @param {AbortSignal} [signal]
+ */
+function settleAnimation(anim, el, prop, endValue, signal) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (ok) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener("abort", onAbort);
+      if (!ok) {
+        try {
+          anim.cancel();
+        } catch {
+          /* */
+        }
+        reject(abortError());
+        return;
+      }
+      try {
+        if (typeof anim.commitStyles === "function") anim.commitStyles();
+      } catch {
+        el.style.setProperty(prop, endValue);
+      }
+      try {
+        anim.cancel();
+      } catch {
+        /* */
+      }
+      el.style.setProperty(prop, endValue);
       resolve();
+    };
+
+    const onAbort = () => finish(false);
+
+    if (signal?.aborted) {
+      finish(false);
       return;
     }
-    const anim = el.animate(
-      [{ height: `${from}px` }, { height: `${toPx}px` }],
-      { duration: ms, easing: ease, fill: "forwards" },
+    signal?.addEventListener("abort", onAbort, { once: true });
+
+    anim.finished.then(
+      () => finish(true),
+      () => {
+        // Cancelled by our abort path or supersession — don't double-reject.
+        if (!settled) finish(signal?.aborted ? false : true);
+      },
     );
-    anim.finished.then(() => {
-      el.style.height = `${toPx}px`;
-      anim.cancel();
-      resolve();
-    }, resolve);
   });
 }
 
-/** @param {number} ms */
-function wait(ms) {
-  return new Promise((r) => setTimeout(r, ms));
+/** Two frames so layout/fonts settle before measuring swap height. */
+function afterLayout() {
+  return new Promise((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+}
+
+/**
+ * @param {number} ms
+ * @param {AbortSignal} [signal]
+ */
+function wait(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(abortError());
+      return;
+    }
+    const id = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => {
+      clearTimeout(id);
+      reject(abortError());
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/** @param {AbortSignal} [signal] */
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw abortError();
+}
+
+function abortError() {
+  const err = new Error("Panel transition aborted");
+  err.name = "AbortError";
+  return err;
 }

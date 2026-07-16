@@ -799,7 +799,7 @@ html.faculty-overlay-open {
   }
 }
 
-/* Panel stages — sequential dissolve (see panel-swap.js); no page scroll */
+/* Panel stages — sequential dissolve foundation (see panel-swap.js) */
 #overview-list.panel,
 #detail-panel.panel {
   position: relative;
@@ -808,9 +808,15 @@ html.faculty-overlay-open {
 
 #overview-list.panel.is-panel-swapping,
 #detail-panel.panel.is-panel-swapping {
-  will-change: opacity, height;
-  /* Keep panel chrome solid while content opacity animates on the stage */
+  pointer-events: none;
+  /* Chrome stays solid; content opacity is animated on the child root */
   background: var(--bg-elev);
+  will-change: height;
+}
+
+#overview-list.panel.is-panel-swapping > *,
+#detail-panel.panel.is-panel-swapping > * {
+  will-change: opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
