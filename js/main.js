@@ -272,13 +272,8 @@ function renderHeroChrome() {
 }
 
 function onSelectSpecialty(id) {
+  // Stay put — detail/overview crossfade in place (see radar.js swapLayer).
   setSelected(id);
-  if (window.matchMedia('(max-width: 767px)').matches) {
-    $detail.scrollIntoView({
-      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-      block: 'nearest',
-    });
-  }
 }
 
 function renderMasterDetail(specs, score) {

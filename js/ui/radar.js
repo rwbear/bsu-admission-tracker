@@ -4,7 +4,74 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js?v=20260715as';
+} from './charts.js?v=20260715at';
+
+/** Content swap duration — keep in sync with CSS `--swap-ms`. */
+const SWAP_MS = 200;
+
+/**
+ * @returns {boolean}
+ */
+function prefersReducedMotion() {
+  try {
+    return Boolean(
+      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Crossfade in place: outgoing lifts away while incoming settles.
+ * New content defines height; old layer is absolutely positioned over it.
+ * Rapid re-entry cancels the previous leave timer.
+ * @param {HTMLElement} container
+ * @param {HTMLElement} next
+ * @param {string} layerSelector
+ * @param {string} selectionKey
+ */
+function swapLayer(container, next, layerSelector, selectionKey) {
+  const prevKey = container.dataset.selectionKey || '';
+  const reduce = prefersReducedMotion();
+  const live = container.querySelector(
+    `${layerSelector}:not(.is-leaving)`,
+  );
+
+  if (container._swapTimer != null) {
+    clearTimeout(container._swapTimer);
+    container._swapTimer = null;
+  }
+  for (const stale of container.querySelectorAll(`${layerSelector}.is-leaving`)) {
+    stale.remove();
+  }
+
+  container.dataset.selectionKey = selectionKey;
+
+  if (!live || reduce || !prevKey || prevKey === selectionKey) {
+    container.innerHTML = '';
+    next.classList.add('is-enter', 'is-visible');
+    container.append(next);
+    return;
+  }
+
+  live.classList.add('is-leaving');
+  live.classList.remove('is-visible', 'is-enter');
+
+  next.classList.add('is-enter');
+  container.append(next);
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (!container.contains(next)) return;
+      next.classList.add('is-visible');
+    });
+  });
+
+  container._swapTimer = setTimeout(() => {
+    container._swapTimer = null;
+    if (live.isConnected) live.remove();
+  }, SWAP_MS);
+}
 
 /**
  * @param {object} row
@@ -25,8 +92,61 @@ function deltaText(row) {
 }
 
 /**
+ * @param {object[]} rows
+ * @param {string | null} selectedId
+ * @param {(id: string) => void} onSelect
+ */
+function buildOverviewList(rows, selectedId, onSelect) {
+  const list = el('div', { className: 'overview-list', role: 'listbox' });
+
+  for (const row of rows) {
+    const selected = selectedId === row.id;
+    const btn = el('button', {
+      className: `overview-row${selected ? ' selected' : ''}`,
+      type: 'button',
+      role: 'option',
+      'aria-selected': selected ? 'true' : 'false',
+      'data-id': row.id,
+    });
+
+    const peopleText =
+      row.peopleAbove == null
+        ? '—'
+        : `${fmtNum(row.peopleAbove)}/${fmtNum(row.plan)}`;
+
+    const mark = el('span', {
+      className: `ov-mark ${statusClass(row)}`.trim(),
+      'aria-hidden': 'true',
+    });
+
+    const ariaBits = [
+      row.specName,
+      row.statusLabel,
+      row.peopleAbove == null
+        ? null
+        : `над тобой ${fmtNum(row.peopleAbove)} при плане ${fmtNum(row.plan)}`,
+      row.delta == null ? null : `дельта ${deltaText(row)}`,
+    ].filter(Boolean);
+    btn.setAttribute('aria-label', ariaBits.join(', '));
+
+    btn.append(
+      mark,
+      el('span', { className: 'ov-name', text: row.specName }),
+      el('span', { className: 'ov-ratio', text: peopleText }),
+      el('span', { className: 'ov-delta', text: deltaText(row) }),
+    );
+
+    btn.addEventListener('click', () => onSelect(row.id));
+    list.append(btn);
+  }
+
+  return list;
+}
+
+/**
  * Compact overview rows (master).
  * When the row id set is unchanged, only patch selection — keep focus.
+ * When the set changes (faculty / table), crossfade the list in place.
  * @param {HTMLElement} container
  * @param {object[]} specialties
  * @param {number | null} score
@@ -35,7 +155,7 @@ function deltaText(row) {
  */
 export function renderOverviewList(container, specialties, score, opts) {
   const rows = prepareSpecs(specialties, score);
-  const existing = container.querySelector('.overview-list');
+  const existing = container.querySelector('.overview-list:not(.is-leaving)');
   const existingIds = existing
     ? [...existing.querySelectorAll('.overview-row')].map((n) =>
         n.getAttribute('data-id'),
@@ -57,81 +177,28 @@ export function renderOverviewList(container, specialties, score, opts) {
     return rows;
   }
 
-  container.innerHTML = '';
-  const list = el('div', { className: 'overview-list', role: 'listbox' });
+  const listKey = nextIds.join('|') || 'empty';
 
   if (!rows.length) {
-    container.append(
-      el('div', { className: 'detail-empty', text: 'Нет специальностей' }),
-    );
+    const empty = el('div', {
+      className: 'detail-empty overview-empty',
+      text: 'Нет специальностей',
+    });
+    swapLayer(container, empty, '.overview-list, .overview-empty', listKey);
     return rows;
   }
 
-  for (const row of rows) {
-    const selected = opts.selectedId === row.id;
-    const btn = el('button', {
-      className: `overview-row${selected ? ' selected' : ''}`,
-      type: 'button',
-      role: 'option',
-      'aria-selected': selected ? 'true' : 'false',
-      'data-id': row.id,
-    });
-
-    const people =
-      score == null
-        ? '—'
-        : `${fmtNum(row.peopleAbove)}/${fmtNum(row.plan)}`;
-
-    const mark = el('span', {
-      className: `ov-mark ${statusClass(row)}`.trim(),
-      'aria-hidden': 'true',
-    });
-
-    const ariaBits = [
-      row.specName,
-      row.statusLabel,
-      score == null
-        ? null
-        : `над тобой ${fmtNum(row.peopleAbove)} при плане ${fmtNum(row.plan)}`,
-      row.delta == null ? null : `дельта ${deltaText(row)}`,
-    ].filter(Boolean);
-    btn.setAttribute('aria-label', ariaBits.join(', '));
-
-    btn.append(
-      mark,
-      el('span', { className: 'ov-name', text: row.specName }),
-      el('span', { className: 'ov-ratio', text: people }),
-      el('span', { className: 'ov-delta', text: deltaText(row) }),
-    );
-
-    btn.addEventListener('click', () => opts.onSelect(row.id));
-    list.append(btn);
-  }
-
-  container.append(list);
+  const list = buildOverviewList(rows, opts.selectedId, opts.onSelect);
+  swapLayer(container, list, '.overview-list, .overview-empty', listKey);
   return rows;
 }
 
 /**
- * Detail panel for the selected specialty.
- * @param {HTMLElement} container
- * @param {object | null} row
+ * @param {object} row
  * @param {number | null} score
- * @param {{ updatedAt?: string | null }} [meta]
+ * @param {{ updatedAt?: string | null }} meta
  */
-export function renderDetailPanel(container, row, score, meta = {}) {
-  container.innerHTML = '';
-
-  if (!row) {
-    container.append(
-      el('div', {
-        className: 'detail-empty',
-        text: 'Выбери специальность в обзоре',
-      }),
-    );
-    return;
-  }
-
+function buildDetailInner(row, score, meta) {
   const people =
     score == null
       ? '—'
@@ -214,7 +281,49 @@ export function renderDetailPanel(container, row, score, meta = {}) {
     );
   }
 
-  container.append(inner);
+  return inner;
+}
+
+/**
+ * Detail panel for the selected specialty.
+ * Selection changes crossfade in place — no page scroll.
+ * Same specialty silent refresh replaces quietly (no leave animation).
+ * @param {HTMLElement} container
+ * @param {object | null} row
+ * @param {number | null} score
+ * @param {{ updatedAt?: string | null }} [meta]
+ */
+export function renderDetailPanel(container, row, score, meta = {}) {
+  container.classList.add('detail-stage');
+
+  if (!row) {
+    const empty = el('div', {
+      className: 'detail-empty',
+      text: 'Выбери специальность в обзоре',
+    });
+    swapLayer(container, empty, '.detail-inner, .detail-empty', 'empty');
+    return;
+  }
+
+  const selectionKey = row.id;
+  const prevKey = container.dataset.selectionKey || '';
+  const quietRefresh = prevKey === selectionKey && prevKey !== '';
+
+  if (quietRefresh) {
+    // Same specialty — refresh numbers/charts without a swap dance.
+    if (container._swapTimer != null) {
+      clearTimeout(container._swapTimer);
+      container._swapTimer = null;
+    }
+    container.innerHTML = '';
+    const inner = buildDetailInner(row, score, meta);
+    inner.classList.add('is-visible');
+    container.append(inner);
+    return;
+  }
+
+  const inner = buildDetailInner(row, score, meta);
+  swapLayer(container, inner, '.detail-inner, .detail-empty', selectionKey);
 }
 
 /**
