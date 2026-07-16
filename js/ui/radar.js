@@ -4,74 +4,7 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js?v=20260715at';
-
-/** Content swap duration — keep in sync with CSS `--swap-ms`. */
-const SWAP_MS = 200;
-
-/**
- * @returns {boolean}
- */
-function prefersReducedMotion() {
-  try {
-    return Boolean(
-      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
-    );
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Crossfade in place: outgoing lifts away while incoming settles.
- * New content defines height; old layer is absolutely positioned over it.
- * Rapid re-entry cancels the previous leave timer.
- * @param {HTMLElement} container
- * @param {HTMLElement} next
- * @param {string} layerSelector
- * @param {string} selectionKey
- */
-function swapLayer(container, next, layerSelector, selectionKey) {
-  const prevKey = container.dataset.selectionKey || '';
-  const reduce = prefersReducedMotion();
-  const live = container.querySelector(
-    `${layerSelector}:not(.is-leaving)`,
-  );
-
-  if (container._swapTimer != null) {
-    clearTimeout(container._swapTimer);
-    container._swapTimer = null;
-  }
-  for (const stale of container.querySelectorAll(`${layerSelector}.is-leaving`)) {
-    stale.remove();
-  }
-
-  container.dataset.selectionKey = selectionKey;
-
-  if (!live || reduce || !prevKey || prevKey === selectionKey) {
-    container.innerHTML = '';
-    next.classList.add('is-enter', 'is-visible');
-    container.append(next);
-    return;
-  }
-
-  live.classList.add('is-leaving');
-  live.classList.remove('is-visible', 'is-enter');
-
-  next.classList.add('is-enter');
-  container.append(next);
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!container.contains(next)) return;
-      next.classList.add('is-visible');
-    });
-  });
-
-  container._swapTimer = setTimeout(() => {
-    container._swapTimer = null;
-    if (live.isConnected) live.remove();
-  }, SWAP_MS);
-}
+} from './charts.js?v=20260715av';
 
 /**
  * @param {object} row
@@ -144,9 +77,19 @@ function buildOverviewList(rows, selectedId, onSelect) {
 }
 
 /**
- * Compact overview rows (master).
+ * Peek list signature without painting (for transition orchestration).
+ * @param {object[]} specialties
+ * @param {number | null} score
+ */
+export function overviewListKey(specialties, score) {
+  return prepareSpecs(specialties, score)
+    .map((r) => r.id)
+    .join('|');
+}
+
+/**
+ * Compact overview rows (master). Sync paint — motion is orchestrated outside.
  * When the row id set is unchanged, only patch selection — keep focus.
- * When the set changes (faculty / table), crossfade the list in place.
  * @param {HTMLElement} container
  * @param {object[]} specialties
  * @param {number | null} score
@@ -155,7 +98,7 @@ function buildOverviewList(rows, selectedId, onSelect) {
  */
 export function renderOverviewList(container, specialties, score, opts) {
   const rows = prepareSpecs(specialties, score);
-  const existing = container.querySelector('.overview-list:not(.is-leaving)');
+  const existing = container.querySelector('.overview-list');
   const existingIds = existing
     ? [...existing.querySelectorAll('.overview-row')].map((n) =>
         n.getAttribute('data-id'),
@@ -167,6 +110,8 @@ export function renderOverviewList(container, specialties, score, opts) {
     existingIds.length === nextIds.length &&
     existingIds.every((id, i) => id === nextIds[i]);
 
+  const listKey = nextIds.join('|') || 'empty';
+
   if (sameShape) {
     for (const btn of existing.querySelectorAll('.overview-row')) {
       if (!(btn instanceof HTMLElement)) continue;
@@ -174,22 +119,24 @@ export function renderOverviewList(container, specialties, score, opts) {
       btn.classList.toggle('selected', selected);
       btn.setAttribute('aria-selected', selected ? 'true' : 'false');
     }
+    container.dataset.selectionKey = listKey;
     return rows;
   }
 
-  const listKey = nextIds.join('|') || 'empty';
+  container.innerHTML = '';
+  container.dataset.selectionKey = listKey;
 
   if (!rows.length) {
-    const empty = el('div', {
-      className: 'detail-empty overview-empty',
-      text: 'Нет специальностей',
-    });
-    swapLayer(container, empty, '.overview-list, .overview-empty', listKey);
+    container.append(
+      el('div', {
+        className: 'detail-empty overview-empty',
+        text: 'Нет специальностей',
+      }),
+    );
     return rows;
   }
 
-  const list = buildOverviewList(rows, opts.selectedId, opts.onSelect);
-  swapLayer(container, list, '.overview-list, .overview-empty', listKey);
+  container.append(buildOverviewList(rows, opts.selectedId, opts.onSelect));
   return rows;
 }
 
@@ -285,45 +232,28 @@ function buildDetailInner(row, score, meta) {
 }
 
 /**
- * Detail panel for the selected specialty.
- * Selection changes crossfade in place — no page scroll.
- * Same specialty silent refresh replaces quietly (no leave animation).
+ * Detail panel for the selected specialty. Sync paint — motion outside.
  * @param {HTMLElement} container
  * @param {object | null} row
  * @param {number | null} score
  * @param {{ updatedAt?: string | null }} [meta]
  */
 export function renderDetailPanel(container, row, score, meta = {}) {
-  container.classList.add('detail-stage');
+  const selectionKey = row?.id || 'empty';
+  container.dataset.selectionKey = selectionKey;
+  container.innerHTML = '';
 
   if (!row) {
-    const empty = el('div', {
-      className: 'detail-empty',
-      text: 'Выбери специальность в обзоре',
-    });
-    swapLayer(container, empty, '.detail-inner, .detail-empty', 'empty');
+    container.append(
+      el('div', {
+        className: 'detail-empty',
+        text: 'Выбери специальность в обзоре',
+      }),
+    );
     return;
   }
 
-  const selectionKey = row.id;
-  const prevKey = container.dataset.selectionKey || '';
-  const quietRefresh = prevKey === selectionKey && prevKey !== '';
-
-  if (quietRefresh) {
-    // Same specialty — refresh numbers/charts without a swap dance.
-    if (container._swapTimer != null) {
-      clearTimeout(container._swapTimer);
-      container._swapTimer = null;
-    }
-    container.innerHTML = '';
-    const inner = buildDetailInner(row, score, meta);
-    inner.classList.add('is-visible');
-    container.append(inner);
-    return;
-  }
-
-  const inner = buildDetailInner(row, score, meta);
-  swapLayer(container, inner, '.detail-inner, .detail-empty', selectionKey);
+  container.append(buildDetailInner(row, score, meta));
 }
 
 /**

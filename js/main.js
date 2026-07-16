@@ -26,7 +26,9 @@ import {
   renderDetailPanel,
   renderSummary,
   resolveSelection,
+  overviewListKey,
 } from './ui/radar.js';
+import { runPanelTransition } from './ui/panel-swap.js';
 import { renderFacultyPicker } from './ui/faculty-picker.js';
 import { renderTablePicker } from './ui/table-picker.js';
 import {
@@ -272,11 +274,35 @@ function renderHeroChrome() {
 }
 
 function onSelectSpecialty(id) {
-  // Stay put — detail/overview crossfade in place (see radar.js swapLayer).
+  // Stay put — panel transition morphs detail in place (see panel-swap.js).
   setSelected(id);
 }
 
+/** Serialize panel transitions; latest queued job wins after the current one. */
+let masterDetailChain = Promise.resolve();
+/** @type {{ specs: object[], score: number | null } | null} */
+let masterDetailPending = null;
+
 function renderMasterDetail(specs, score) {
+  masterDetailPending = { specs, score };
+  masterDetailChain = masterDetailChain
+    .then(async () => {
+      while (masterDetailPending) {
+        const job = masterDetailPending;
+        masterDetailPending = null;
+        await paintMasterDetail(job.specs, job.score);
+      }
+    })
+    .catch((err) => {
+      console.error('renderMasterDetail failed', err);
+    });
+}
+
+/**
+ * @param {object[]} specs
+ * @param {number | null} score
+ */
+async function paintMasterDetail(specs, score) {
   const rows = prepareSpecs(specs, score);
   const selectedId = resolveSelection(rows, state.selectedId);
   if (selectedId !== state.selectedId) {
@@ -285,17 +311,38 @@ function renderMasterDetail(specs, score) {
   }
 
   const updatedAt = state.uniData?.updatedAt || null;
+  const nextOverviewKey = overviewListKey(specs, score) || 'empty';
+  const nextDetailKey = selectedId || 'empty';
+  const prevOverviewKey = $overview.dataset.selectionKey || '';
+  const prevDetailKey = $detail.dataset.selectionKey || '';
+
+  // First paint (empty → content): no motion. Same keys: quiet refresh.
+  const animateOverview = Boolean(prevOverviewKey) && prevOverviewKey !== nextOverviewKey;
+  const animateDetail = Boolean(prevDetailKey) && prevDetailKey !== nextDetailKey;
+
   renderSummary($summary, rows);
-  renderOverviewList($overview, specs, score, {
-    selectedId,
-    onSelect: onSelectSpecialty,
+
+  await runPanelTransition({
+    overviewEl: $overview,
+    detailEl: $detail,
+    paintOverview: () => {
+      renderOverviewList($overview, specs, score, {
+        selectedId,
+        onSelect: onSelectSpecialty,
+      });
+    },
+    paintDetail: () => {
+      renderDetailPanel(
+        $detail,
+        rows.find((r) => r.id === selectedId) ?? null,
+        score,
+        { updatedAt },
+      );
+    },
+    animateOverview,
+    animateDetail,
+    reduceMotion: prefersReducedMotion(),
   });
-  renderDetailPanel(
-    $detail,
-    rows.find((r) => r.id === selectedId) ?? null,
-    score,
-    { updatedAt },
-  );
 }
 
 function renderBoard() {

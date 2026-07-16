@@ -798,52 +798,60 @@ html.faculty-overlay-open {
   }
 }
 
-/* In-place content swap for overview list + detail panel */
-:root {
-  --swap-ms: 200ms;
-}
-
+/* Panel stages — View Transitions morph named surfaces; no page scroll */
 #overview-list.panel,
 #detail-panel.panel {
   position: relative;
+  min-width: 0;
 }
 
-.overview-list,
-.overview-empty,
-.detail-inner,
-.detail-empty {
-  transition:
-    opacity var(--swap-ms) ease,
-    transform var(--swap-ms) cubic-bezier(0.22, 1, 0.36, 1);
+#overview-list.panel.is-panel-swapping,
+#detail-panel.panel.is-panel-swapping {
+  will-change: opacity, height;
 }
 
-.overview-list.is-enter,
-.overview-empty.is-enter,
-.detail-inner.is-enter,
-.detail-empty.is-enter {
-  opacity: 0;
-  transform: translateY(0.35rem);
+/*
+ * View Transitions: only named stages animate.
+ * Kill the default root crossfade so the chrome stays rock-solid.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }
 
-.overview-list.is-enter.is-visible,
-.overview-empty.is-enter.is-visible,
-.detail-inner.is-enter.is-visible,
-.detail-empty.is-enter.is-visible {
-  opacity: 1;
-  transform: none;
+::view-transition-group(overview-stage),
+::view-transition-group(detail-stage) {
+  animation-duration: 420ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.overview-list.is-leaving,
-.overview-empty.is-leaving,
-.detail-inner.is-leaving,
-.detail-empty.is-leaving {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  opacity: 0;
-  transform: translateY(-0.28rem);
-  pointer-events: none;
-  overflow: hidden;
+::view-transition-old(overview-stage),
+::view-transition-old(detail-stage) {
+  animation: panel-vt-fade-out 200ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+::view-transition-new(overview-stage),
+::view-transition-new(detail-stage) {
+  animation: panel-vt-fade-in 340ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
+}
+
+@keyframes panel-vt-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes panel-vt-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -852,10 +860,9 @@ html.faculty-overlay-open {
     animation: none;
   }
 
-  .overview-list,
-  .overview-empty,
-  .detail-inner,
-  .detail-empty {
-    transition: none;
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
   }
 }
