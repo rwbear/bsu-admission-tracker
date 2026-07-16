@@ -788,7 +788,8 @@ html.faculty-overlay-open {
     align-items: start;
   }
 
-  .detail-col .panel {
+  /* Sticky the column, not the panel — VT names on sticky panels jitter. */
+  .detail-col {
     position: sticky;
     top: calc(var(--command-h, 3.25rem) + var(--space-3));
   }
