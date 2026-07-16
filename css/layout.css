@@ -784,6 +784,11 @@ html.faculty-overlay-open {
     align-items: start;
   }
 
+  .detail-col .panel {
+    position: sticky;
+    top: calc(var(--command-h, 3.25rem) + var(--space-3));
+  }
+
   .hero-block {
     padding-top: var(--space-8);
   }

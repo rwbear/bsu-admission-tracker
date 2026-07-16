@@ -176,17 +176,16 @@ function onSelectTable(id) {
 
 function onTableQuery(q) {
   tableSearchQuery = q;
-  const active = document.activeElement;
-  const keepSearch =
-    active instanceof HTMLInputElement && active.id === 'table-search-input';
-  const caret = keepSearch ? active.selectionStart : null;
   renderTableChrome();
-  if (keepSearch) {
-    const search = document.getElementById('table-search-input');
-    if (search instanceof HTMLInputElement) {
-      search.focus();
-      if (caret != null) search.setSelectionRange(caret, caret);
-    }
+}
+
+function prefersReducedMotion() {
+  try {
+    return Boolean(
+      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
+    );
+  } catch {
+    return false;
   }
 }
 
@@ -275,9 +274,8 @@ function renderHeroChrome() {
 function onSelectSpecialty(id) {
   setSelected(id);
   if (window.matchMedia('(max-width: 767px)').matches) {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     $detail.scrollIntoView({
-      behavior: reduce ? 'auto' : 'smooth',
+      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
       block: 'nearest',
     });
   }
@@ -491,6 +489,7 @@ function armNextRefresh(fromMs = Date.now()) {
   );
   nextRefreshAt = nextDueAt(fromMs, pollMs);
   metaRotateEpoch = fromMs;
+  if (state.uniData) applyBanner(state.uniData);
   renderCommandMeta(fromMs);
 }
 
@@ -632,6 +631,32 @@ function bindPickerChrome() {
         ? 'table-overlay'
         : null;
     if (!overlayId) return;
+
+    // Soft Tab trap inside the open dialog (search + options + close).
+    if (e.key === 'Tab') {
+      const host = document.getElementById(overlayId);
+      if (!host) return;
+      const focusables = [
+        ...host.querySelectorAll(
+          'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ].filter((n) => n instanceof HTMLElement && !n.hasAttribute('disabled'));
+      if (focusables.length < 2) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+        return;
+      }
+      if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+        return;
+      }
+    }
+
     if (
       e.key !== 'ArrowDown' &&
       e.key !== 'ArrowUp' &&
@@ -708,7 +733,7 @@ $scoreForm.addEventListener('submit', (e) => {
   }
   setScore(n);
   document.getElementById('board')?.scrollIntoView({
-    behavior: 'smooth',
+    behavior: prefersReducedMotion() ? 'auto' : 'smooth',
     block: 'start',
   });
 });

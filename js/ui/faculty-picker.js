@@ -6,7 +6,18 @@ import {
 } from '../faculties.js';
 
 const OVERLAY_ID = 'faculty-overlay-root';
-const CLOSE_MS = 220;
+const CLOSE_MS_FULL = 220;
+
+function closeDelayMs() {
+  try {
+    if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
+      return 0;
+    }
+  } catch {
+    /* ignore */
+  }
+  return CLOSE_MS_FULL;
+}
 
 /** @type {ReturnType<typeof setTimeout> | null} */
 let closeTimer = null;
@@ -303,7 +314,7 @@ function beginCloseOverlay(host) {
     if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
   };
 
-  closeTimer = setTimeout(finish, CLOSE_MS);
+  closeTimer = setTimeout(finish, closeDelayMs());
 }
 
 /**
