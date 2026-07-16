@@ -219,23 +219,41 @@
   opacity: 0;
 }
 
-/* Scroll / reveal awaken — graphics come alive once */
-.chance-track-wrap.is-awake .chance-fill {
+/* Scroll awaken — come alive; sleep plays the reverse */
+.chance-track-wrap.is-awake:not(.is-sleeping) .chance-fill {
   animation: chance-fill-in 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.chance-track-wrap.is-awake .chance-cut {
+.chance-track-wrap.is-awake:not(.is-sleeping) .chance-cut {
   animation: chance-mark-in 360ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
 }
 
-.chance-track-wrap.is-awake .chance-you {
+.chance-track-wrap.is-awake:not(.is-sleeping) .chance-you {
   animation: chance-you-in 400ms cubic-bezier(0.16, 1, 0.3, 1) 160ms both;
 }
 
-.chance-track-wrap.is-awake .chance-axis-cut,
-.chance-track-wrap.is-awake .chance-axis-you,
-.chance-track-wrap.is-awake .chance-stats {
+.chance-track-wrap.is-awake:not(.is-sleeping) .chance-axis-cut,
+.chance-track-wrap.is-awake:not(.is-sleeping) .chance-axis-you,
+.chance-track-wrap.is-awake:not(.is-sleeping) .chance-stats {
   animation: chance-meta-in 320ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both;
+}
+
+.chance-track-wrap.is-sleeping .chance-fill {
+  animation: chance-fill-sleep 340ms cubic-bezier(0.55, 0, 1, 1) both;
+}
+
+.chance-track-wrap.is-sleeping .chance-cut {
+  animation: chance-mark-sleep 260ms cubic-bezier(0.55, 0, 1, 1) both;
+}
+
+.chance-track-wrap.is-sleeping .chance-you {
+  animation: chance-you-sleep 300ms cubic-bezier(0.55, 0, 1, 1) 40ms both;
+}
+
+.chance-track-wrap.is-sleeping .chance-axis-cut,
+.chance-track-wrap.is-sleeping .chance-axis-you,
+.chance-track-wrap.is-sleeping .chance-stats {
+  animation: chance-meta-sleep 220ms cubic-bezier(0.55, 0, 1, 1) both;
 }
 
 .chance-axis {
@@ -316,6 +334,46 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes chance-fill-sleep {
+  from {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  to {
+    transform: scaleX(0);
+    opacity: 0.5;
+  }
+}
+
+@keyframes chance-mark-sleep {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes chance-you-sleep {
+  from {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+  }
+}
+
+@keyframes chance-meta-sleep {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
   }
 }
 
@@ -461,18 +519,32 @@
   opacity: 0;
 }
 
-.hist-chart.is-awake .hist-col-fill {
+.hist-chart.is-awake:not(.is-sleeping) .hist-col-fill {
   animation: hist-bar-awaken 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
   animation-delay: var(--bar-delay, 0ms);
 }
 
-.hist-chart.is-awake .hist-out-region,
-.hist-chart.is-awake .hist-cut-line {
+.hist-chart.is-awake:not(.is-sleeping) .hist-out-region,
+.hist-chart.is-awake:not(.is-sleeping) .hist-cut-line {
   animation: chance-mark-in 360ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
 }
 
-.hist-chart.is-awake .hist-axis {
+.hist-chart.is-awake:not(.is-sleeping) .hist-axis {
   animation: chance-meta-in 300ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+}
+
+.hist-chart.is-sleeping .hist-col-fill {
+  animation: hist-bar-sleep 340ms cubic-bezier(0.55, 0, 1, 1) both;
+  animation-delay: var(--bar-delay, 0ms);
+}
+
+.hist-chart.is-sleeping .hist-out-region,
+.hist-chart.is-sleeping .hist-cut-line {
+  animation: chance-mark-sleep 260ms cubic-bezier(0.55, 0, 1, 1) both;
+}
+
+.hist-chart.is-sleeping .hist-axis {
+  animation: chance-meta-sleep 220ms cubic-bezier(0.55, 0, 1, 1) both;
 }
 
 @keyframes hist-bar-awaken {
@@ -483,6 +555,17 @@
   to {
     transform: scaleY(1);
     opacity: 1;
+  }
+}
+
+@keyframes hist-bar-sleep {
+  from {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  to {
+    transform: scaleY(0);
+    opacity: 0.45;
   }
 }
 

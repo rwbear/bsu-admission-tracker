@@ -1,46 +1,73 @@
 /**
- * Scroll-awaken foundation for visual graphics.
+ * Scroll awaken / sleep foundation for visual graphics.
  *
  * Contract:
- * - Mark graphic roots with `data-awaken="<kind>"` (e.g. chance | hist).
- * - Graphics start dormant (CSS `:not(.is-awake)`). Calling `awakenEl`
- *   adds `.is-awake` once — intro motion is CSS-owned by the graphic.
- * - `armScrollAwaken(scope)` observes dormant nodes in `scope`.
- * - If a node sits under `[data-reveal-step]` that is not yet `.is-revealed`,
- *   awaken waits for `reveal:done` (never play graphics into opacity 0).
- * - Re-arming the same scope disposes the previous observer.
- * - Reduced motion / immediate: flip awake with no IO wait.
- * - Safe when scope is replaced: callbacks no-op if node disconnected.
+ * - Mark graphic roots with `data-awaken="<kind>"` (chance | hist).
+ * - States: dormant → `.is-awake` → (optional) `.is-sleeping` → dormant.
+ * - `armScrollAwaken(scope)` keeps an IntersectionObserver for the life of
+ *   the scope: enter view → awaken, leave view → reverse sleep animation.
+ * - Hysteresis: wake ≥ WAKE_RATIO, sleep ≤ SLEEP_RATIO (no threshold flicker).
+ * - If under a `[data-reveal-step]` not yet `.is-revealed`, wait for
+ *   `reveal:done` before waking (never animate into opacity 0).
+ * - `.is-instant` skips intro on quiet/first paint; first sleep clears it
+ *   so later cycles use full motion.
+ * - Reduced motion: stay visually complete (no sleep cycle).
+ * - Re-arming disposes the previous observer + pending sleep timers.
  */
 
-/** @type {WeakMap<Element, { io: IntersectionObserver | null, abort: AbortController }>} */
+/** @type {WeakMap<Element, ScopeState>} */
 const scopeState = new WeakMap();
+
+/**
+ * @typedef {{
+ *   io: IntersectionObserver | null,
+ *   abort: AbortController,
+ *   sleepTimers: Map<Element, ReturnType<typeof setTimeout>>,
+ * }} ScopeState
+ */
+
+/** Wake when this much of the target is in the (margin-adjusted) viewport. */
+export const AWAKEN_WAKE_RATIO = 0.35;
+/** Sleep only when clearly gone — hysteresis below wake. */
+export const AWAKEN_SLEEP_RATIO = 0.08;
+
+/** Longest sleep animation + stagger budget (hist bars). */
+export const AWAKEN_SLEEP_MS = 420;
 
 const IO_OPTIONS = Object.freeze({
   root: null,
   rootMargin: "0px 0px -8% 0px",
-  threshold: 0.35,
+  threshold: Object.freeze([0, 0.08, 0.2, 0.35, 0.5, 0.75, 1]),
 });
 
 /**
  * @param {ParentNode} scope
  * @param {object} [opts]
  * @param {boolean} [opts.reduceMotion]
- * @param {boolean} [opts.immediate] — awaken all now (quiet paint / first paint)
+ * @param {boolean} [opts.immediate] — show awake now (quiet / first paint), still observe
  */
 export function armScrollAwaken(scope, opts = {}) {
   const { reduceMotion = false, immediate = false } = opts;
   disposeScrollAwaken(scope);
 
   const targets = [...scope.querySelectorAll("[data-awaken]")].filter(
-    (el) => el instanceof HTMLElement && !el.classList.contains("is-awake"),
+    (el) => el instanceof HTMLElement,
   );
-
   if (!targets.length) return;
 
-  if (reduceMotion || immediate) {
+  if (reduceMotion) {
     for (const el of targets) awakenEl(el, { instant: true });
     return;
+  }
+
+  if (immediate) {
+    // Only paint-awake what is already on screen; below-fold stays dormant
+    // so the first scroll can play a real wake (no flash-then-sleep).
+    for (const el of targets) {
+      if (visibilityRatio(el) >= AWAKEN_WAKE_RATIO) {
+        awakenEl(el, { instant: true });
+      }
+    }
   }
 
   if (typeof IntersectionObserver !== "function") {
@@ -51,30 +78,38 @@ export function armScrollAwaken(scope, opts = {}) {
   const abort = new AbortController();
   /** @type {WeakSet<Element>} */
   const waitingOnReveal = new WeakSet();
+  /** @type {Map<Element, ReturnType<typeof setTimeout>>} */
+  const sleepTimers = new Map();
   /** @type {IntersectionObserver | null} */
   let io = null;
 
+  const state = /** @type {ScopeState} */ ({ io: null, abort, sleepTimers });
+  scopeState.set(scope, state);
+
+  const clearSleepTimer = (el) => {
+    const t = sleepTimers.get(el);
+    if (t != null) {
+      clearTimeout(t);
+      sleepTimers.delete(el);
+    }
+  };
+
   const tryAwaken = (el) => {
     if (abort.signal.aborted || !el.isConnected) return;
-    if (el.classList.contains("is-awake")) {
-      io?.unobserve(el);
-      return;
-    }
 
     const step = el.closest("[data-reveal-step]");
     if (step instanceof HTMLElement && !step.classList.contains("is-revealed")) {
       if (waitingOnReveal.has(el)) return;
       waitingOnReveal.add(el);
-      io?.unobserve(el);
       const onDone = () => {
         step.removeEventListener("reveal:done", onDone);
+        waitingOnReveal.delete(el);
         if (abort.signal.aborted || !el.isConnected) return;
         requestAnimationFrame(() => {
           if (abort.signal.aborted || !el.isConnected) return;
-          if (isInAwakenViewport(el)) awakenEl(el);
-          else {
-            waitingOnReveal.delete(el);
-            io?.observe(el);
+          if (visibilityRatio(el) >= AWAKEN_WAKE_RATIO) {
+            clearSleepTimer(el);
+            awakenEl(el);
           }
         });
       };
@@ -87,20 +122,41 @@ export function armScrollAwaken(scope, opts = {}) {
       return;
     }
 
+    clearSleepTimer(el);
     awakenEl(el);
-    io?.unobserve(el);
+  };
+
+  const trySleep = (el) => {
+    if (abort.signal.aborted || !el.isConnected) return;
+    if (!el.classList.contains("is-awake") && !el.classList.contains("is-sleeping")) {
+      return;
+    }
+    sleepEl(el, {
+      settleMs: AWAKEN_SLEEP_MS,
+      onSchedule: (timer) => {
+        clearSleepTimer(el);
+        sleepTimers.set(el, timer);
+      },
+      onSettled: () => {
+        sleepTimers.delete(el);
+      },
+    });
   };
 
   io = new IntersectionObserver((entries) => {
     for (const entry of entries) {
-      if (!entry.isIntersecting) continue;
       const el = entry.target;
       if (!(el instanceof HTMLElement)) continue;
-      tryAwaken(el);
+      const ratio = entry.intersectionRatio;
+      if (ratio >= AWAKEN_WAKE_RATIO && entry.isIntersecting) {
+        tryAwaken(el);
+      } else if (ratio <= AWAKEN_SLEEP_RATIO || !entry.isIntersecting) {
+        trySleep(el);
+      }
     }
   }, IO_OPTIONS);
 
-  scopeState.set(scope, { io, abort });
+  state.io = io;
 
   for (const el of targets) {
     io.observe(el);
@@ -115,18 +171,25 @@ export function disposeScrollAwaken(scope) {
   if (!prev) return;
   prev.abort.abort();
   prev.io?.disconnect();
+  for (const t of prev.sleepTimers.values()) clearTimeout(t);
+  prev.sleepTimers.clear();
   scopeState.delete(scope);
 }
 
 /**
- * Rough match for IO rootMargin `0px 0px -8% 0px`.
+ * Approximate intersection ratio against the awaken rootMargin.
  * @param {HTMLElement} el
  */
-function isInAwakenViewport(el) {
+export function visibilityRatio(el) {
   const rect = el.getBoundingClientRect();
   const vh = globalThis.innerHeight || 0;
-  const bottomCut = vh * 0.08;
-  return rect.bottom > 0 && rect.top < vh - bottomCut && rect.width > 0;
+  if (vh <= 0 || rect.width <= 0 || rect.height <= 0) return 0;
+  const viewTop = 0;
+  const viewBottom = vh * 0.92; // match rootMargin bottom -8%
+  const top = Math.max(rect.top, viewTop);
+  const bottom = Math.min(rect.bottom, viewBottom);
+  const visible = Math.max(0, bottom - top);
+  return Math.min(1, visible / rect.height);
 }
 
 /**
@@ -135,10 +198,82 @@ function isInAwakenViewport(el) {
  */
 export function awakenEl(el, opts = {}) {
   if (!el.isConnected) return;
-  if (el.classList.contains("is-awake")) return;
+
+  const wasSleeping = el.classList.contains("is-sleeping");
+  el.classList.remove("is-sleeping");
+
+  if (opts.instant) {
+    el.classList.add("is-awake", "is-instant");
+    el.dispatchEvent(new CustomEvent("awaken:done", { bubbles: true }));
+    return;
+  }
+
+  el.classList.remove("is-instant");
+
+  if (el.classList.contains("is-awake") && !wasSleeping) {
+    return;
+  }
+
+  // Restart intro when cancelling a sleep mid-flight.
+  if (el.classList.contains("is-awake") && wasSleeping) {
+    el.classList.remove("is-awake");
+    void el.offsetWidth;
+  }
+
   el.classList.add("is-awake");
-  if (opts.instant) el.classList.add("is-instant");
   el.dispatchEvent(new CustomEvent("awaken:done", { bubbles: true }));
+}
+
+/**
+ * Reverse the graphic back to dormant.
+ * @param {HTMLElement} el
+ * @param {object} [opts]
+ * @param {boolean} [opts.instant]
+ * @param {number} [opts.settleMs]
+ * @param {(timer: ReturnType<typeof setTimeout>) => void} [opts.onSchedule]
+ * @param {() => void} [opts.onSettled]
+ */
+export function sleepEl(el, opts = {}) {
+  const {
+    instant = false,
+    settleMs = AWAKEN_SLEEP_MS,
+    onSchedule,
+    onSettled,
+  } = opts;
+
+  if (!el.isConnected) return;
+  if (!el.classList.contains("is-awake") && !el.classList.contains("is-sleeping")) {
+    return;
+  }
+  if (el.classList.contains("is-sleeping") && !instant) return;
+
+  el.classList.remove("is-instant");
+
+  if (instant) {
+    el.classList.remove("is-awake", "is-sleeping");
+    el.dispatchEvent(new CustomEvent("sleep:done", { bubbles: true }));
+    onSettled?.();
+    return;
+  }
+
+  el.classList.add("is-sleeping");
+  // Keep `.is-awake` until settle so base dormant styles don't flash.
+
+  const timer = setTimeout(() => {
+    if (!el.isConnected) {
+      onSettled?.();
+      return;
+    }
+    if (!el.classList.contains("is-sleeping")) {
+      onSettled?.();
+      return;
+    }
+    el.classList.remove("is-awake", "is-sleeping");
+    el.dispatchEvent(new CustomEvent("sleep:done", { bubbles: true }));
+    onSettled?.();
+  }, settleMs);
+
+  onSchedule?.(timer);
 }
 
 /**
@@ -151,10 +286,21 @@ export function awakenAllIn(scope) {
 }
 
 /**
- * True when every `[data-awaken]` in scope is awake (or none exist).
  * @param {ParentNode} scope
  */
 export function allAwake(scope) {
   const nodes = [...scope.querySelectorAll("[data-awaken]")];
-  return nodes.every((el) => el.classList.contains("is-awake"));
+  return nodes.every((el) => el.classList.contains("is-awake") && !el.classList.contains("is-sleeping"));
+}
+
+/**
+ * True when every graphic is fully dormant (not awake, not mid-sleep).
+ * @param {ParentNode} scope
+ */
+export function allAsleep(scope) {
+  const nodes = [...scope.querySelectorAll("[data-awaken]")];
+  return nodes.every(
+    (el) =>
+      !el.classList.contains("is-awake") && !el.classList.contains("is-sleeping"),
+  );
 }
