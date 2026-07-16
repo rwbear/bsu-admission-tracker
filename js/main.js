@@ -340,6 +340,8 @@ async function paintMasterDetail(specs, score, signal) {
 
   renderSummary($summary, rows);
 
+  const reduceMotion = prefersReducedMotion();
+
   await runPanelTransition({
     overviewEl: $overview,
     detailEl: $detail,
@@ -347,6 +349,8 @@ async function paintMasterDetail(specs, score, signal) {
       renderOverviewList($overview, specs, score, {
         selectedId,
         onSelect: onSelectSpecialty,
+        intro: animateOverview && !reduceMotion,
+        reduceMotion,
       });
     },
     paintDetail: () => {
@@ -355,11 +359,15 @@ async function paintMasterDetail(specs, score, signal) {
         rows.find((r) => r.id === selectedId) ?? null,
         score,
         { updatedAt },
+        {
+          intro: animateDetail && !reduceMotion,
+          reduceMotion,
+        },
       );
     },
     animateOverview,
     animateDetail,
-    reduceMotion: prefersReducedMotion(),
+    reduceMotion,
     signal,
   });
 }

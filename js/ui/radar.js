@@ -4,7 +4,9 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js?v=20260715az';
+} from './charts.js?v=20260715ba';
+import { primeReveal, finalizeReveal } from './reveal.js';
+import { armScrollAwaken, disposeScrollAwaken } from './awaken.js';
 
 /**
  * @param {object} row
@@ -25,14 +27,27 @@ function deltaText(row) {
 }
 
 /**
+ * @param {HTMLElement} node
+ * @param {number} order
+ */
+function revealStep(node, order) {
+  node.setAttribute('data-reveal-step', String(order));
+  return node;
+}
+
+/**
  * @param {object[]} rows
  * @param {string | null} selectedId
  * @param {(id: string) => void} onSelect
  */
 function buildOverviewList(rows, selectedId, onSelect) {
-  const list = el('div', { className: 'overview-list', role: 'listbox' });
+  const list = el('div', {
+    className: 'overview-list',
+    role: 'listbox',
+    'data-reveal-root': '',
+  });
 
-  for (const row of rows) {
+  rows.forEach((row, index) => {
     const selected = selectedId === row.id;
     const btn = el('button', {
       className: `overview-row${selected ? ' selected' : ''}`,
@@ -40,6 +55,7 @@ function buildOverviewList(rows, selectedId, onSelect) {
       role: 'option',
       'aria-selected': selected ? 'true' : 'false',
       'data-id': row.id,
+      'data-reveal-step': String(index),
     });
 
     const peopleText =
@@ -71,7 +87,7 @@ function buildOverviewList(rows, selectedId, onSelect) {
 
     btn.addEventListener('click', () => onSelect(row.id));
     list.append(btn);
-  }
+  });
 
   return list;
 }
@@ -93,7 +109,12 @@ export function overviewListKey(specialties, score) {
  * @param {HTMLElement} container
  * @param {object[]} specialties
  * @param {number | null} score
- * @param {{ selectedId: string | null, onSelect: (id: string) => void }} opts
+ * @param {{
+ *   selectedId: string | null,
+ *   onSelect: (id: string) => void,
+ *   intro?: boolean,
+ *   reduceMotion?: boolean,
+ * }} opts
  * @returns {object[]} enriched sorted rows
  */
 export function renderOverviewList(container, specialties, score, opts) {
@@ -111,6 +132,7 @@ export function renderOverviewList(container, specialties, score, opts) {
     existingIds.every((id, i) => id === nextIds[i]);
 
   const listKey = nextIds.join('|') || 'empty';
+  const intro = Boolean(opts.intro) && !opts.reduceMotion;
 
   if (sameShape) {
     for (const btn of existing.querySelectorAll('.overview-row')) {
@@ -136,7 +158,10 @@ export function renderOverviewList(container, specialties, score, opts) {
     return rows;
   }
 
-  container.append(buildOverviewList(rows, opts.selectedId, opts.onSelect));
+  const list = buildOverviewList(rows, opts.selectedId, opts.onSelect);
+  container.append(list);
+  if (intro) primeReveal(list);
+  else finalizeReveal(list);
   return rows;
 }
 
@@ -184,33 +209,52 @@ function buildDetailInner(row, score, meta) {
   const histMount = el('div');
   const statusBits = [row.statusLabel, row.facultyName].filter(Boolean);
 
-  const inner = el('div', { className: 'detail-inner' }, [
-    el('h3', {
-      className: 'detail-title',
-      text: row.specName,
-    }),
+  let step = 0;
+  const title = revealStep(
+    el('h3', { className: 'detail-title', text: row.specName }),
+    step++,
+  );
+  const status = revealStep(
     el('div', {
       className: 'detail-status',
       text: statusBits.join(' · ') || '—',
     }),
-    el('div', { className: 'metric-grid' }, [
-      metric('Над тобой / мест', people, 'is-primary'),
-      metric('Расчётный балл', pass, 'is-primary'),
-      metric('Дельта', deltaText(row), 'is-secondary'),
-      metric('Конкурс', pressure, 'is-secondary'),
-    ]),
+    step++,
+  );
+
+  const metrics = [
+    metric('Над тобой / мест', people, 'is-primary'),
+    metric('Расчётный балл', pass, 'is-primary'),
+    metric('Дельта', deltaText(row), 'is-secondary'),
+    metric('Конкурс', pressure, 'is-secondary'),
+  ].map((cell) => revealStep(cell, step++));
+
+  const chanceBlock = revealStep(
     el('div', { className: 'chart-block' }, [
       el('div', { className: 'chart-caption', text: 'Дорожка конкурса' }),
       trackMount,
     ]),
+    step++,
+  );
+  const histBlock = revealStep(
     el('div', { className: 'chart-block' }, [
       el('div', { className: 'chart-caption', text: 'Интервалы баллов' }),
       histMount,
     ]),
-    el('p', {
-      className: 'detail-note',
-      text: note,
-    }),
+    step++,
+  );
+  const noteEl = revealStep(
+    el('p', { className: 'detail-note', text: note }),
+    step++,
+  );
+
+  const inner = el('div', { className: 'detail-inner', 'data-reveal-root': '' }, [
+    title,
+    status,
+    el('div', { className: 'metric-grid' }, metrics),
+    chanceBlock,
+    histBlock,
+    noteEl,
   ]);
 
   renderChanceTrack(trackMount, { ...row, score });
@@ -218,13 +262,16 @@ function buildDetailInner(row, score, meta) {
 
   if (row.sourceUrl) {
     inner.append(
-      el('a', {
-        className: 'detail-link',
-        href: row.sourceUrl,
-        target: '_blank',
-        rel: 'noopener',
-        text: 'Открыть источник →',
-      }),
+      revealStep(
+        el('a', {
+          className: 'detail-link',
+          href: row.sourceUrl,
+          target: '_blank',
+          rel: 'noopener',
+          text: 'Открыть источник →',
+        }),
+        step++,
+      ),
     );
   }
 
@@ -237,10 +284,12 @@ function buildDetailInner(row, score, meta) {
  * @param {object | null} row
  * @param {number | null} score
  * @param {{ updatedAt?: string | null }} [meta]
+ * @param {{ intro?: boolean, reduceMotion?: boolean }} [motion]
  */
-export function renderDetailPanel(container, row, score, meta = {}) {
+export function renderDetailPanel(container, row, score, meta = {}, motion = {}) {
   const selectionKey = row?.id || 'empty';
   container.dataset.selectionKey = selectionKey;
+  disposeScrollAwaken(container);
   container.innerHTML = '';
 
   if (!row) {
@@ -253,7 +302,20 @@ export function renderDetailPanel(container, row, score, meta = {}) {
     return;
   }
 
-  container.append(buildDetailInner(row, score, meta));
+  const intro = Boolean(motion.intro) && !motion.reduceMotion;
+  const inner = buildDetailInner(row, score, meta);
+  container.append(inner);
+
+  if (intro) {
+    primeReveal(inner);
+    armScrollAwaken(container, { immediate: false, reduceMotion: false });
+  } else {
+    finalizeReveal(inner);
+    armScrollAwaken(container, {
+      immediate: true,
+      reduceMotion: Boolean(motion.reduceMotion),
+    });
+  }
 }
 
 /**

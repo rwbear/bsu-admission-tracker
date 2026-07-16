@@ -799,6 +799,11 @@ html.faculty-overlay-open {
   }
 }
 
+/* Reveal steps — layout reserved while primed (opacity 0) */
+[data-reveal-step]:not(.is-revealed) {
+  pointer-events: none;
+}
+
 /* Panel stages — sequential dissolve foundation (see panel-swap.js) */
 #overview-list.panel,
 #detail-panel.panel {
