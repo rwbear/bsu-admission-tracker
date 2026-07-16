@@ -26,7 +26,8 @@ import { runReveal } from "./reveal.js";
 /** Tuned stage budget — wall-clock ≈ out+gap+max(height, enterAfter+in). */
 export const PANEL_SWAP_TIMING = Object.freeze({
   outMs: 90,
-  gapMs: 32,
+  /** No empty-chrome hold — paint the next frame as soon as exit ends. */
+  gapMs: 0,
   heightMs: 190,
   inMs: 170,
   /** Start enter this far into the height stage (0 = after height). */
@@ -191,8 +192,12 @@ export async function runPanelTransition(opts) {
       panel.style.overflow = "";
       panel.classList.remove("is-panel-swapping");
     }
-    for (const node of opacityNodes) {
-      if (node.isConnected) node.style.opacity = "";
+    // On abort, leave outgoing faded if it still owns the panel — clearing
+    // to opacity:1 flashes old content under the next dissolve.
+    if (!signal?.aborted) {
+      for (const node of opacityNodes) {
+        if (node.isConnected) node.style.opacity = "";
+      }
     }
   }
 }

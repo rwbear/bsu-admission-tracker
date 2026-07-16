@@ -101,6 +101,16 @@ export function setSelected(id) {
 }
 
 /**
+ * Repair selection without emitting — avoids nested renderBoard / aborted dissolves.
+ * @param {string | null} id
+ */
+export function quietSetSelected(id) {
+  state.selectedId = id;
+  if (id) localStorage.setItem(KEYS.selected, id);
+  else localStorage.removeItem(KEYS.selected);
+}
+
+/**
  * @param {string | null} id
  */
 export function setFaculty(id) {

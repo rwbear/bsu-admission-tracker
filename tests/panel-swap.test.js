@@ -11,7 +11,7 @@ describe('panel-swap foundation', () => {
   it('keeps a snappy but multi-stage budget', () => {
     const t = PANEL_SWAP_TIMING;
     assert.ok(t.outMs < t.inMs || t.outMs <= 100, 'exit should stay decisive');
-    assert.ok(t.gapMs >= 24 && t.gapMs <= 48, 'gap should breathe without dragging');
+    assert.ok(t.gapMs >= 0 && t.gapMs <= 48, 'gap stays short to avoid empty-chrome blink');
     assert.ok(t.enterAfterHeightMs < t.heightMs, 'enter starts during height settle');
     const wall = panelSwapDurationMs(t, { heightChanges: true });
     assert.ok(wall <= 520, `wall-clock should stay under 520ms, got ${wall}`);

@@ -12,7 +12,8 @@
   --safe: #1a1a1a;
   --risk: #1a1a1a;
   --below: #1a1a1a;
-  --select: #f0f0ed;
+  /* Distinct from --soft so hover → selected can ease (was nearly identical). */
+  --select: #e7e7e2;
   --select-line: #1a1a1a;
 
   /*
@@ -52,4 +53,7 @@
   --max: 44rem;
   --command-h: 3.25rem;
   --transition: 160ms ease;
+  /* Selection fills — longer, non-linear so active state never pops. */
+  --select-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --select-ms: 220ms;
 }

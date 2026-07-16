@@ -5,6 +5,7 @@ import {
   emit,
   setScore,
   setSelected,
+  quietSetSelected,
   setFaculty,
   setForm,
 } from './state.js';
@@ -29,6 +30,7 @@ import {
   overviewListKey,
 } from './ui/radar.js';
 import { runPanelTransition } from './ui/panel-swap.js';
+import { patchOptionSelection } from './ui/selection-list.js';
 import { renderFacultyPicker } from './ui/faculty-picker.js';
 import { renderTablePicker } from './ui/table-picker.js';
 import {
@@ -166,14 +168,19 @@ function toggleTableMenu() {
 }
 
 function onSelectTable(id) {
-  tableMenuOpen = false;
   tableSearchQuery = '';
-  if (id !== state.formId) setForm(id);
-  else renderHeroChrome();
-  // After table change, re-resolve faculty defaults for that table.
-  syncFacultySelection();
-  const trigger = document.getElementById('table-trigger');
-  if (trigger instanceof HTMLElement) trigger.focus();
+  const apply = () => {
+    tableMenuOpen = false;
+    if (id !== state.formId) setForm(id);
+    else renderHeroChrome();
+    // After table change, re-resolve faculty defaults for that table.
+    syncFacultySelection();
+    const trigger = document.getElementById('table-trigger');
+    if (trigger instanceof HTMLElement) trigger.focus();
+  };
+  // One frame of eased `.is-active` before the dialog leaves.
+  if (prefersReducedMotion()) apply();
+  else window.setTimeout(apply, 170);
 }
 
 function onTableQuery(q) {
@@ -238,15 +245,21 @@ function toggleFacultyMenu() {
 }
 
 function onSelectFaculty(id) {
-  facultyMenuOpen = false;
   facultySearchQuery = '';
-  if (id !== state.facultyId) setFaculty(id);
-  else renderFacultyChrome();
-  window.setTimeout(() => {
-    if (facultyMenuOpen) return;
-    const trigger = document.getElementById('faculty-trigger');
-    if (trigger instanceof HTMLElement) trigger.focus();
-  }, 220);
+  const apply = () => {
+    facultyMenuOpen = false;
+    if (id !== state.facultyId) setFaculty(id);
+    else renderFacultyChrome();
+    window.setTimeout(() => {
+      if (facultyMenuOpen) return;
+      const trigger = document.getElementById('faculty-trigger');
+      if (trigger instanceof HTMLElement) trigger.focus();
+    }, 220);
+  };
+  // Optimistic `.is-active` is already patched in the picker — let it ease
+  // before the overlay leave starts (otherwise the color never transitions).
+  if (prefersReducedMotion()) apply();
+  else window.setTimeout(apply, 170);
 }
 
 function onFacultyQuery(q) {
@@ -274,7 +287,9 @@ function renderHeroChrome() {
 }
 
 function onSelectSpecialty(id) {
-  // Stay put — sequential dissolve in place (see panel-swap.js).
+  // Optimistic highlight — master-detail paint is queued/async; without this
+  // the selected row waits on the dissolve chain and the color pops late.
+  if (id) patchOptionSelection($overview, '.overview-row', id, 'selected');
   setSelected(id);
 }
 
@@ -323,9 +338,9 @@ async function drainMasterDetailQueue() {
 async function paintMasterDetail(specs, score, signal) {
   const rows = prepareSpecs(specs, score);
   const selectedId = resolveSelection(rows, state.selectedId);
+  // Auto-repair after faculty/table change — no nested emit/abort.
   if (selectedId !== state.selectedId) {
-    setSelected(selectedId);
-    return;
+    quietSetSelected(selectedId);
   }
 
   const updatedAt = state.uniData?.updatedAt || null;
