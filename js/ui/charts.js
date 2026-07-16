@@ -137,9 +137,12 @@ export function renderChanceTrack(mount, row) {
     );
   }
 
-  mount.append(
-    el('div', { className: 'chance-track-wrap' }, [rail, axis, stats]),
+  const wrap = el(
+    'div',
+    { className: 'chance-track-wrap', 'data-awaken': 'chance' },
+    [rail, axis, stats],
   );
+  mount.append(wrap);
 }
 
 /**
@@ -231,6 +234,7 @@ export function renderHistogram(mount, row, score) {
   const chart = el('div', {
     className: `hist-chart${outLeft != null ? ' has-out-zone' : ''}`,
     role: 'img',
+    'data-awaken': 'hist',
     'aria-label':
       outLeft != null
         ? `Распределение по баллам: слева места по плану ${plan}, справа — вне набора`
@@ -269,7 +273,8 @@ export function renderHistogram(mount, row, score) {
     col.append(
       el('div', {
         className: 'hist-col-fill',
-        style: `height:${barH.toFixed(1)}%`,
+        // Height reserved via --bar-h; scaleY awakens without layout jump.
+        style: `--bar-h:${barH.toFixed(1)}%;--bar-delay:${(i * 16).toFixed(0)}ms`,
       }),
     );
     bars.append(col);

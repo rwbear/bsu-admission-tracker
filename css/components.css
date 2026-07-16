@@ -185,7 +185,8 @@
   inset: 0 auto 0 0;
   background: color-mix(in srgb, var(--ink) 18%, var(--soft));
   transform-origin: left center;
-  animation: chance-fill-in 420ms ease-out both;
+  transform: scaleX(0);
+  opacity: 0.5;
 }
 
 .chance-cut {
@@ -196,6 +197,7 @@
   background: var(--ink);
   transform: translateX(-50%);
   border-radius: 1px;
+  opacity: 0;
 }
 
 .chance-you {
@@ -206,9 +208,34 @@
   border-radius: 50%;
   background: var(--bg-elev);
   border: 2px solid var(--ink);
-  transform: translate(-50%, -50%);
+  transform: translate(-50%, -50%) scale(0.6);
+  opacity: 0;
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg-elev) 80%, transparent);
-  animation: chance-you-in 380ms ease-out both;
+}
+
+.chance-axis-cut,
+.chance-axis-you,
+.chance-stats {
+  opacity: 0;
+}
+
+/* Scroll / reveal awaken — graphics come alive once */
+.chance-track-wrap.is-awake .chance-fill {
+  animation: chance-fill-in 480ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.chance-track-wrap.is-awake .chance-cut {
+  animation: chance-mark-in 360ms cubic-bezier(0.16, 1, 0.3, 1) 120ms both;
+}
+
+.chance-track-wrap.is-awake .chance-you {
+  animation: chance-you-in 400ms cubic-bezier(0.16, 1, 0.3, 1) 160ms both;
+}
+
+.chance-track-wrap.is-awake .chance-axis-cut,
+.chance-track-wrap.is-awake .chance-axis-you,
+.chance-track-wrap.is-awake .chance-stats {
+  animation: chance-meta-in 320ms cubic-bezier(0.16, 1, 0.3, 1) 200ms both;
 }
 
 .chance-axis {
@@ -254,11 +281,20 @@
 
 @keyframes chance-fill-in {
   from {
-    transform: scaleX(0.08);
-    opacity: 0.55;
+    transform: scaleX(0);
+    opacity: 0.5;
   }
   to {
     transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes chance-mark-in {
+  from {
+    opacity: 0;
+  }
+  to {
     opacity: 1;
   }
 }
@@ -274,10 +310,52 @@
   }
 }
 
+@keyframes chance-meta-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Quiet / first paint — awake without replaying intro motion */
+.chance-track-wrap.is-awake.is-instant .chance-fill,
+.chance-track-wrap.is-awake.is-instant .chance-cut,
+.chance-track-wrap.is-awake.is-instant .chance-you,
+.chance-track-wrap.is-awake.is-instant .chance-axis-cut,
+.chance-track-wrap.is-awake.is-instant .chance-axis-you,
+.chance-track-wrap.is-awake.is-instant .chance-stats {
+  animation: none !important;
+  opacity: 1;
+}
+
+.chance-track-wrap.is-awake.is-instant .chance-fill {
+  transform: scaleX(1);
+}
+
+.chance-track-wrap.is-awake.is-instant .chance-you {
+  transform: translate(-50%, -50%) scale(1);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chance-fill,
+  .chance-cut,
+  .chance-you,
+  .chance-axis-cut,
+  .chance-axis-you,
+  .chance-stats {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+
   .chance-you {
-    animation: none;
+    transform: translate(-50%, -50%);
+  }
+
+  .chance-fill {
+    transform: scaleX(1);
   }
 }
 
@@ -364,13 +442,75 @@
 .hist-col-fill {
   width: 100%;
   max-width: 100%;
+  height: var(--bar-h, 0%);
   border-radius: 1px 1px 0 0;
   background: color-mix(in srgb, var(--ink) 38%, transparent);
   min-height: 0;
+  transform: scaleY(0);
+  transform-origin: bottom center;
+  opacity: 0.45;
 }
 
 .hist-col.is-mine .hist-col-fill {
   background: var(--ink);
+}
+
+.hist-out-region,
+.hist-cut-line,
+.hist-axis {
+  opacity: 0;
+}
+
+.hist-chart.is-awake .hist-col-fill {
+  animation: hist-bar-awaken 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: var(--bar-delay, 0ms);
+}
+
+.hist-chart.is-awake .hist-out-region,
+.hist-chart.is-awake .hist-cut-line {
+  animation: chance-mark-in 360ms cubic-bezier(0.16, 1, 0.3, 1) 80ms both;
+}
+
+.hist-chart.is-awake .hist-axis {
+  animation: chance-meta-in 300ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
+}
+
+@keyframes hist-bar-awaken {
+  from {
+    transform: scaleY(0);
+    opacity: 0.45;
+  }
+  to {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.hist-chart.is-awake.is-instant .hist-col-fill,
+.hist-chart.is-awake.is-instant .hist-out-region,
+.hist-chart.is-awake.is-instant .hist-cut-line,
+.hist-chart.is-awake.is-instant .hist-axis {
+  animation: none !important;
+  opacity: 1;
+}
+
+.hist-chart.is-awake.is-instant .hist-col-fill {
+  transform: scaleY(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hist-col-fill,
+  .hist-out-region,
+  .hist-cut-line,
+  .hist-axis {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+
+  .hist-col-fill {
+    transform: scaleY(1);
+  }
 }
 
 .hist-axis {

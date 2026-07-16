@@ -6,6 +6,9 @@
  * - Panel chrome (border, fill, radius) stays put; only inner content fades.
  * - Stages are ordered; height may still settle while new content enters
  *   (settle-reveal) — that is not a content crossfade.
+ * - If incoming content is a `[data-reveal-root]`, enter is a top→bottom
+ *   cascade (`runReveal`) instead of a bulk fade. Steps must already be
+ *   primed (or `runReveal` primes them).
  * - Selection highlight may update immediately when the overview list
  *   shape is unchanged (`animateOverview: false` → paintOverview first).
  * - `signal` aborts mid-flight: animations cancel, inline styles clear,
@@ -15,6 +18,8 @@
  * Non-linear: opacity uses multi-stop keyframes (effect easing = linear
  * so the curve is the keyframe path). Height uses an ease-out cubic.
  */
+
+import { runReveal } from "./reveal.js";
 
 /** @typedef {{ outMs: number, gapMs: number, heightMs: number, inMs: number, enterAfterHeightMs: number }} PanelSwapTiming */
 
@@ -126,16 +131,17 @@ export async function runPanelTransition(opts) {
 
     const incoming = locks.map(({ panel, fromH }) => {
       const content = contentRoot(panel);
-      if (content) {
+      const revealRoot = findRevealRoot(content);
+      if (content && !revealRoot) {
         content.style.opacity = "0";
         opacityNodes.push(content);
       }
+      // Reveal roots stay at opacity 1; steps are primed by the painter.
       panel.style.height = "auto";
       const nextH = Math.max(panel.getBoundingClientRect().height, 1);
       panel.style.height = `${fromH}px`;
-      // Force the locked height into the used style before WAAPI reads it.
       void panel.offsetHeight;
-      return { panel, fromH, nextH, content };
+      return { panel, fromH, nextH, content, revealRoot };
     });
 
     // 3 + 4 — Reshape, then settle-reveal enter (no content overlap)
@@ -161,8 +167,11 @@ export async function runPanelTransition(opts) {
     }
 
     const enterPromise = Promise.all(
-      incoming.map(({ content }) => {
+      incoming.map(({ content, revealRoot }) => {
         if (!content) return Promise.resolve();
+        if (revealRoot) {
+          return runReveal(revealRoot, { signal, reduceMotion: false });
+        }
         return runOpacity(content, ENTER_OPACITY, PANEL_SWAP_TIMING.inMs, live, signal);
       }),
     );
@@ -199,6 +208,17 @@ export function panelSwapDurationMs(t = PANEL_SWAP_TIMING, opts = {}) {
     return t.outMs + t.gapMs + t.inMs;
   }
   return t.outMs + t.gapMs + Math.max(t.heightMs, t.enterAfterHeightMs + t.inMs);
+}
+
+/**
+ * @param {HTMLElement | null} content
+ * @returns {HTMLElement | null}
+ */
+function findRevealRoot(content) {
+  if (!content) return null;
+  if (content.hasAttribute("data-reveal-root")) return content;
+  const nested = content.querySelector("[data-reveal-root]");
+  return nested instanceof HTMLElement ? nested : null;
 }
 
 /**
@@ -300,14 +320,12 @@ function settleAnimation(anim, el, prop, endValue, signal) {
     anim.finished.then(
       () => finish(true),
       () => {
-        // Cancelled by our abort path or supersession — don't double-reject.
         if (!settled) finish(signal?.aborted ? false : true);
       },
     );
   });
 }
 
-/** Two frames so layout/fonts settle before measuring swap height. */
 function afterLayout() {
   return new Promise((resolve) => {
     requestAnimationFrame(() => {
