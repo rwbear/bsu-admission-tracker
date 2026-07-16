@@ -4,7 +4,7 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js?v=20260715ba';
+} from './charts.js?v=20260715bb';
 import { primeReveal, finalizeReveal } from './reveal.js';
 import { armScrollAwaken, disposeScrollAwaken } from './awaken.js';
 
