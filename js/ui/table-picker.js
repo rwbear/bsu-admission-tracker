@@ -7,6 +7,7 @@ import {
   shortTableLabel,
   tableById,
 } from '../tables.js';
+import { patchOptionSelection } from './selection-list.js';
 
 const OVERLAY_ID = 'table-overlay-root';
 const CLOSE_MS_FULL = 220;
@@ -57,10 +58,22 @@ function clearCloseTimer(host) {
  *   selectedId: string | null,
  * }} model
  */
-function paintTableList(list, model) {
-  list.innerHTML = '';
+/**
+ * @param {{ track: { name: string }, tables: { id: string }[] }[]} groups
+ */
+function tableGroupsSignature(groups) {
+  return groups
+    .map(
+      (g) =>
+        `${g.track.name}:${g.tables.map((t) => t.id).join(',')}`,
+    )
+    .join('|');
+}
 
+function paintTableList(list, model) {
   if (!model.tables.length) {
+    list.dataset.listSig = 'empty';
+    list.innerHTML = '';
     list.append(
       el('div', {
         className: 'faculty-empty',
@@ -71,6 +84,8 @@ function paintTableList(list, model) {
   }
 
   if (!model.groups.length) {
+    list.dataset.listSig = 'empty-filter';
+    list.innerHTML = '';
     list.append(
       el('div', {
         className: 'faculty-empty',
@@ -79,6 +94,23 @@ function paintTableList(list, model) {
     );
     return;
   }
+
+  const nextSig = tableGroupsSignature(model.groups);
+  if (
+    list.dataset.listSig === nextSig &&
+    list.querySelector('.faculty-option')
+  ) {
+    patchOptionSelection(
+      list,
+      '.faculty-option',
+      model.selectedId,
+      'is-active',
+    );
+    return;
+  }
+
+  list.dataset.listSig = nextSig;
+  list.innerHTML = '';
 
   for (const group of model.groups) {
     list.append(
@@ -108,6 +140,7 @@ function paintTableList(list, model) {
       );
       option.addEventListener('click', (e) => {
         e.stopPropagation();
+        patchOptionSelection(list, '.faculty-option', table.id, 'is-active');
         const current = overlayHost()._tableOpts;
         if (current?.onSelect) current.onSelect(table.id);
       });
@@ -289,10 +322,10 @@ function beginCloseOverlay(host) {
   host._tableClosing = true;
   shell.classList.remove('is-open');
   shell.classList.add('is-leaving');
-  document.documentElement.classList.remove('table-overlay-open');
 
   const finish = () => {
     clearCloseTimer(host);
+    document.documentElement.classList.remove('table-overlay-open');
     if (host.contains(shell)) shell.remove();
     if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
   };

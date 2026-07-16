@@ -4,6 +4,7 @@
 }
 
 .overview-row {
+  position: relative;
   display: grid;
   grid-template-columns: 0.5rem 1fr auto auto;
   gap: var(--space-3);
@@ -14,10 +15,26 @@
   border: 0;
   border-bottom: 1px solid var(--line);
   border-radius: 0;
-  background: transparent;
+  background-color: transparent;
   text-align: left;
   cursor: pointer;
-  transition: background var(--transition);
+  transition: background-color var(--select-ms) var(--select-ease);
+}
+
+/* Ink tick — scale instead of box-shadow so it eases without a pop. */
+.overview-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.55rem;
+  bottom: 0.55rem;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--select-line);
+  transform: scaleY(0);
+  transform-origin: center;
+  transition: transform var(--select-ms) var(--select-ease);
+  pointer-events: none;
 }
 
 /* Match the parent .panel radius so selection fill curves with the box,
@@ -34,12 +51,15 @@
 }
 
 .overview-row:hover {
-  background: var(--soft);
+  background-color: var(--soft);
 }
 
 .overview-row.selected {
-  background: var(--select);
-  box-shadow: inset 2px 0 0 var(--select-line);
+  background-color: var(--select);
+}
+
+.overview-row.selected::before {
+  transform: scaleY(1);
 }
 
 .ov-mark {
@@ -643,6 +663,13 @@
   text-align: center;
   color: var(--ink-dim);
   font-size: var(--text-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overview-row,
+  .overview-row::before {
+    transition: none !important;
+  }
 }
 
 @media (max-width: 420px) {

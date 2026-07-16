@@ -4,6 +4,10 @@ import {
   DEFAULT_FACULTY_NAME,
   filterFacultiesByName,
 } from '../faculties.js';
+import {
+  optionListMatches,
+  patchOptionSelection,
+} from './selection-list.js';
 
 const OVERLAY_ID = 'faculty-overlay-root';
 const CLOSE_MS_FULL = 220;
@@ -75,9 +79,9 @@ function resolveSelected(faculties, selectedId) {
  * }} model
  */
 function paintFacultyList(list, model) {
-  list.innerHTML = '';
-
   if (!model.faculties.length) {
+    list.dataset.listSig = 'empty';
+    list.innerHTML = '';
     list.append(
       el('div', {
         className: 'faculty-empty',
@@ -88,6 +92,8 @@ function paintFacultyList(list, model) {
   }
 
   if (!model.filtered.length) {
+    list.dataset.listSig = 'empty-filter';
+    list.innerHTML = '';
     list.append(
       el('div', {
         className: 'faculty-empty',
@@ -96,6 +102,20 @@ function paintFacultyList(list, model) {
     );
     return;
   }
+
+  // Same ordered ids → patch selection only (keeps background transitions alive).
+  if (optionListMatches(list, '.faculty-option', model.filtered)) {
+    patchOptionSelection(
+      list,
+      '.faculty-option',
+      model.selectedId,
+      'is-active',
+    );
+    return;
+  }
+
+  list.dataset.listSig = model.filtered.map((f) => f.id).join('|');
+  list.innerHTML = '';
 
   for (const fac of model.filtered) {
     const active = model.selectedId != null && fac.id === model.selectedId;
@@ -115,6 +135,8 @@ function paintFacultyList(list, model) {
     );
     option.addEventListener('click', (e) => {
       e.stopPropagation();
+      // Optimistic highlight on this frame so the color can ease before close.
+      patchOptionSelection(list, '.faculty-option', fac.id, 'is-active');
       model.onSelect(fac.id);
     });
     list.append(option);
@@ -306,10 +328,11 @@ function beginCloseOverlay(host) {
   host._facultyClosing = true;
   shell.classList.remove('is-open');
   shell.classList.add('is-leaving');
-  document.documentElement.classList.remove('faculty-overlay-open');
+  // Keep scroll-lock until leave finishes — unlocking mid-fade shifts layout.
 
   const finish = () => {
     clearCloseTimer(host);
+    document.documentElement.classList.remove('faculty-overlay-open');
     if (host.contains(shell)) shell.remove();
     if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
   };
