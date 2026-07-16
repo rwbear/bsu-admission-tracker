@@ -1,22 +1,26 @@
 /**
- * Premium panel content transitions.
+ * Panel content transitions — sequential dissolve, never a crossfade.
  *
- * Primary: View Transitions API — browser morphs named stages
- * (geometry + soft crossfade). Feels native and stays in sync with
- * compositor timing.
+ * Stages (non-overlapping on purpose):
+ *   1. Exit    — current content fades out (panel chrome stays)
+ *   2. Gap     — brief empty settle
+ *   3. Reshape — height eases to the next content size (invisible)
+ *   4. Enter   — new content fades in
  *
- * Fallback: height-locked sequential opacity (out → gap → height → in).
- * No translateY on tall panels — that reads as muddy, not premium.
+ * No translate / scale on tall panels. No simultaneous old+new blend.
+ * View Transitions are intentionally unused here: their default model is
+ * a crossfade, which reads muddy for this master–detail swap.
  */
 
-const EASE_OUT = "cubic-bezier(0.22, 1, 0.36, 1)";
-const EASE_INOUT = "cubic-bezier(0.45, 0, 0.55, 1)";
+const EASE_EXIT = "cubic-bezier(0.55, 0, 1, 1)";
+const EASE_RESHAPE = "cubic-bezier(0.22, 1, 0.36, 1)";
+const EASE_ENTER = "cubic-bezier(0.16, 1, 0.3, 1)";
 
-const FALLBACK = {
-  outMs: 180,
-  gapMs: 48,
-  heightMs: 360,
-  inMs: 280,
+const STAGE = {
+  outMs: 150,
+  gapMs: 70,
+  heightMs: 300,
+  inMs: 260,
 };
 
 /**
@@ -48,105 +52,102 @@ export async function runPanelTransition(opts) {
     return;
   }
 
-  if (typeof document.startViewTransition === "function") {
-    await runViewTransition({
-      overviewEl,
-      detailEl,
-      paintOverview,
-      paintDetail,
-      animateOverview,
-      animateDetail,
-    });
-    return;
-  }
-
-  await runHeightLockFallback({
-    overviewEl,
-    detailEl,
-    paintOverview,
-    paintDetail,
-    animateOverview,
-    animateDetail,
-  });
-}
-
-async function runViewTransition({
-  overviewEl,
-  detailEl,
-  paintOverview,
-  paintDetail,
-  animateOverview,
-  animateDetail,
-}) {
-  const prevOv = overviewEl.style.viewTransitionName;
-  const prevDe = detailEl.style.viewTransitionName;
-
-  overviewEl.style.viewTransitionName = animateOverview ? "overview-stage" : "none";
-  detailEl.style.viewTransitionName = animateDetail ? "detail-stage" : "none";
-
-  try {
-    const transition = document.startViewTransition(() => {
-      paintOverview();
-      paintDetail();
-    });
-    await transition.finished;
-  } catch {
-    /* aborted / unsupported mid-flight — DOM already painted */
-  } finally {
-    overviewEl.style.viewTransitionName = prevOv;
-    detailEl.style.viewTransitionName = prevDe;
-  }
-}
-
-async function runHeightLockFallback({
-  overviewEl,
-  detailEl,
-  paintOverview,
-  paintDetail,
-  animateOverview,
-  animateDetail,
-}) {
-  const targets = [];
-  if (animateOverview) targets.push(overviewEl);
-  if (animateDetail) targets.push(detailEl);
-
-  const locks = targets.map((el) => {
-    const h = Math.max(el.getBoundingClientRect().height, 1);
-    el.style.height = `${h}px`;
-    el.style.overflow = "hidden";
-    el.classList.add("is-panel-swapping");
-    return { el, h };
-  });
-
-  try {
-    await Promise.all(targets.map((el) => fadeOpacity(el, 0, FALLBACK.outMs, EASE_INOUT)));
-    await wait(FALLBACK.gapMs);
-
+  // Selection highlight should flip immediately; list rebuild waits for the dissolve.
+  if (!animateOverview) {
     paintOverview();
-    paintDetail();
+  }
 
+  /** @type {HTMLElement[]} */
+  const panels = [];
+  if (animateOverview) panels.push(overviewEl);
+  if (animateDetail) panels.push(detailEl);
+
+  const locks = panels.map((panel) => {
+    const fromH = Math.max(panel.getBoundingClientRect().height, 1);
+    panel.style.height = `${fromH}px`;
+    panel.style.overflow = "hidden";
+    panel.classList.add("is-panel-swapping");
+    return { panel, fromH, outgoing: contentRoot(panel) };
+  });
+
+  /** @type {HTMLElement[]} */
+  const faded = [];
+
+  try {
+    // 1 — Exit (panel chrome stays put)
     await Promise.all(
-      locks.map(async ({ el, h }) => {
-        el.style.height = "auto";
-        const next = Math.max(el.getBoundingClientRect().height, 1);
-        el.style.height = `${h}px`;
-        void el.offsetHeight;
-        await animateHeight(el, next, FALLBACK.heightMs, EASE_OUT);
-        el.style.height = "auto";
-      })
+      locks.map(({ outgoing }) => {
+        if (!outgoing) return Promise.resolve();
+        faded.push(outgoing);
+        return fadeOpacity(outgoing, 0, STAGE.outMs, EASE_EXIT);
+      }),
     );
 
-    await Promise.all(targets.map((el) => fadeOpacity(el, 1, FALLBACK.inMs, EASE_OUT)));
+    // 2 — Empty settle
+    await wait(STAGE.gapMs);
+
+    // Swap DOM while invisible
+    if (animateOverview) paintOverview();
+    paintDetail();
+
+    // New content starts invisible — no overlap with the old frame
+    const incoming = locks.map(({ panel, fromH }) => {
+      const content = contentRoot(panel);
+      if (content) {
+        content.style.opacity = "0";
+        faded.push(content);
+      }
+      return { panel, fromH, content };
+    });
+
+    // 3 — Reshape height with content still at opacity 0
+    await Promise.all(
+      incoming.map(async ({ panel, fromH }) => {
+        panel.style.height = "auto";
+        const nextH = Math.max(panel.getBoundingClientRect().height, 1);
+        panel.style.height = `${fromH}px`;
+        void panel.offsetHeight;
+        if (Math.abs(fromH - nextH) >= 0.5) {
+          await animateHeight(panel, nextH, STAGE.heightMs, EASE_RESHAPE);
+        }
+        panel.style.height = "auto";
+      }),
+    );
+
+    // 4 — Enter
+    await Promise.all(
+      incoming.map(({ content }) => {
+        if (!content) return Promise.resolve();
+        return fadeOpacity(content, 1, STAGE.inMs, EASE_ENTER);
+      }),
+    );
   } finally {
-    for (const { el } of locks) {
-      el.style.height = "";
-      el.style.overflow = "";
-      el.style.opacity = "";
-      el.classList.remove("is-panel-swapping");
+    for (const { panel } of locks) {
+      panel.style.height = "";
+      panel.style.overflow = "";
+      panel.classList.remove("is-panel-swapping");
+    }
+    for (const node of faded) {
+      if (node.isConnected) node.style.opacity = "";
     }
   }
 }
 
+/**
+ * @param {HTMLElement} panel
+ * @returns {HTMLElement | null}
+ */
+function contentRoot(panel) {
+  const child = panel.firstElementChild;
+  return child instanceof HTMLElement ? child : null;
+}
+
+/**
+ * @param {HTMLElement} el
+ * @param {number} to
+ * @param {number} ms
+ * @param {string} ease
+ */
 function fadeOpacity(el, to, ms, ease) {
   return new Promise((resolve) => {
     const from = Number.parseFloat(getComputedStyle(el).opacity);
@@ -169,6 +170,12 @@ function fadeOpacity(el, to, ms, ease) {
   });
 }
 
+/**
+ * @param {HTMLElement} el
+ * @param {number} toPx
+ * @param {number} ms
+ * @param {string} ease
+ */
 function animateHeight(el, toPx, ms, ease) {
   return new Promise((resolve) => {
     const from = el.getBoundingClientRect().height;
@@ -179,7 +186,7 @@ function animateHeight(el, toPx, ms, ease) {
     }
     const anim = el.animate(
       [{ height: `${from}px` }, { height: `${toPx}px` }],
-      { duration: ms, easing: ease, fill: "forwards" }
+      { duration: ms, easing: ease, fill: "forwards" },
     );
     anim.finished.then(() => {
       el.style.height = `${toPx}px`;
@@ -189,6 +196,7 @@ function animateHeight(el, toPx, ms, ease) {
   });
 }
 
+/** @param {number} ms */
 function wait(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
