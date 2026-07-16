@@ -799,7 +799,7 @@ html.faculty-overlay-open {
   }
 }
 
-/* Panel stages — View Transitions morph named surfaces; no page scroll */
+/* Panel stages — sequential dissolve (see panel-swap.js); no page scroll */
 #overview-list.panel,
 #detail-panel.panel {
   position: relative;
@@ -809,61 +809,13 @@ html.faculty-overlay-open {
 #overview-list.panel.is-panel-swapping,
 #detail-panel.panel.is-panel-swapping {
   will-change: opacity, height;
-}
-
-/*
- * View Transitions: only named stages animate.
- * Kill the default root crossfade so the chrome stays rock-solid.
- */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-::view-transition-group(overview-stage),
-::view-transition-group(detail-stage) {
-  animation-duration: 420ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-::view-transition-old(overview-stage),
-::view-transition-old(detail-stage) {
-  animation: panel-vt-fade-out 200ms cubic-bezier(0.4, 0, 1, 1) both;
-}
-
-::view-transition-new(overview-stage),
-::view-transition-new(detail-stage) {
-  animation: panel-vt-fade-in 340ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
-}
-
-@keyframes panel-vt-fade-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-@keyframes panel-vt-fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  /* Keep panel chrome solid while content opacity animates on the stage */
+  background: var(--bg-elev);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .live-dot,
   .loading-dots span {
     animation: none;
-  }
-
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation: none !important;
   }
 }

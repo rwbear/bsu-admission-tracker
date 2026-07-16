@@ -274,7 +274,7 @@ function renderHeroChrome() {
 }
 
 function onSelectSpecialty(id) {
-  // Stay put — panel transition morphs detail in place (see panel-swap.js).
+  // Stay put — sequential dissolve in place (see panel-swap.js).
   setSelected(id);
 }
 
