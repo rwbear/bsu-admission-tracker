@@ -4,7 +4,7 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js?v=20260715ak';
+} from './charts.js?v=20260715al';
 
 /**
  * @param {object} row
@@ -67,7 +67,9 @@ export function renderOverviewList(container, specialties, score, opts) {
     const ariaBits = [
       row.specName,
       row.statusLabel,
-      score == null ? null : `${fmtNum(row.peopleAbove)} из ${fmtNum(row.plan)} мест выше тебя`,
+      score == null
+        ? null
+        : `над тобой ${fmtNum(row.peopleAbove)} при плане ${fmtNum(row.plan)}`,
       row.delta == null ? null : `дельта ${deltaText(row)}`,
     ].filter(Boolean);
     btn.setAttribute('aria-label', ariaBits.join(', '));

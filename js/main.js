@@ -275,7 +275,11 @@ function renderHeroChrome() {
 function onSelectSpecialty(id) {
   setSelected(id);
   if (window.matchMedia('(max-width: 767px)').matches) {
-    $detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    $detail.scrollIntoView({
+      behavior: reduce ? 'auto' : 'smooth',
+      block: 'nearest',
+    });
   }
 }
 
@@ -533,6 +537,9 @@ function fetchData(opts = {}) {
         emit();
       } else {
         console.warn('snapshot refresh failed, keeping previous data', err);
+        // Re-evaluate freshness even when the poll fails — otherwise a
+        // snapshot that crossed the stale threshold stays silently chase-polling.
+        applyBanner(state.uniData);
       }
     } finally {
       state.loading = false;

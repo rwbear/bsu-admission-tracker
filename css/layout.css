@@ -152,6 +152,10 @@ input {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
   .command-meta-line {
     transition: none;
   }
@@ -257,6 +261,11 @@ input {
 
 html.table-overlay-open {
   overflow: hidden;
+}
+
+#table-overlay-root {
+  position: relative;
+  z-index: 80;
 }
 
 .faculty-picker {
