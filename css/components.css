@@ -68,13 +68,15 @@
 .ov-ratio {
   font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .ov-delta {
   font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
   color: var(--ink-dim);
+  font-weight: 400;
   min-width: 2.5rem;
   text-align: right;
 }
@@ -113,6 +115,17 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--bg-elev);
+}
+
+.metric-cell.is-secondary {
+  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  background: color-mix(in srgb, var(--bg-elev) 70%, var(--soft));
+}
+
+.metric-cell.is-secondary .metric-val {
+  font-size: var(--text-md);
+  font-weight: 500;
+  color: var(--ink-dim);
 }
 
 .metric-val {

@@ -24,6 +24,20 @@ describe('BSU monitoring tables', () => {
     );
   });
 
+  it('stays in sync with sources/bsu-tables.json ids', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = JSON.parse(
+      readFileSync(new URL('../sources/bsu-tables.json', import.meta.url), 'utf8'),
+    );
+    const sourceIds = (src.tables || [])
+      .map((t) => String(t.id))
+      .sort((a, b) => Number(a) - Number(b));
+    const clientIds = listCatalogTables()
+      .map((t) => String(t.id))
+      .sort((a, b) => Number(a) - Number(b));
+    assert.deepEqual(clientIds, sourceIds);
+  });
+
   it('resolves saved / default table ids', () => {
     const tables = listCatalogTables();
     assert.equal(resolveTableId(tables, '8'), '8');

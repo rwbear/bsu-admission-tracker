@@ -263,10 +263,18 @@ export function enrichSpec(spec, score) {
   // Seats still open: no passing score has formed — every applicant is in.
   if (status === 'neutral' && scoreOk && plan > 0 && competition < plan) {
     status = 'safe';
+  } else if (status === 'neutral' && scoreOk && plan > 0) {
+    // Score entered but no расчётный yet while the seat pool is already full.
+    // Never leave a blank mark — use bands when present, else oversubscribed risk.
+    if (above != null && ranges.length) {
+      status = above < plan ? 'risk' : 'below';
+    } else {
+      status = 'risk';
+    }
   }
-  const pressure = contestRatio(apps, plan);
+  const pressure = contestRatio(competition, plan);
   const chance = buildChanceTrack(
-    { ranges, buckets, plan, inCompetition: apps },
+    { ranges, buckets, plan, inCompetition: competition },
     scoreOk ? Number(score) : null,
   );
 
@@ -291,6 +299,8 @@ export function enrichSpec(spec, score) {
     status,
     statusLabel: statusLabel(status),
     pressure,
+    competition,
+    bucketSum,
     delta,
     sortKey,
     chance,

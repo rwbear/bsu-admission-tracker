@@ -108,8 +108,8 @@ export function parseCount(text) {
 }
 
 /**
- * Very small HTML table extractor → rows of cell HTML strings.
- * Handles rowspan/colspan by expanding naively where possible.
+ * HTML table extractor → rows of cell HTML strings.
+ * Expands colspan and rowspan into a rectangular grid (standard table model).
  * @param {string} html
  * @returns {string[][][]}
  */
@@ -119,24 +119,125 @@ export function extractTables(html) {
   let m;
   while ((m = tableRe.exec(html))) {
     const body = m[1];
+    /** @type {number[]} */
+    let spanLeft = [];
+    /** @type {string[]} */
+    let spanHtml = [];
     const rows = [];
     const rowRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi;
     let rm;
     while ((rm = rowRe.exec(body))) {
-      const cells = [];
+      /** @type {string[]} */
+      const row = [];
+      let col = 0;
       const cellRe = /<(td|th)\b([^>]*)>([\s\S]*?)<\/\1>/gi;
       let cm;
+
+      const placeCarry = () => {
+        while (col < spanLeft.length && spanLeft[col] > 0) {
+          while (row.length <= col) row.push('');
+          row[col] = spanHtml[col] ?? '';
+          spanLeft[col] -= 1;
+          col += 1;
+        }
+      };
+
       while ((cm = cellRe.exec(rm[1]))) {
+        placeCarry();
         const attrs = cm[2];
-        const colspan = Number((attrs.match(/colspan\s*=\s*["']?(\d+)/i) || [])[1] || 1);
+        const colspan = Math.max(
+          1,
+          Number((attrs.match(/colspan\s*=\s*["']?(\d+)/i) || [])[1] || 1),
+        );
+        const rowspan = Math.max(
+          1,
+          Number((attrs.match(/rowspan\s*=\s*["']?(\d+)/i) || [])[1] || 1),
+        );
         const content = cm[3];
-        for (let i = 0; i < colspan; i += 1) cells.push(i === 0 ? content : '');
+        for (let i = 0; i < colspan; i += 1) {
+          while (row.length <= col) row.push('');
+          row[col] = i === 0 ? content : '';
+          while (spanLeft.length <= col) {
+            spanLeft.push(0);
+            spanHtml.push('');
+          }
+          if (rowspan > 1) {
+            spanLeft[col] = rowspan - 1;
+            spanHtml[col] = i === 0 ? content : '';
+          } else {
+            spanLeft[col] = 0;
+            spanHtml[col] = '';
+          }
+          col += 1;
+        }
       }
-      if (cells.length) rows.push(cells);
+      placeCarry();
+      while (col < spanLeft.length) {
+        if (spanLeft[col] > 0) {
+          while (row.length <= col) row.push('');
+          row[col] = spanHtml[col] ?? '';
+          spanLeft[col] -= 1;
+        }
+        col += 1;
+      }
+      if (row.length) rows.push(row);
     }
     if (rows.length) tables.push(rows);
   }
   return tables;
+}
+
+/**
+ * Infer plan / Всего / в конкурсе from numerics left of score buckets.
+ * Positional [2]/last are wrong on real formk1 colspan headers; use
+ * bucket-sum awareness instead of falsy fallbacks that steal «целевое».
+ * @param {number[]} afterSpecNums
+ * @param {number} bucketSum
+ * @returns {{ plan: number, totalApps: number, inCompetition: number }}
+ */
+export function resolvePlanApps(afterSpecNums, bucketSum) {
+  const nums = (afterSpecNums || []).map((n) => Number(n) || 0);
+  if (!nums.length) {
+    return {
+      plan: 0,
+      totalApps: bucketSum,
+      inCompetition: bucketSum,
+    };
+  }
+
+  const plan = nums[0];
+  const rest = nums.slice(1);
+  if (!rest.length) {
+    return { plan, totalApps: bucketSum, inCompetition: bucketSum };
+  }
+
+  if (rest.length === 1) {
+    const only = rest[0];
+    const inCompetition = bucketSum > 0 ? bucketSum : only;
+    const totalApps = Math.max(only, inCompetition);
+    return { plan, totalApps, inCompetition };
+  }
+
+  let totalApps = 0;
+  let inCompetition = 0;
+
+  if (bucketSum > 0) {
+    const atLeastBuckets = rest.filter((n) => n >= bucketSum);
+    totalApps = atLeastBuckets.length
+      ? Math.max(...atLeastBuckets)
+      : Math.max(bucketSum, ...rest);
+    const last = rest[rest.length - 1];
+    const tol = Math.max(1, Math.floor(bucketSum * 0.25));
+    inCompetition =
+      Math.abs(last - bucketSum) <= tol ? last : bucketSum;
+  } else {
+    // Empty bands: do not treat «целевое» (early column) as applications.
+    totalApps = rest[rest.length - 1];
+    inCompetition = totalApps;
+  }
+
+  if (totalApps < inCompetition) totalApps = inCompetition;
+  return { plan, totalApps, inCompetition };
 }
 
 /**
@@ -221,37 +322,32 @@ export function parseScoreBucketTables(html, meta) {
         continue;
       }
 
-      // Plan is usually the first number after the specialty cell.
+      // Plan / apps: bucket-aware inference (formk1 headers are not [2]/last).
+      const bucketSum = buckets.reduce((a, b) => a + b, 0);
       let plan = 0;
       let totalApps = 0;
       let inCompetition = 0;
 
       const specIdx = before.findIndex((t) => t === specName);
-      const afterSpecNums = before.slice(Math.max(0, specIdx + 1)).filter(isBareNumber).map(parseCount);
+      const afterSpecNums = before
+        .slice(Math.max(0, specIdx + 1))
+        .filter(isBareNumber)
+        .map(parseCount);
 
       if (afterSpecNums.length >= 1) {
-        plan = afterSpecNums[0];
-        // Typical: plan, target, totalApps, noExam, outOfComp, inCompetition
-        if (afterSpecNums.length >= 2) totalApps = afterSpecNums[2] ?? afterSpecNums[1];
-        if (afterSpecNums.length >= 3) {
-          inCompetition = afterSpecNums[afterSpecNums.length - 1];
-        } else if (afterSpecNums.length === 2) {
-          inCompetition = afterSpecNums[1];
-        }
+        ({ plan, totalApps, inCompetition } = resolvePlanApps(
+          afterSpecNums,
+          bucketSum,
+        ));
       } else if (nums.length >= 1) {
         // Numbers before name are often faculty group totals — use trailing nums if any
         plan = nums[nums.length - 1] || nums[0];
-      }
-
-      if (!inCompetition && afterSpecNums.length >= 4) {
-        inCompetition = afterSpecNums[afterSpecNums.length - 1];
-      }
-      if (!totalApps && afterSpecNums.length >= 2) {
-        totalApps = afterSpecNums[1];
+        totalApps = bucketSum;
+        inCompetition = bucketSum;
       }
 
       if (plan === 0 && buckets.every((v) => v === 0)) continue;
-      if (plan === 0 && totalApps === 0 && buckets.reduce((a, b) => a + b, 0) === 0) continue;
+      if (plan === 0 && totalApps === 0 && bucketSum === 0) continue;
 
       const estimatedPassing = calcPassing(ranges, buckets, plan || 0);
       const facultyPart = meta.facultyId || meta.form || 'main';
@@ -271,7 +367,7 @@ export function parseScoreBucketTables(html, meta) {
         specName: cleanSpecName(specName),
         plan,
         totalApps,
-        inCompetition: inCompetition || totalApps,
+        inCompetition,
         ranges,
         buckets,
         estimatedPassing,
