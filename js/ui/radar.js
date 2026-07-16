@@ -4,7 +4,7 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js?v=20260715ao';
+} from './charts.js?v=20260715ap';
 
 /**
  * @param {object} row
@@ -170,29 +170,7 @@ export function renderDetailPanel(container, row, score, meta = {}) {
   const histMount = el('div');
   const statusBits = [row.statusLabel, row.facultyName].filter(Boolean);
 
-  const back = el('button', {
-    className: 'detail-back',
-    type: 'button',
-    text: '← Обзор',
-  });
-  back.addEventListener('click', () => {
-    const reduce = (() => {
-      try {
-        return Boolean(
-          globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
-        );
-      } catch {
-        return false;
-      }
-    })();
-    document.getElementById('overview-list')?.closest('.overview-col')?.scrollIntoView({
-      behavior: reduce ? 'auto' : 'smooth',
-      block: 'start',
-    });
-  });
-
   const inner = el('div', { className: 'detail-inner' }, [
-    back,
     el('h3', {
       className: 'detail-title',
       text: row.specName,
@@ -235,6 +213,37 @@ export function renderDetailPanel(container, row, score, meta = {}) {
       }),
     );
   }
+
+  const back = el('button', {
+    className: 'detail-back',
+    type: 'button',
+    text: '← Обзор',
+    'aria-label': 'Вернуться к списку специальностей',
+  });
+  back.addEventListener('click', () => {
+    let reduce = false;
+    try {
+      reduce = Boolean(
+        globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
+      );
+    } catch {
+      /* ignore */
+    }
+    document
+      .getElementById('overview-list')
+      ?.closest('.overview-col')
+      ?.scrollIntoView({
+        behavior: reduce ? 'auto' : 'smooth',
+        block: 'start',
+      });
+    const focusBack = () => {
+      const selected = document.querySelector('.overview-row.selected');
+      if (selected instanceof HTMLElement) selected.focus();
+    };
+    if (reduce) focusBack();
+    else window.setTimeout(focusBack, 320);
+  });
+  inner.append(back);
 
   container.append(inner);
 }
