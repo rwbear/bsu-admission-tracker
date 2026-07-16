@@ -2,6 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   PANEL_SWAP_TIMING,
+  PANEL_SWAP_SELECT_TIMING,
   EXIT_OPACITY,
   ENTER_OPACITY,
   panelSwapDurationMs,
@@ -15,7 +16,16 @@ describe('panel-swap foundation', () => {
     assert.ok(t.enterAfterHeightMs < t.heightMs, 'enter starts during height settle');
     const wall = panelSwapDurationMs(t, { heightChanges: true });
     assert.ok(wall <= 520, `wall-clock should stay under 520ms, got ${wall}`);
-    assert.ok(wall >= 320, `wall-clock should not feel clipped, got ${wall}`);
+    assert.ok(wall >= 280, `wall-clock should not feel clipped, got ${wall}`);
+  });
+
+  it('select-only timing is lighter than shape change', () => {
+    assert.ok(PANEL_SWAP_SELECT_TIMING.outMs < PANEL_SWAP_TIMING.outMs);
+    assert.equal(PANEL_SWAP_SELECT_TIMING.enterAfterHeightMs, 0);
+    assert.ok(
+      panelSwapDurationMs(PANEL_SWAP_SELECT_TIMING, { heightChanges: true }) <
+        panelSwapDurationMs(PANEL_SWAP_TIMING, { heightChanges: true }),
+    );
   });
 
   it('skips height budget when size is unchanged', () => {

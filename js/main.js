@@ -169,18 +169,29 @@ function toggleTableMenu() {
 
 function onSelectTable(id) {
   tableSearchQuery = '';
-  const apply = () => {
+  if (id === state.formId) {
     tableMenuOpen = false;
-    if (id !== state.formId) setForm(id);
-    else renderHeroChrome();
-    // After table change, re-resolve faculty defaults for that table.
-    syncFacultySelection();
+    renderHeroChrome();
     const trigger = document.getElementById('table-trigger');
     if (trigger instanceof HTMLElement) trigger.focus();
-  };
-  // One frame of eased `.is-active` before the dialog leaves.
-  if (prefersReducedMotion()) apply();
-  else window.setTimeout(apply, 170);
+    return;
+  }
+
+  // Keep the dialog open so the board dissolve runs under an opaque overlay
+  // (closing at the same time as the dissolve is what read as a blink).
+  setForm(id);
+  const facultyBefore = state.facultyId;
+  syncFacultySelection();
+  // setForm emits once; if faculty was remapped for the new table, refresh again.
+  if (state.facultyId !== facultyBefore) emit();
+
+  const closeAfter = prefersReducedMotion() ? 0 : 400;
+  window.setTimeout(() => {
+    tableMenuOpen = false;
+    renderHeroChrome();
+    const trigger = document.getElementById('table-trigger');
+    if (trigger instanceof HTMLElement) trigger.focus();
+  }, closeAfter);
 }
 
 function onTableQuery(q) {
@@ -246,20 +257,32 @@ function toggleFacultyMenu() {
 
 function onSelectFaculty(id) {
   facultySearchQuery = '';
-  const apply = () => {
+  if (id === state.facultyId) {
     facultyMenuOpen = false;
-    if (id !== state.facultyId) setFaculty(id);
-    else renderFacultyChrome();
+    renderFacultyChrome();
     window.setTimeout(() => {
       if (facultyMenuOpen) return;
       const trigger = document.getElementById('faculty-trigger');
       if (trigger instanceof HTMLElement) trigger.focus();
     }, 220);
-  };
-  // Optimistic `.is-active` is already patched in the picker — let it ease
-  // before the overlay leave starts (otherwise the color never transitions).
-  if (prefersReducedMotion()) apply();
-  else window.setTimeout(apply, 170);
+    return;
+  }
+
+  // Optimistic `.is-active` is already on the option. Update the board while
+  // the overlay still covers it, then leave — never dissolve in the open.
+  setFaculty(id);
+
+  const closeAfter = prefersReducedMotion() ? 0 : 400;
+  window.setTimeout(() => {
+    if (state.facultyId !== id) return;
+    facultyMenuOpen = false;
+    renderFacultyChrome();
+    window.setTimeout(() => {
+      if (facultyMenuOpen) return;
+      const trigger = document.getElementById('faculty-trigger');
+      if (trigger instanceof HTMLElement) trigger.focus();
+    }, 220);
+  }, closeAfter);
 }
 
 function onFacultyQuery(q) {

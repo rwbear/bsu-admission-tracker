@@ -34,6 +34,15 @@ export const PANEL_SWAP_TIMING = Object.freeze({
   enterAfterHeightMs: 85,
 });
 
+/** Lighter budget for specialty-only swaps (overview shape unchanged). */
+export const PANEL_SWAP_SELECT_TIMING = Object.freeze({
+  outMs: 55,
+  gapMs: 0,
+  heightMs: 140,
+  inMs: 140,
+  enterAfterHeightMs: 0,
+});
+
 /** Explicit opacity path — effect uses linear easing so these offsets are the curve. */
 export const EXIT_OPACITY = Object.freeze([
   { opacity: 1, offset: 0 },
@@ -84,6 +93,12 @@ export async function runPanelTransition(opts) {
 
   throwIfAborted(signal);
 
+  // Specialty-only: shorter exit, no height-enter lag — less empty-panel flash.
+  const timing =
+    animateDetail && !animateOverview
+      ? PANEL_SWAP_SELECT_TIMING
+      : PANEL_SWAP_TIMING;
+
   // Instant selection feedback when the list shape is unchanged.
   if (!animateOverview) {
     paintOverview();
@@ -113,14 +128,16 @@ export async function runPanelTransition(opts) {
       locks.map(({ outgoing }) => {
         if (!outgoing) return Promise.resolve();
         opacityNodes.push(outgoing);
-        return runOpacity(outgoing, EXIT_OPACITY, PANEL_SWAP_TIMING.outMs, live, signal);
+        return runOpacity(outgoing, EXIT_OPACITY, timing.outMs, live, signal);
       }),
     );
     throwIfAborted(signal);
 
     // 2 — Empty settle
-    await wait(PANEL_SWAP_TIMING.gapMs, signal);
-    throwIfAborted(signal);
+    if (timing.gapMs > 0) {
+      await wait(timing.gapMs, signal);
+      throwIfAborted(signal);
+    }
 
     // Swap DOM while invisible
     if (animateOverview) paintOverview();
@@ -154,7 +171,7 @@ export async function runPanelTransition(opts) {
           panel.style.height = "auto";
           return Promise.resolve();
         }
-        return runHeight(panel, fromH, nextH, PANEL_SWAP_TIMING.heightMs, live, signal).then(
+        return runHeight(panel, fromH, nextH, timing.heightMs, live, signal).then(
           () => {
             panel.style.height = "auto";
           },
@@ -162,8 +179,8 @@ export async function runPanelTransition(opts) {
       }),
     );
 
-    if (heightRuns) {
-      await wait(PANEL_SWAP_TIMING.enterAfterHeightMs, signal);
+    if (heightRuns && timing.enterAfterHeightMs > 0) {
+      await wait(timing.enterAfterHeightMs, signal);
       throwIfAborted(signal);
     }
 
@@ -173,7 +190,7 @@ export async function runPanelTransition(opts) {
         if (revealRoot) {
           return runReveal(revealRoot, { signal, reduceMotion: false });
         }
-        return runOpacity(content, ENTER_OPACITY, PANEL_SWAP_TIMING.inMs, live, signal);
+        return runOpacity(content, ENTER_OPACITY, timing.inMs, live, signal);
       }),
     );
 

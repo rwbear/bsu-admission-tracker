@@ -18,18 +18,19 @@
   background-color: transparent;
   text-align: left;
   cursor: pointer;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
   transition: background-color var(--select-ms) var(--select-ease);
 }
 
-/* Ink tick — scale instead of box-shadow so it eases without a pop. */
+/* Full-height ink tick — clipped by row radius on first/last. */
 .overview-row::before {
   content: "";
   position: absolute;
   left: 0;
-  top: 0.55rem;
-  bottom: 0.55rem;
+  top: 0;
+  bottom: 0;
   width: 2px;
-  border-radius: 1px;
   background: var(--select-line);
   transform: scaleY(0);
   transform-origin: center;
@@ -54,7 +55,21 @@
   background-color: var(--soft);
 }
 
+.overview-row:active {
+  background-color: var(--select);
+}
+
+.overview-row:focus,
+.overview-row:focus-visible {
+  outline: none;
+}
+
 .overview-row.selected {
+  background-color: var(--select);
+}
+
+.overview-row.selected:hover,
+.overview-row.selected:active {
   background-color: var(--select);
 }
 
