@@ -378,6 +378,8 @@ html.faculty-overlay-open {
   /* High layer — cast almost gone; popover sits in the light, not under it */
   box-shadow: var(--shadow-high);
   animation: faculty-popover-in 180ms ease-out both;
+  /* Same clip as .panel — keep fills inside the rounded dialog edge. */
+  overflow: hidden;
 }
 
 /*
