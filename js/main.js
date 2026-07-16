@@ -278,31 +278,49 @@ function onSelectSpecialty(id) {
   setSelected(id);
 }
 
-/** Serialize panel transitions; latest queued job wins after the current one. */
+/**
+ * Panel transitions: coalesce to the latest job, abort the in-flight
+ * dissolve so rapid specialty/faculty changes never stack full sequences.
+ */
 let masterDetailChain = Promise.resolve();
 /** @type {{ specs: object[], score: number | null } | null} */
 let masterDetailPending = null;
+/** @type {AbortController | null} */
+let masterDetailAbort = null;
 
 function renderMasterDetail(specs, score) {
   masterDetailPending = { specs, score };
+  masterDetailAbort?.abort();
   masterDetailChain = masterDetailChain
-    .then(async () => {
-      while (masterDetailPending) {
-        const job = masterDetailPending;
-        masterDetailPending = null;
-        await paintMasterDetail(job.specs, job.score);
-      }
-    })
+    .then(drainMasterDetailQueue)
     .catch((err) => {
+      if (err?.name === 'AbortError') return;
       console.error('renderMasterDetail failed', err);
     });
+}
+
+async function drainMasterDetailQueue() {
+  while (masterDetailPending) {
+    const job = masterDetailPending;
+    masterDetailPending = null;
+    const ac = new AbortController();
+    masterDetailAbort = ac;
+    try {
+      await paintMasterDetail(job.specs, job.score, ac.signal);
+    } catch (err) {
+      if (err?.name !== 'AbortError') throw err;
+    } finally {
+      if (masterDetailAbort === ac) masterDetailAbort = null;
+    }
+  }
 }
 
 /**
  * @param {object[]} specs
  * @param {number | null} score
+ * @param {AbortSignal} [signal]
  */
-async function paintMasterDetail(specs, score) {
+async function paintMasterDetail(specs, score, signal) {
   const rows = prepareSpecs(specs, score);
   const selectedId = resolveSelection(rows, state.selectedId);
   if (selectedId !== state.selectedId) {
@@ -342,6 +360,7 @@ async function paintMasterDetail(specs, score) {
     animateOverview,
     animateDetail,
     reduceMotion: prefersReducedMotion(),
+    signal,
   });
 }
 
