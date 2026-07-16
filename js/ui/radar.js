@@ -4,7 +4,7 @@ import {
   renderChanceTrack,
   renderHistogram,
   summarizeStatuses,
-} from './charts.js?v=20260715ap';
+} from './charts.js?v=20260715aq';
 
 /**
  * @param {object} row
@@ -213,37 +213,6 @@ export function renderDetailPanel(container, row, score, meta = {}) {
       }),
     );
   }
-
-  const back = el('button', {
-    className: 'detail-back',
-    type: 'button',
-    text: '← Обзор',
-    'aria-label': 'Вернуться к списку специальностей',
-  });
-  back.addEventListener('click', () => {
-    let reduce = false;
-    try {
-      reduce = Boolean(
-        globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
-      );
-    } catch {
-      /* ignore */
-    }
-    document
-      .getElementById('overview-list')
-      ?.closest('.overview-col')
-      ?.scrollIntoView({
-        behavior: reduce ? 'auto' : 'smooth',
-        block: 'start',
-      });
-    const focusBack = () => {
-      const selected = document.querySelector('.overview-row.selected');
-      if (selected instanceof HTMLElement) selected.focus();
-    };
-    if (reduce) focusBack();
-    else window.setTimeout(focusBack, 320);
-  });
-  inner.append(back);
 
   container.append(inner);
 }
