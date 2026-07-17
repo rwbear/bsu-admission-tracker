@@ -67,7 +67,8 @@ input {
   overflow: hidden;
 }
 
-.hidden {
+.hidden,
+[hidden] {
   display: none !important;
 }
 
