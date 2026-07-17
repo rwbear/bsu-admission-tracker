@@ -8,9 +8,10 @@ import {
   formatQuotaNote,
   buildHistCaption,
   summarizeStatuses,
-} from './charts.js?v=20260717pl';
+} from './charts.js?v=20260717dc';
 import { primeReveal, finalizeReveal } from './reveal.js';
-import { armScrollAwaken, disposeScrollAwaken, awakenEl } from './awaken.js';
+import { armScrollAwaken, disposeScrollAwaken } from './awaken.js';
+import { armPanelDisclosures, disposePanelDisclosures } from './panel-disclosure.js';
 import { shouldAutoOpenMoreDetails } from './detail-density.js';
 
 /**
@@ -326,13 +327,6 @@ function buildDetailInner(row, score, meta) {
   );
   if (moreOpen) moreDetails.setAttribute('open', '');
 
-  moreDetails.addEventListener('toggle', () => {
-    if (!moreDetails.open) return;
-    for (const node of moreDetails.querySelectorAll('[data-awaken]')) {
-      if (node instanceof HTMLElement) awakenEl(node);
-    }
-  });
-
   const methodBody = [
     el('p', {
       text: 'Места идут сверху: сначала более высокие баллы, пока не закроется план общего конкурса.',
@@ -402,6 +396,7 @@ export function renderDetailPanel(container, row, score, meta = {}, motion = {})
   const selectionKey = row?.id || 'empty';
   container.dataset.selectionKey = selectionKey;
   disposeScrollAwaken(container);
+  disposePanelDisclosures(container);
   container.innerHTML = '';
 
   if (!row) {
@@ -415,8 +410,20 @@ export function renderDetailPanel(container, row, score, meta = {}, motion = {})
   }
 
   const intro = Boolean(motion.intro) && !motion.reduceMotion;
+  const reduceMotion = Boolean(motion.reduceMotion);
   const inner = buildDetailInner(row, score, meta);
   container.append(inner);
+
+  // Auto-open audit: animate after reveal step, not before (intro cascade).
+  if (intro && inner.querySelector('.more-details[open]')) {
+    const more = inner.querySelector('.more-details');
+    if (more instanceof HTMLDetailsElement) {
+      more.removeAttribute('open');
+      more.dataset.disclosurePendingOpen = 'true';
+    }
+  }
+
+  armPanelDisclosures(container, { reduceMotion });
 
   if (intro) {
     primeReveal(inner);
@@ -425,18 +432,8 @@ export function renderDetailPanel(container, row, score, meta = {}, motion = {})
     finalizeReveal(inner);
     armScrollAwaken(container, {
       immediate: true,
-      reduceMotion: Boolean(motion.reduceMotion),
+      reduceMotion,
     });
-  }
-
-  // Auto-opened audit: wake graphics that were mounted inside <details open>.
-  const openMore = container.querySelector('.more-details[open]');
-  if (openMore) {
-    for (const node of openMore.querySelectorAll('[data-awaken]')) {
-      if (node instanceof HTMLElement) {
-        awakenEl(node, { instant: !intro || Boolean(motion.reduceMotion) });
-      }
-    }
   }
 }
 
