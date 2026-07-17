@@ -721,7 +721,13 @@
   }
 }
 
-/* Histogram — full-width, no scroll on mobile */
+/* Histogram — «Гряда конкурса»: full-width, no scroll on mobile */
+.hist-ridge-block {
+  /* Daylight between track and ridge matches detail-inner gap (20px);
+     tighten slightly on narrow so the trio still fits one glance. */
+  min-width: 0;
+}
+
 .hist-chart {
   position: relative;
   width: 100%;
@@ -776,7 +782,8 @@
 }
 
 .hist-bars,
-.hist-axis {
+.hist-axis,
+.hist-cut-meta {
   position: relative;
   z-index: 1;
 }
@@ -793,12 +800,37 @@
 }
 
 .hist-col {
+  position: relative;
   flex: 1 1 0;
   min-width: 0;
   height: 100%;
   display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.hist-cap {
+  display: none;
+  flex: 0 0 auto;
+  margin-bottom: 1px;
+  font-size: 0.5625rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+  pointer-events: none;
+}
+
+@media (min-width: 321px) {
+  .hist-cap[data-rank='1'] {
+    display: block;
+  }
+}
+
+@media (min-width: 481px) {
+  .hist-cap {
+    display: block;
+  }
 }
 
 .hist-col-fill {
@@ -817,9 +849,16 @@
   background: var(--ink);
 }
 
+.hist-col.is-empty .hist-col-fill {
+  border-radius: 0;
+  background: color-mix(in srgb, var(--ink) 22%, transparent);
+}
+
 .hist-out-region,
 .hist-cut-line,
-.hist-axis {
+.hist-axis,
+.hist-cut-meta,
+.hist-cap {
   opacity: 0;
 }
 
@@ -837,6 +876,17 @@
   animation: chance-meta-in 300ms cubic-bezier(0.16, 1, 0.3, 1) 140ms both;
 }
 
+/* Caps + microline settle after the ridge */
+.hist-chart.is-awake:not(.is-sleeping) .hist-cap,
+.hist-chart.is-awake:not(.is-sleeping) .hist-cut-meta {
+  animation: chance-meta-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation-delay: calc(var(--bar-delay, 0ms) + 280ms);
+}
+
+.hist-chart.is-awake:not(.is-sleeping) .hist-cut-meta {
+  animation-delay: 420ms;
+}
+
 .hist-chart.is-sleeping .hist-col-fill {
   animation: hist-bar-sleep 340ms cubic-bezier(0.55, 0, 1, 1) both;
   animation-delay: var(--bar-delay, 0ms);
@@ -847,7 +897,9 @@
   animation: chance-mark-sleep 260ms cubic-bezier(0.55, 0, 1, 1) both;
 }
 
-.hist-chart.is-sleeping .hist-axis {
+.hist-chart.is-sleeping .hist-axis,
+.hist-chart.is-sleeping .hist-cut-meta,
+.hist-chart.is-sleeping .hist-cap {
   animation: chance-meta-sleep 220ms cubic-bezier(0.55, 0, 1, 1) both;
 }
 
@@ -876,7 +928,9 @@
 .hist-chart.is-awake.is-instant .hist-col-fill,
 .hist-chart.is-awake.is-instant .hist-out-region,
 .hist-chart.is-awake.is-instant .hist-cut-line,
-.hist-chart.is-awake.is-instant .hist-axis {
+.hist-chart.is-awake.is-instant .hist-axis,
+.hist-chart.is-awake.is-instant .hist-cut-meta,
+.hist-chart.is-awake.is-instant .hist-cap {
   animation: none !important;
   opacity: 1;
 }
@@ -889,7 +943,9 @@
   .hist-col-fill,
   .hist-out-region,
   .hist-cut-line,
-  .hist-axis {
+  .hist-axis,
+  .hist-cut-meta,
+  .hist-cap {
     animation: none !important;
     opacity: 1;
     transform: none;
@@ -904,6 +960,14 @@
   position: relative;
   height: 1.1rem;
   width: 100%;
+}
+
+.hist-cut-meta {
+  margin: 0;
+  font-size: 0.625rem;
+  line-height: 1.35;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
 }
 
 .hist-tick {
@@ -967,5 +1031,11 @@
 
   .hist-bars {
     height: 6.5rem;
+  }
+}
+
+@media (max-width: 360px) {
+  .detail-inner {
+    gap: 1rem;
   }
 }

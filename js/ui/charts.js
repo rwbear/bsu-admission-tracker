@@ -383,6 +383,123 @@ export function histOutZoneLeftPct(cutIdx, bucketCount) {
 }
 
 /**
+ * Open contest seats for the ridge cut. Uses `??` so openPlan=0 stays 0.
+ * @param {object} row
+ * @returns {number}
+ */
+export function histSeatBudget(row) {
+  const v = row.openPlan;
+  if (v != null && v !== '') return Number(v) || 0;
+  return Number(row.plan) || 0;
+}
+
+/**
+ * Cut line + microline only when quota parse is not known-failed.
+ * @param {object} row
+ */
+export function shouldDrawHistCut(row) {
+  return row.quotaParseOk !== false;
+}
+
+/**
+ * People left/right of the seat cut (inclusive of the cut bucket on the left).
+ * @param {number[]} buckets
+ * @param {number} cutIdx
+ * @returns {{ left: number, right: number, total: number } | null}
+ */
+export function histPeopleAroundCut(buckets, cutIdx) {
+  if (cutIdx < 0 || !buckets?.length) return null;
+  let left = 0;
+  for (let i = 0; i <= cutIdx; i += 1) left += Number(buckets[i]) || 0;
+  const total = buckets.reduce((a, b) => a + (Number(b) || 0), 0);
+  return { left, right: total - left, total };
+}
+
+/**
+ * Top tall bars for value caps — never mine, never below ~40% of max.
+ * @param {number[]} buckets
+ * @param {number} mineIdx
+ * @returns {{ i: number, rank: number, count: number }[]}
+ */
+export function pickHistCapIndices(buckets, mineIdx) {
+  if (!buckets?.length) return [];
+  const max = Math.max(...buckets.map((c) => Number(c) || 0), 1);
+  return buckets
+    .map((c, i) => ({
+      i,
+      count: Number(c) || 0,
+      ratio: (Number(c) || 0) / max,
+    }))
+    .filter((x) => x.count > 0 && x.i !== mineIdx && x.ratio >= 0.4)
+    .sort((a, b) => b.count - a.count || a.i - b.i)
+    .slice(0, 3)
+    .map((x, rank) => ({ i: x.i, rank: rank + 1, count: x.count }));
+}
+
+/**
+ * Panel caption for «Гряда конкурса».
+ * @param {object} row
+ * @param {number | null} [score]
+ */
+export function buildHistCaption(row, score = null) {
+  const ranges = row.ranges || [];
+  const buckets = row.buckets || [];
+  if (!ranges.length) return 'Интервалы баллов';
+  const n = buckets.reduce((a, b) => a + (Number(b) || 0), 0);
+  let text = `Интервалы баллов — по конкурсу · ${n} чел.`;
+  const mineIdx = resolveHistMineIndex(row, score);
+  if (mineIdx >= 0 && ranges[mineIdx] != null) {
+    text += ` · твой балл — в интервале ${String(ranges[mineIdx]).replace(/\s+/g, ' ')}`;
+  }
+  return text;
+}
+
+/**
+ * @param {object} row
+ * @param {number | null} score
+ * @returns {number}
+ */
+function resolveHistMineIndex(row, score) {
+  if (score == null || !row.chance?.segments) return -1;
+  return row.chance.segments.findIndex((s) => s.isMine);
+}
+
+/**
+ * @param {{
+ *   total: number,
+ *   left?: number | null,
+ *   right?: number | null,
+ *   openPlan?: number,
+ *   cutDrawn?: boolean,
+ *   mineLabel?: string | null,
+ *   quotaOk?: boolean,
+ * }} opts
+ */
+export function buildHistAriaLabel(opts) {
+  const {
+    total,
+    left = null,
+    right = null,
+    openPlan = 0,
+    cutDrawn = false,
+    mineLabel = null,
+    quotaOk = true,
+  } = opts;
+  if (!quotaOk || !cutDrawn || left == null || right == null) {
+    let s = 'Распределение по интервалам баллов';
+    if (mineLabel) s += `. Твой балл в интервале ${mineLabel}`;
+    return s;
+  }
+  let s =
+    `Распределение баллов по конкурсу: ${total} человек. ` +
+    `Слева от черты — ${left}, в пределах ${openPlan} мест общего конкурса; ` +
+    `справа — ${right}, за чертой. ` +
+    'БВИ, целевые и вне конкурса не входят в это распределение — они показаны в плите плана выше.';
+  if (mineLabel) s += ` Твой балл в интервале ${mineLabel}.`;
+  return s;
+}
+
+/**
  * Short label for axis ticks.
  * @param {string} label
  */
@@ -398,10 +515,8 @@ function shortRangeLabel(label) {
 }
 
 /**
- * Mobile-first histogram: solid full-width columns.
- * When the plan ends inside the band, a quiet vertical line splits the
- * panel — right of it is a whisper of hatch. No cut label on the axis;
- * the line is the only name the cut gets.
+ * «Гряда конкурса» — map of inCompetition cut against openPlan.
+ * One ink weight, mine in full ink, cut unnamed on the axis.
  * @param {HTMLElement} mount
  * @param {object} row
  * @param {number | null} score
@@ -412,24 +527,34 @@ export function renderHistogram(mount, row, score) {
   const buckets = row.buckets || [];
   if (!ranges.length) return;
 
-  const max = Math.max(...buckets, 1);
-  const plan = row.plan || 0;
-  const cutIdx = resolveHistCutIndex(buckets, plan);
+  const max = Math.max(...buckets.map((c) => Number(c) || 0), 1);
+  const quotaOk = shouldDrawHistCut(row);
+  const openPlan = histSeatBudget(row);
+  const cutIdx = quotaOk ? resolveHistCutIndex(buckets, openPlan) : -1;
   const outLeft = histOutZoneLeftPct(cutIdx, ranges.length);
-
-  let mineIdx = -1;
-  if (score != null && row.chance?.segments) {
-    mineIdx = row.chance.segments.findIndex((s) => s.isMine);
-  }
+  const around = histPeopleAroundCut(buckets, cutIdx);
+  const mineIdx = resolveHistMineIndex(row, score);
+  const caps = pickHistCapIndices(buckets, mineIdx);
+  const capByIndex = new Map(caps.map((c) => [c.i, c]));
+  const mineLabel =
+    mineIdx >= 0 && ranges[mineIdx] != null
+      ? String(ranges[mineIdx]).replace(/\s+/g, ' ')
+      : null;
+  const total = around?.total ?? buckets.reduce((a, b) => a + (Number(b) || 0), 0);
 
   const chart = el('div', {
     className: `hist-chart${outLeft != null ? ' has-out-zone' : ''}`,
     role: 'img',
     'data-awaken': 'hist',
-    'aria-label':
-      outLeft != null
-        ? `Распределение по баллам: слева места по плану ${plan}, справа — вне набора`
-        : 'Распределение по интервалам баллов',
+    'aria-label': buildHistAriaLabel({
+      total,
+      left: around?.left,
+      right: around?.right,
+      openPlan,
+      cutDrawn: outLeft != null,
+      mineLabel,
+      quotaOk,
+    }),
   });
 
   const body = el('div', { className: 'hist-chart-body' });
@@ -445,7 +570,7 @@ export function renderHistogram(mount, row, score) {
         className: 'hist-cut-line',
         'aria-hidden': 'true',
         style: `left:${outLeft.toFixed(3)}%`,
-        title: `Мест в общем конкурсе: ${plan}`,
+        title: `Граница мест в общем конкурсе: ${openPlan}`,
       }),
     );
   }
@@ -453,19 +578,40 @@ export function renderHistogram(mount, row, score) {
   const bars = el('div', { className: 'hist-bars' });
 
   ranges.forEach((label, i) => {
-    const count = buckets[i] || 0;
+    const count = Number(buckets[i]) || 0;
     const ratio = count / max;
     const mine = i === mineIdx;
+    const empty = count === 0;
+    const rangeText = String(label).replace(/\s+/g, ' ');
+    let title = empty ? `${rangeText}: пусто` : `${rangeText}: ${count}`;
+    if (mine && !empty) title += ' · твой интервал';
+
     const col = el('div', {
-      className: `hist-col${mine ? ' is-mine' : ''}`,
-      title: `${String(label).replace(/\s+/g, ' ')}: ${count}`,
+      className: `hist-col${mine ? ' is-mine' : ''}${empty ? ' is-empty' : ''}`,
+      title,
+      style: `--bar-delay:${(i * 16).toFixed(0)}ms`,
     });
-    const barH = count > 0 ? Math.max(ratio * 100, 8) : 0;
+
+    const cap = capByIndex.get(i);
+    if (cap) {
+      col.append(
+        el('span', {
+          className: 'hist-cap',
+          'data-rank': String(cap.rank),
+          'aria-hidden': 'true',
+          text: String(cap.count),
+        }),
+      );
+    }
+
+    const barH = empty ? null : Math.max(ratio * 100, 8);
     col.append(
       el('div', {
         className: 'hist-col-fill',
-        // Height reserved via --bar-h; scaleY awakens without layout jump.
-        style: `--bar-h:${barH.toFixed(1)}%;--bar-delay:${(i * 16).toFixed(0)}ms`,
+        // Height via --bar-h; scaleY awakens without layout jump.
+        style: empty
+          ? '--bar-h:1px'
+          : `--bar-h:${barH.toFixed(1)}%`,
       }),
     );
     bars.append(col);
@@ -513,6 +659,17 @@ export function renderHistogram(mount, row, score) {
   }
 
   body.append(bars, axis);
+
+  if (outLeft != null && around) {
+    body.append(
+      el('div', {
+        className: 'hist-cut-meta',
+        'aria-hidden': 'true',
+        text: `слева от черты — ${around.left}, справа — ${around.right}`,
+      }),
+    );
+  }
+
   chart.append(body);
   mount.append(chart);
 }
