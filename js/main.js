@@ -396,11 +396,16 @@ async function paintMasterDetail(specs, score, signal) {
       });
     },
     paintDetail: () => {
+      const scrapeMeta = state.uniData?.scrapeMeta || {};
       renderDetailPanel(
         $detail,
         rows.find((r) => r.id === selectedId) ?? null,
         score,
-        { updatedAt },
+        {
+          updatedAt,
+          retainedPrevious: Boolean(scrapeMeta.retainedPrevious),
+          retainedFormIds: scrapeMeta.retainedFormIds || [],
+        },
         {
           intro: animateDetail && !reduceMotion,
           reduceMotion,

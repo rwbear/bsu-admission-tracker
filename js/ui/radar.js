@@ -7,9 +7,10 @@ import {
   renderTableFacts,
   formatQuotaNote,
   summarizeStatuses,
-} from './charts.js?v=20260717cf';
+} from './charts.js?v=20260717dn';
 import { primeReveal, finalizeReveal } from './reveal.js';
-import { armScrollAwaken, disposeScrollAwaken } from './awaken.js';
+import { armScrollAwaken, disposeScrollAwaken, awakenEl } from './awaken.js';
+import { shouldAutoOpenMoreDetails } from './detail-density.js';
 
 /**
  * @param {object} row
@@ -171,7 +172,11 @@ export function renderOverviewList(container, specialties, score, opts) {
 /**
  * @param {object} row
  * @param {number | null} score
- * @param {{ updatedAt?: string | null }} meta
+ * @param {{
+ *   updatedAt?: string | null,
+ *   retainedPrevious?: boolean,
+ *   retainedFormIds?: string[],
+ * }} meta
  */
 function buildDetailInner(row, score, meta) {
   const seatPlan = Number(row.openPlan ?? row.plan) || 0;
@@ -192,6 +197,8 @@ function buildDetailInner(row, score, meta) {
     row.quotaParseOk && planOfficial !== seatPlan
       ? `${fmtNum(planOfficial)} → ${fmtNum(seatPlan)}`
       : fmtNum(planOfficial || seatPlan);
+  const pressure =
+    row.pressure == null ? '—' : `${row.pressure.toFixed(1)}×`;
 
   const updatedAt = meta.updatedAt || row.updatedAt;
   const plan = seatPlan;
@@ -207,7 +214,8 @@ function buildDetailInner(row, score, meta) {
       ? `Обновлено ${fmtTime(updatedAt)} · заявлений меньше мест — расчётный балл набора ещё не сложился`
       : `Обновлено ${fmtTime(updatedAt)} · расчётный балл — оценка по таблице`;
 
-  if (row.showFacts || row.showQuota) {
+  // Always-visible prose channel against silence — only when seats were taken.
+  if (row.showQuota) {
     note += ` · ${formatQuotaNote(row)}`;
   } else if (
     row.quotaParseOk === false &&
@@ -248,27 +256,6 @@ function buildDetailInner(row, score, meta) {
     step++,
   );
 
-  const pressure =
-    row.pressure == null ? '—' : `${row.pressure.toFixed(1)}×`;
-
-  const metrics = [
-    metric('Над тобой / мест конкурса', people, 'is-primary'),
-    metric('Расчётный балл', pass, 'is-primary'),
-    metric('План → общий', planMetric, 'is-secondary'),
-    metric('По конкурсу', contestApps, 'is-secondary'),
-    metric('Дельта', deltaText(row), 'is-secondary'),
-    metric('Конкурс', pressure, 'is-secondary'),
-  ].map((cell) => revealStep(cell, step++));
-
-  const factsBlock = revealStep(
-    el('div', { className: 'chart-block table-facts-block' }, [
-      el('div', { className: 'chart-caption', text: 'Как в таблице БГУ' }),
-      factsMount,
-    ]),
-    step++,
-  );
-  if (!(row.showFacts || row.quotaParseOk)) factsBlock.hidden = true;
-
   const planBlock = revealStep(
     el('div', { className: 'chart-block plan-slab-block' }, [
       el('div', { className: 'chart-caption', text: 'План мест' }),
@@ -285,24 +272,67 @@ function buildDetailInner(row, score, meta) {
     ]),
     step++,
   );
-  const histBlock = revealStep(
-    el('div', { className: 'chart-block' }, [
-      el('div', { className: 'chart-caption', text: 'Интервалы баллов' }),
-      histMount,
+
+  const primaryMetrics = revealStep(
+    el('div', { className: 'metric-grid' }, [
+      metric('Над тобой / мест конкурса', people, 'is-primary'),
+      metric('Расчётный балл', pass, 'is-primary'),
     ]),
     step++,
   );
+
   const noteEl = revealStep(
     el('p', { className: 'detail-note', text: note }),
     step++,
   );
+
+  const factsBlock = el('div', { className: 'chart-block table-facts-block' }, [
+    el('div', { className: 'chart-caption', text: 'Как в таблице БГУ' }),
+    factsMount,
+  ]);
+  if (!(row.showFacts || row.quotaParseOk)) factsBlock.hidden = true;
+
+  const secondaryMetrics = el('div', { className: 'metric-grid is-secondary-grid' }, [
+    metric('План → общий', planMetric, 'is-secondary'),
+    metric('По конкурсу', contestApps, 'is-secondary'),
+    metric('Дельта', deltaText(row), 'is-secondary'),
+    metric('Конкурс', pressure, 'is-secondary'),
+  ]);
+
+  const histBlock = el('div', { className: 'chart-block' }, [
+    el('div', { className: 'chart-caption', text: 'Интервалы баллов' }),
+    histMount,
+  ]);
+
+  const moreBody = el('div', { className: 'panel-details-body' }, [
+    factsBlock,
+    secondaryMetrics,
+    histBlock,
+  ]);
+
+  const moreOpen = shouldAutoOpenMoreDetails(row, meta);
+  const moreDetails = revealStep(
+    el('details', { className: 'panel-details more-details' }, [
+      el('summary', { text: 'Подробные данные' }),
+      moreBody,
+    ]),
+    step++,
+  );
+  if (moreOpen) moreDetails.setAttribute('open', '');
+
+  moreDetails.addEventListener('toggle', () => {
+    if (!moreDetails.open) return;
+    for (const node of moreDetails.querySelectorAll('[data-awaken]')) {
+      if (node instanceof HTMLElement) awakenEl(node);
+    }
+  });
 
   const methodBody = [
     el('p', {
       text: 'Места идут сверху: сначала более высокие баллы, пока не закроется план общего конкурса.',
     }),
     el('p', {
-      text: 'Блок «Как в таблице БГУ» повторяет левые колонки мониторинга: план, целевая, БВИ (без вступительных — часто олимпиады), вне конкурса, по конкурсу. «Мест в общем» = план минус уже занятые до конкурса места.',
+      text: '«Подробные данные» повторяют левые колонки мониторинга: план, целевая, БВИ (без вступительных — часто олимпиады), вне конкурса, по конкурсу. «Мест в общем» = план минус уже занятые до конкурса места.',
     }),
     el('p', {
       text: '«Над тобой» внутри твоего интервала — оценка: баллы в полосе считаем равномерно. Это не очередь приёмной. БВИ и вне конкурса в гистограмме не стоят «над тобой» — их там нет.',
@@ -312,9 +342,9 @@ function buildDetailInner(row, score, meta) {
     }),
   ];
   const method = revealStep(
-    el('details', { className: 'method-details' }, [
+    el('details', { className: 'panel-details method-details' }, [
       el('summary', { text: 'Как считается место' }),
-      el('div', { className: 'method-details-body' }, methodBody),
+      el('div', { className: 'panel-details-body' }, methodBody),
     ]),
     step++,
   );
@@ -322,12 +352,11 @@ function buildDetailInner(row, score, meta) {
   const inner = el('div', { className: 'detail-inner', 'data-reveal-root': '' }, [
     title,
     status,
-    el('div', { className: 'metric-grid' }, metrics),
-    factsBlock,
     planBlock,
     chanceBlock,
-    histBlock,
+    primaryMetrics,
     noteEl,
+    moreDetails,
     method,
   ]);
 
@@ -391,6 +420,16 @@ export function renderDetailPanel(container, row, score, meta = {}, motion = {})
       immediate: true,
       reduceMotion: Boolean(motion.reduceMotion),
     });
+  }
+
+  // Auto-opened audit: wake graphics that were mounted inside <details open>.
+  const openMore = container.querySelector('.more-details[open]');
+  if (openMore) {
+    for (const node of openMore.querySelectorAll('[data-awaken]')) {
+      if (node instanceof HTMLElement) {
+        awakenEl(node, { instant: !intro || Boolean(motion.reduceMotion) });
+      }
+    }
   }
 }
 
