@@ -8,7 +8,7 @@ import {
   formatQuotaNote,
   buildHistCaption,
   summarizeStatuses,
-} from './charts.js?v=20260717hr';
+} from './charts.js?v=20260717pl';
 import { primeReveal, finalizeReveal } from './reveal.js';
 import { armScrollAwaken, disposeScrollAwaken, awakenEl } from './awaken.js';
 import { shouldAutoOpenMoreDetails } from './detail-density.js';
@@ -257,11 +257,10 @@ function buildDetailInner(row, score, meta) {
     step++,
   );
 
+  // No «План мест» chrome label — the slab equation is the name.
+  // Omit entirely when taken===0; never leave an empty caption in the stack.
   const planBlock = revealStep(
-    el('div', { className: 'chart-block plan-slab-block' }, [
-      el('div', { className: 'chart-caption', text: 'План мест' }),
-      planMount,
-    ]),
+    el('div', { className: 'chart-block plan-slab-block' }, [planMount]),
     step++,
   );
   if (!row.showQuota) planBlock.hidden = true;
