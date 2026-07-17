@@ -8,7 +8,7 @@ import {
   formatQuotaNote,
   buildHistCaption,
   summarizeStatuses,
-} from './charts.js?v=20260717dc';
+} from './charts.js?v=20260717ds';
 import { primeReveal, finalizeReveal } from './reveal.js';
 import { armScrollAwaken, disposeScrollAwaken } from './awaken.js';
 import { armPanelDisclosures, disposePanelDisclosures } from './panel-disclosure.js';
@@ -313,8 +313,10 @@ function buildDetailInner(row, score, meta) {
   ]);
 
   const moreBody = el('div', { className: 'panel-details-body' }, [
-    factsBlock,
-    secondaryMetrics,
+    el('div', { className: 'panel-details-inner' }, [
+      factsBlock,
+      secondaryMetrics,
+    ]),
   ]);
 
   const moreOpen = shouldAutoOpenMoreDetails(row, meta);
@@ -327,7 +329,7 @@ function buildDetailInner(row, score, meta) {
   );
   if (moreOpen) moreDetails.setAttribute('open', '');
 
-  const methodBody = [
+  const methodInner = [
     el('p', {
       text: 'Места идут сверху: сначала более высокие баллы, пока не закроется план общего конкурса.',
     }),
@@ -344,7 +346,9 @@ function buildDetailInner(row, score, meta) {
   const method = revealStep(
     el('details', { className: 'panel-details method-details' }, [
       el('summary', { text: 'Как считается место' }),
-      el('div', { className: 'panel-details-body' }, methodBody),
+      el('div', { className: 'panel-details-body' }, [
+        el('div', { className: 'panel-details-inner' }, methodInner),
+      ]),
     ]),
     step++,
   );
