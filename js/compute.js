@@ -241,16 +241,75 @@ export function contestRatio(apps, plan) {
 }
 
 /**
+ * Seats already claimed before general contest (БВИ / целевые / вне конкурса).
+ * Campaign-safer target rule: max(enrolled, reserved plan share).
+ * @param {object} spec
+ * @returns {{
+ *   planOfficial: number,
+ *   planTargeted: number | null,
+ *   enrolledTargeted: number | null,
+ *   admittedNoExam: number | null,
+ *   admittedOutOfCompetition: number | null,
+ *   quotaParseOk: boolean,
+ *   taken: number,
+ *   openPlan: number,
+ *   showQuota: boolean,
+ * }}
+ */
+export function resolveSeatQuota(spec) {
+  const planOfficial = Number(spec.plan) || 0;
+  const quotaParseOk = spec.quotaParseOk === true;
+  const planTargeted = quotaParseOk ? Number(spec.planTargeted) || 0 : null;
+  const planPaid =
+    spec.planPaid == null || spec.planPaid === ''
+      ? null
+      : Number(spec.planPaid) || 0;
+  const enrolledTargeted = quotaParseOk
+    ? Number(spec.enrolledTargeted) || 0
+    : null;
+  const admittedNoExam = quotaParseOk ? Number(spec.admittedNoExam) || 0 : null;
+  const admittedOutOfCompetition = quotaParseOk
+    ? Number(spec.admittedOutOfCompetition) || 0
+    : null;
+
+  let taken = 0;
+  let openPlan = planOfficial;
+  if (quotaParseOk) {
+    taken =
+      Math.max(enrolledTargeted || 0, planTargeted || 0) +
+      (admittedNoExam || 0) +
+      (admittedOutOfCompetition || 0);
+    openPlan = Math.max(0, planOfficial - taken);
+  }
+
+  return {
+    planOfficial,
+    planTargeted,
+    planPaid,
+    enrolledTargeted,
+    admittedNoExam,
+    admittedOutOfCompetition,
+    quotaParseOk,
+    taken,
+    openPlan,
+    /** Always show table facts when columns were parsed — not only when taken > 0. */
+    showFacts: quotaParseOk,
+    showQuota: quotaParseOk && taken > 0,
+  };
+}
+
+/**
  * Enrich a specialty for the UI given a user score.
  * @param {object} spec
  * @param {number | null} score
  */
 export function enrichSpec(spec, score) {
-  const plan = Number(spec.plan) || 0;
+  const quota = resolveSeatQuota(spec);
+  const planOfficial = quota.planOfficial;
+  const plan = quota.openPlan;
   const ranges = spec.ranges || [];
   const buckets = spec.buckets || [];
-  const estimatedPassing =
-    spec.estimatedPassing ?? calcPassing(ranges, buckets, plan);
+  const estimatedPassing = calcPassing(ranges, buckets, plan);
   const scoreOk = score != null && Number.isFinite(Number(score));
   const above = scoreOk ? peopleAbove(ranges, buckets, Number(score)) : null;
   const atOrAbove = scoreOk
@@ -271,6 +330,10 @@ export function enrichSpec(spec, score) {
     } else {
       status = 'risk';
     }
+  }
+  // No general-contest seats left (quotas ate the plan) — honesty forces «Ниже».
+  if (scoreOk && quota.quotaParseOk && planOfficial > 0 && plan === 0) {
+    status = 'below';
   }
   const pressure = contestRatio(competition, plan);
   const chance = buildChanceTrack(
@@ -293,6 +356,18 @@ export function enrichSpec(spec, score) {
 
   return {
     ...spec,
+    planOfficial,
+    plan,
+    planTargeted: quota.planTargeted,
+    planPaid: quota.planPaid,
+    enrolledTargeted: quota.enrolledTargeted,
+    admittedNoExam: quota.admittedNoExam,
+    admittedOutOfCompetition: quota.admittedOutOfCompetition,
+    quotaParseOk: quota.quotaParseOk,
+    taken: quota.taken,
+    openPlan: quota.openPlan,
+    showFacts: quota.showFacts,
+    showQuota: quota.showQuota,
     estimatedPassing,
     peopleAbove: above,
     peopleAtOrAbove: atOrAbove,

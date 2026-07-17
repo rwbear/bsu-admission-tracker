@@ -201,6 +201,251 @@
   color: var(--ink-faint);
 }
 
+/* Official formk1 left-column facts — always when parsed */
+.table-facts-block {
+  margin-bottom: var(--space-1);
+}
+
+.table-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-3);
+}
+
+.table-fact {
+  min-width: 0;
+}
+
+.table-fact-val {
+  font-size: var(--text-md);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  color: var(--ink-dim);
+}
+
+.table-fact.is-strong .table-fact-val {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.table-fact-lbl {
+  margin-top: 0.1rem;
+  font-size: 0.625rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  line-height: 1.3;
+}
+
+@media (max-width: 420px) {
+  .table-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Plan slab — seats only (never «ты» / people) */
+.plan-slab-block {
+  margin-bottom: var(--space-1);
+}
+
+.plan-slab-wrap {
+  display: grid;
+  gap: var(--space-2);
+  /* 24px paper between slab and chance track — no shared axis */
+  padding-bottom: 1.5rem;
+}
+
+.plan-slab-caption {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-slab-caption .is-answer {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.plan-slab-bar {
+  display: flex;
+  width: 100%;
+  height: 1.25rem;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--soft);
+}
+
+.plan-slab-seg {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.55;
+  transform: scaleX(0.92);
+  transform-origin: left center;
+}
+
+/* Taken seats: quiet hatch. Open contest: stronger ink fill (the answer). */
+.plan-slab-seg.is-taken {
+  background: repeating-linear-gradient(
+    45deg,
+    color-mix(in srgb, var(--ink) 10%, var(--soft)),
+    color-mix(in srgb, var(--ink) 10%, var(--soft)) 3px,
+    color-mix(in srgb, var(--ink) 4%, var(--soft)) 3px,
+    color-mix(in srgb, var(--ink) 4%, var(--soft)) 6px
+  );
+}
+
+.plan-slab-seg.is-open {
+  background: color-mix(in srgb, var(--ink) 22%, var(--soft));
+}
+
+.plan-slab-seg-label {
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  white-space: nowrap;
+  padding: 0 var(--space-1);
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.plan-slab-wrap.is-awake:not(.is-sleeping) .plan-slab-seg {
+  animation: plan-slab-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.plan-slab-wrap.is-awake:not(.is-sleeping) .plan-slab-seg:nth-child(1) {
+  animation-delay: 0ms;
+}
+.plan-slab-wrap.is-awake:not(.is-sleeping) .plan-slab-seg:nth-child(2) {
+  animation-delay: 40ms;
+}
+.plan-slab-wrap.is-awake:not(.is-sleeping) .plan-slab-seg:nth-child(3) {
+  animation-delay: 80ms;
+}
+.plan-slab-wrap.is-awake:not(.is-sleeping) .plan-slab-seg:nth-child(4) {
+  animation-delay: 120ms;
+}
+
+.plan-slab-wrap.is-awake:not(.is-sleeping) .plan-slab-caption {
+  animation: chance-meta-in 280ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.plan-slab-wrap.is-sleeping .plan-slab-seg,
+.plan-slab-wrap.is-sleeping .plan-slab-caption {
+  animation: chance-meta-sleep 220ms cubic-bezier(0.55, 0, 1, 1) both;
+}
+
+@keyframes plan-slab-in {
+  from {
+    opacity: 0.35;
+    transform: scaleX(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.plan-slab-wrap.is-awake.is-instant .plan-slab-seg,
+.plan-slab-wrap.is-awake.is-instant .plan-slab-caption {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+/* Seats story finishes before contest rail starts filling */
+.detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-fill {
+  animation-delay: 440ms;
+}
+.detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-cut {
+  animation-delay: 560ms;
+}
+.detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-you {
+  animation-delay: 600ms;
+}
+.detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-axis-cut,
+.detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-axis-you,
+.detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-stats {
+  animation-delay: 640ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-slab-seg,
+  .plan-slab-caption {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .plan-slab-wrap {
+    padding-bottom: var(--space-4);
+  }
+
+  .plan-slab-seg-label {
+    display: none;
+  }
+
+  .plan-slab-caption {
+    max-width: 100%;
+  }
+}
+
+.method-details {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--ink-dim);
+}
+
+.method-details summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.method-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.method-details summary::before {
+  content: '';
+  display: inline-block;
+  width: 0.35rem;
+  height: 0.35rem;
+  margin-right: 0.45rem;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  transform: rotate(-45deg);
+  vertical-align: 0.15em;
+  opacity: 0.7;
+}
+
+.method-details[open] summary::before {
+  transform: rotate(45deg);
+  vertical-align: 0.28em;
+}
+
+.method-details-body {
+  display: grid;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+}
+
+.method-details-body p {
+  margin: 0;
+  line-height: 1.5;
+}
+
 /* Chance track — clean seat rail (no per-bucket stripes) */
 .chance-track-wrap {
   display: grid;

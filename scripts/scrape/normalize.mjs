@@ -188,6 +188,93 @@ export function extractTables(html) {
 }
 
 /**
+ * Map formk1 left-of-bucket header labels → column indices.
+ * Uses the leaf header row (labels carried into the range-header row).
+ * @param {string[]} leftHeaderTexts
+ * @returns {{
+ *   plan: number | null,
+ *   planTargeted: number | null,
+ *   totalApps: number | null,
+ *   enrolledTargeted: number | null,
+ *   admittedNoExam: number | null,
+ *   admittedOutOfCompetition: number | null,
+ *   inCompetition: number | null,
+ * }}
+ */
+export function mapFormk1LeftColumns(leftHeaderTexts) {
+  /** @type {Record<string, number | null>} */
+  const map = {
+    plan: null,
+    planTargeted: null,
+    planPaid: null,
+    totalApps: null,
+    enrolledTargeted: null,
+    admittedNoExam: null,
+    admittedOutOfCompetition: null,
+    inCompetition: null,
+  };
+
+  for (let i = 0; i < leftHeaderTexts.length; i += 1) {
+    const t = String(leftHeaderTexts[i] || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!t) continue;
+
+    if (/^по конкурсу$/i.test(t)) {
+      map.inCompetition = i;
+      continue;
+    }
+    if (/^вне конкурса$/i.test(t)) {
+      map.admittedOutOfCompetition = i;
+      continue;
+    }
+    if (/без вступительных/i.test(t)) {
+      map.admittedNoExam = i;
+      continue;
+    }
+    if (/на условиях целевой подготовки/i.test(t)) {
+      map.enrolledTargeted = i;
+      continue;
+    }
+    if (/на целевую контрактную/i.test(t)) {
+      map.planTargeted = i;
+      continue;
+    }
+    // Paid-track plan label (form id=7 etc.) — before generic «Всего».
+    if (/план приема на условиях оплаты/i.test(t)) {
+      map.plan = i;
+      continue;
+    }
+    // Budget page: separate paid-plan column under «План приема».
+    if (/^на условиях оплаты$/i.test(t)) {
+      map.planPaid = i;
+      continue;
+    }
+    // Budget plan «всего» then apps «Всего»; or apps alone after paid plan.
+    if (/^всего$/i.test(t)) {
+      if (map.plan == null) map.plan = i;
+      else if (map.totalApps == null) map.totalApps = i;
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Read a numeric cell; empty → 0. Missing column → null.
+ * @param {string[]} texts
+ * @param {number | null | undefined} idx
+ * @returns {number | null}
+ */
+export function readMappedCount(texts, idx) {
+  if (idx == null || idx < 0 || idx >= texts.length) return null;
+  const raw = String(texts[idx] || '').trim();
+  if (!raw || raw === '—' || raw === '-' || raw === '–' || raw === '−') return 0;
+  if (!isBareNumber(raw) && !/^\d/.test(raw.replace(/\s/g, ''))) return null;
+  return parseCount(raw);
+}
+
+/**
  * Infer plan / Всего / в конкурсе from numerics left of score buckets.
  * Positional [2]/last are wrong on real formk1 colspan headers; use
  * bucket-sum awareness instead of falsy fallbacks that steal «целевое».
@@ -271,6 +358,17 @@ export function parseScoreBucketTables(html, meta) {
 
     if (headerIdx < 0 || ranges.length < 5) continue;
     const rangeCount = ranges.length;
+    const headerLeft = rows[headerIdx]
+      .map(cellText)
+      .map((t) => t.replace(/\s+/g, ' ').trim())
+      .slice(0, Math.max(0, rows[headerIdx].length - rangeCount));
+    const colMap = mapFormk1LeftColumns(headerLeft);
+    // Target columns exist on budget tables; paid tables often omit them.
+    // БВИ + вне конкурса are the minimum for an honest openPlan.
+    const quotaMapped =
+      colMap.admittedNoExam != null &&
+      colMap.admittedOutOfCompetition != null &&
+      colMap.plan != null;
 
     for (let r = headerIdx + 1; r < rows.length; r += 1) {
       const texts = rows[r].map(cellText).map((t) => t.replace(/\s+/g, ' ').trim());
@@ -322,34 +420,90 @@ export function parseScoreBucketTables(html, meta) {
         continue;
       }
 
-      // Plan / apps: bucket-aware inference (formk1 headers are not [2]/last).
+      // Plan / apps: label map when headers are formk1; else bucket-aware fallback.
       const bucketSum = buckets.reduce((a, b) => a + b, 0);
       let plan = 0;
       let totalApps = 0;
       let inCompetition = 0;
+      /** @type {number | null} */
+      let planTargeted = null;
+      /** @type {number | null} */
+      let planPaid = null;
+      /** @type {number | null} */
+      let enrolledTargeted = null;
+      /** @type {number | null} */
+      let admittedNoExam = null;
+      /** @type {number | null} */
+      let admittedOutOfCompetition = null;
+      let quotaParseOk = false;
 
-      const specIdx = before.findIndex((t) => t === specName);
-      const afterSpecNums = before
-        .slice(Math.max(0, specIdx + 1))
-        .filter(isBareNumber)
-        .map(parseCount);
+      const mappedPlan = readMappedCount(before, colMap.plan);
+      const mappedApps = readMappedCount(before, colMap.totalApps);
+      const mappedContest = readMappedCount(before, colMap.inCompetition);
 
-      if (afterSpecNums.length >= 1) {
-        ({ plan, totalApps, inCompetition } = resolvePlanApps(
-          afterSpecNums,
-          bucketSum,
-        ));
-      } else if (nums.length >= 1) {
-        // Numbers before name are often faculty group totals — use trailing nums if any
-        plan = nums[nums.length - 1] || nums[0];
-        totalApps = bucketSum;
-        inCompetition = bucketSum;
+      if (quotaMapped) {
+        planTargeted =
+          colMap.planTargeted != null
+            ? readMappedCount(before, colMap.planTargeted)
+            : 0;
+        planPaid =
+          colMap.planPaid != null ? readMappedCount(before, colMap.planPaid) : 0;
+        enrolledTargeted =
+          colMap.enrolledTargeted != null
+            ? readMappedCount(before, colMap.enrolledTargeted)
+            : 0;
+        admittedNoExam = readMappedCount(before, colMap.admittedNoExam);
+        admittedOutOfCompetition = readMappedCount(
+          before,
+          colMap.admittedOutOfCompetition,
+        );
+        quotaParseOk =
+          planTargeted != null &&
+          enrolledTargeted != null &&
+          admittedNoExam != null &&
+          admittedOutOfCompetition != null;
+      }
+
+      if (mappedPlan != null || mappedApps != null || mappedContest != null) {
+        plan = mappedPlan != null ? mappedPlan : 0;
+        if (mappedApps != null) totalApps = mappedApps;
+        if (mappedContest != null) {
+          inCompetition = mappedContest;
+        } else if (bucketSum > 0) {
+          inCompetition = bucketSum;
+        }
+        if (!totalApps && bucketSum > 0) totalApps = Math.max(bucketSum, inCompetition);
+        if (totalApps < inCompetition) totalApps = inCompetition;
+      } else {
+        const specIdx = before.findIndex((t) => t === specName);
+        const afterSpecNums = before
+          .slice(Math.max(0, specIdx + 1))
+          .filter(isBareNumber)
+          .map(parseCount);
+
+        if (afterSpecNums.length >= 1) {
+          ({ plan, totalApps, inCompetition } = resolvePlanApps(
+            afterSpecNums,
+            bucketSum,
+          ));
+        } else if (nums.length >= 1) {
+          // Numbers before name are often faculty group totals — use trailing nums if any
+          plan = nums[nums.length - 1] || nums[0];
+          totalApps = bucketSum;
+          inCompetition = bucketSum;
+        }
       }
 
       if (plan === 0 && buckets.every((v) => v === 0)) continue;
       if (plan === 0 && totalApps === 0 && bucketSum === 0) continue;
 
-      const estimatedPassing = calcPassing(ranges, buckets, plan || 0);
+      const taken = quotaParseOk
+        ? Math.max(enrolledTargeted || 0, planTargeted || 0) +
+          (admittedNoExam || 0) +
+          (admittedOutOfCompetition || 0)
+        : 0;
+      const openPlan = quotaParseOk ? Math.max(0, plan - taken) : plan;
+      const estimatedPassing = calcPassing(ranges, buckets, openPlan || 0);
       const facultyPart = meta.facultyId || meta.form || 'main';
       const safeSpec = slug(specName).slice(0, 48);
       const form = meta.form || '';
@@ -366,6 +520,14 @@ export function parseScoreBucketTables(html, meta) {
         groupName: groupName !== specName ? groupName : '',
         specName: cleanSpecName(specName),
         plan,
+        planTargeted,
+        planPaid,
+        enrolledTargeted,
+        admittedNoExam,
+        admittedOutOfCompetition,
+        quotaParseOk,
+        taken: quotaParseOk ? taken : null,
+        openPlan: quotaParseOk ? openPlan : null,
         totalApps,
         inCompetition,
         ranges,

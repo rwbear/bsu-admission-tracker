@@ -9,6 +9,7 @@ import {
   extractTables,
   isRangeHeader,
   dedupeSpecs,
+  mapFormk1LeftColumns,
 } from '../scripts/scrape/normalize.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -68,6 +69,51 @@ describe('parseScoreBucketTables', () => {
   });
 });
 
+describe('mapFormk1LeftColumns', () => {
+  it('maps form 32 leaf headers including по конкурсу', () => {
+    const map = mapFormk1LeftColumns([
+      'план приема',
+      'подано',
+      'Специальность',
+      'всего',
+      'В т.ч. на целевую контрактную подготовку',
+      'на условиях оплаты',
+      'Всего',
+      'на условиях целевой подготовки (зачислены)',
+      'без вступительных испытаний',
+      'вне конкурса',
+      'по конкурсу',
+    ]);
+    assert.equal(map.plan, 3);
+    assert.equal(map.planTargeted, 4);
+    assert.equal(map.totalApps, 6);
+    assert.equal(map.enrolledTargeted, 7);
+    assert.equal(map.admittedNoExam, 8);
+    assert.equal(map.admittedOutOfCompetition, 9);
+    assert.equal(map.inCompetition, 10);
+  });
+
+  it('maps paid-track plan label (form 7 style)', () => {
+    const map = mapFormk1LeftColumns([
+      'план приема',
+      'подано заявлений от абитуриентов',
+      'Специальность',
+      'План приема на условиях оплаты',
+      'Всего',
+      'без вступительных испытаний',
+      'вне конкурса',
+      'по конкурсу',
+    ]);
+    assert.equal(map.plan, 3);
+    assert.equal(map.totalApps, 4);
+    assert.equal(map.admittedNoExam, 5);
+    assert.equal(map.admittedOutOfCompetition, 6);
+    assert.equal(map.inCompetition, 7);
+    assert.equal(map.planTargeted, null);
+    assert.equal(map.enrolledTargeted, null);
+  });
+});
+
 describe('resolvePlanApps', () => {
   it('uses Всего (≥ bucket sum) and aligns inCompetition to bands', () => {
     // form2 биология left nums: plan, target, ?, Всего, … mid junk
@@ -117,9 +163,14 @@ describe('formk1 golden slices', () => {
     const bsum = bio.buckets.reduce((a, b) => a + b, 0);
     assert.equal(bio.inCompetition, bsum);
     assert.ok(bio.totalApps >= bio.inCompetition);
+    assert.equal(bio.quotaParseOk, true);
+    assert.equal(bio.admittedNoExam, 1);
+    assert.equal(bio.admittedOutOfCompetition, 0);
+    assert.equal(bio.taken, 1);
+    assert.equal(bio.openPlan, 8);
   });
 
-  it('form 32 биология: Всего 37 / по конкурсу ≈ bands', () => {
+  it('form 32 биология: Всего 37 / по конкурсу ≈ bands + quotas', () => {
     const rows = parseScoreBucketTables(fixture('slice-32-biology.html'), {
       universityId: 'sb-bsu',
       form: '32',
@@ -133,6 +184,52 @@ describe('formk1 golden slices', () => {
     const bsum = bio.buckets.reduce((a, b) => a + b, 0);
     assert.equal(bio.inCompetition, bsum);
     assert.equal(bsum, 18);
+    assert.equal(bio.quotaParseOk, true);
+    assert.equal(bio.planTargeted, 2);
+    assert.equal(bio.enrolledTargeted, 2);
+    assert.equal(bio.admittedNoExam, 17);
+    assert.equal(bio.admittedOutOfCompetition, 0);
+    assert.equal(bio.taken, 19);
+    assert.equal(bio.openPlan, 36);
+  });
+
+  it('form 32 биоинженерия: openPlan 24 flips underfilled lie', () => {
+    const rows = parseScoreBucketTables(fixture('slice-32-biology.html'), {
+      universityId: 'sb-bsu',
+      form: '32',
+      sourceUrl: 'https://abit.bsu.by/formk1?id=32',
+      updatedAt: '2026-07-15T00:00:00.000Z',
+    });
+    const row = rows.find((r) => /биоинженерия/i.test(r.specName));
+    assert.ok(row);
+    assert.equal(row.plan, 32);
+    assert.equal(row.admittedNoExam, 8);
+    assert.equal(row.admittedOutOfCompetition, 0);
+    assert.equal(row.inCompetition, 31);
+    assert.equal(row.taken, 8);
+    assert.equal(row.openPlan, 24);
+    assert.ok(row.estimatedPassing != null);
+  });
+
+  it('form 32 FMO конфликтология: 8 БВИ → 2 места в общем', () => {
+    const rows = parseScoreBucketTables(fixture('slice-32-fmo-conflict.html'), {
+      universityId: 'sb-bsu',
+      form: '32',
+      facultyName: 'Факультет международных отношений',
+      sourceUrl: 'https://abit.bsu.by/formk1?id=32',
+      updatedAt: '2026-07-17T00:00:00.000Z',
+    });
+    const row = rows.find((r) => /конфликтолог/i.test(r.specName));
+    assert.ok(row, 'expected международная конфликтология');
+    assert.equal(row.plan, 10);
+    assert.equal(row.planPaid, 10);
+    assert.equal(row.admittedNoExam, 8);
+    assert.equal(row.admittedOutOfCompetition, 0);
+    assert.equal(row.inCompetition, 4);
+    assert.equal(row.taken, 8);
+    assert.equal(row.openPlan, 2);
+    assert.equal(row.quotaParseOk, true);
+    assert.ok(row.estimatedPassing != null);
   });
 
   it('form 29 правоведение (м): Всего 19 / bands 14', () => {
@@ -151,5 +248,8 @@ describe('formk1 golden slices', () => {
     const bsum = law.buckets.reduce((a, b) => a + b, 0);
     assert.equal(law.inCompetition, bsum);
     assert.equal(bsum, 14);
+    assert.equal(law.quotaParseOk, true);
+    assert.equal(law.admittedNoExam, 5);
+    assert.equal(law.openPlan, 5);
   });
 });

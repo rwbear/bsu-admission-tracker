@@ -1,16 +1,14 @@
 {
-  "generatedAt": "2026-07-17T16:59:50.619Z",
+  "generatedAt": "2026-07-17T17:13:42.008Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
-    "branch": "cursor/admission-tracker-rebuild-be86"
+    "branch": "cursor/quota-coverage-research-be86"
   },
   "universities": [
     {
       "id": "sb-bsu",
-      "updatedAt": "2026-07-17T16:59:50.622Z",
-      "specialtyCount": 192
+      "updatedAt": "2026-07-17T17:13:42.013Z",
+      "specialtyCount": 200
     }
-  ],
-  "commitSha": "c24dd2ca0588f3d0c2c6fb46371cb30a7be199fa",
-  "publishedAt": "2026-07-17T17:01:37.505Z"
+  ]
 }

@@ -4,6 +4,9 @@ import {
   summarizeStatuses,
   resolveHistCutIndex,
   histOutZoneLeftPct,
+  formatQuotaCaption,
+  formatQuotaCaptionCompact,
+  formatQuotaNote,
 } from '../js/ui/charts.js';
 import { enrichSpec } from '../js/compute.js';
 
@@ -38,5 +41,41 @@ describe('chart helpers', () => {
     assert.equal(histOutZoneLeftPct(-1, 4), null);
     assert.equal(histOutZoneLeftPct(3, 4), null);
     assert.equal(resolveHistCutIndex([5, 10], 0), -1);
+  });
+
+  it('formats quota caption with БВИ / целевые / вне', () => {
+    const text = formatQuotaCaption({
+      planOfficial: 32,
+      admittedNoExam: 8,
+      enrolledTargeted: 0,
+      planTargeted: 0,
+      admittedOutOfCompetition: 0,
+      openPlan: 24,
+    });
+    assert.match(text, /План 32/);
+    assert.match(text, /БВИ 8/);
+    assert.match(text, /в общем 24/);
+    assert.equal(
+      formatQuotaNote({
+        planOfficial: 32,
+        admittedNoExam: 8,
+        enrolledTargeted: 0,
+        planTargeted: 0,
+        admittedOutOfCompetition: 0,
+        openPlan: 24,
+      }),
+      'Из плана 32: без вступительных 8 · целевые 0 · вне конкурса 0 → в общем конкурсе 24 места',
+    );
+    assert.match(
+      formatQuotaCaptionCompact({
+        planOfficial: 32,
+        admittedNoExam: 8,
+        enrolledTargeted: 0,
+        planTargeted: 0,
+        admittedOutOfCompetition: 0,
+        openPlan: 24,
+      }),
+      /БВИ 8 — в общем конкурсе 24 из 32/,
+    );
   });
 });
