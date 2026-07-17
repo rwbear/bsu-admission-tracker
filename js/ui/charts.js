@@ -56,7 +56,7 @@ export function renderChanceTrack(mount, row) {
     rail.append(
       el('div', {
         className: 'chance-cut',
-        title: `План приёма: ${plan}`,
+        title: `Мест в общем конкурсе: ${plan}`,
         style: `left:${seatPct.toFixed(2)}%`,
       }),
     );
@@ -132,7 +132,7 @@ export function renderChanceTrack(mount, row) {
     stats.append(
       el('span', {
         className: 'chance-stat is-muted',
-        text: `план ${plan}`,
+        text: `мест ${plan}`,
       }),
     );
   }
@@ -151,7 +151,7 @@ export function renderChanceTrack(mount, row) {
  * @param {number} seatPct
  */
 function chanceAria(chance, youPct, seatPct) {
-  const parts = [`План ${chance.plan || 0} мест`];
+  const parts = [`Мест в общем конкурсе: ${chance.plan || 0}`];
   if (chance.peopleAbove != null) {
     parts.push(`${chance.peopleAbove} выше тебя`);
   }
@@ -160,6 +160,142 @@ function chanceAria(chance, youPct, seatPct) {
   }
   parts.push(`отсечение мест на ${seatPct.toFixed(0)}%`);
   return parts.join(', ');
+}
+
+/**
+ * Russian caption for the plan slab (E grammar).
+ * @param {object} row
+ * @returns {string}
+ */
+export function formatQuotaCaption(row) {
+  const plan = Number(row.planOfficial ?? row.plan) || 0;
+  const bvi = Number(row.admittedNoExam) || 0;
+  const target = Math.max(
+    Number(row.enrolledTargeted) || 0,
+    Number(row.planTargeted) || 0,
+  );
+  const out = Number(row.admittedOutOfCompetition) || 0;
+  const open = Number(row.openPlan ?? row.plan) || 0;
+  return `План ${plan} − БВИ ${bvi} − целевые ${target} − вне ${out} = в общем ${open}`;
+}
+
+/**
+ * Detail-note receipt (V1 prose).
+ * @param {object} row
+ * @returns {string}
+ */
+export function formatQuotaNote(row) {
+  const plan = Number(row.planOfficial ?? row.plan) || 0;
+  const bvi = Number(row.admittedNoExam) || 0;
+  const target = Math.max(
+    Number(row.enrolledTargeted) || 0,
+    Number(row.planTargeted) || 0,
+  );
+  const out = Number(row.admittedOutOfCompetition) || 0;
+  const open = Number(row.openPlan ?? row.plan) || 0;
+  return `Из плана ${plan}: без вступительных ${bvi} · целевые ${target} · вне конкурса ${out} → в общем конкурсе ${open} ${ruSeatsWord(open)}`;
+}
+
+/**
+ * @param {number} n
+ * @returns {string}
+ */
+function ruSeatsWord(n) {
+  const abs = Math.abs(Number(n) || 0) % 100;
+  const d = abs % 10;
+  if (abs > 10 && abs < 20) return 'мест';
+  if (d === 1) return 'место';
+  if (d >= 2 && d <= 4) return 'места';
+  return 'мест';
+}
+
+/**
+ * Compact caption when many zeros (narrow / sparse).
+ * @param {object} row
+ * @returns {string}
+ */
+export function formatQuotaCaptionCompact(row) {
+  const plan = Number(row.planOfficial ?? row.plan) || 0;
+  const open = Number(row.openPlan ?? row.plan) || 0;
+  const parts = [];
+  const bvi = Number(row.admittedNoExam) || 0;
+  const target = Math.max(
+    Number(row.enrolledTargeted) || 0,
+    Number(row.planTargeted) || 0,
+  );
+  const out = Number(row.admittedOutOfCompetition) || 0;
+  if (bvi) parts.push(`БВИ ${bvi}`);
+  if (target) parts.push(`целевые ${target}`);
+  if (out) parts.push(`вне ${out}`);
+  const lead = parts.length ? parts.join(' · ') : 'льготники';
+  return `${lead} — в общем конкурсе ${open} из ${plan}`;
+}
+
+/**
+ * Plan slab — seats story only. Never draws «ты» / people.
+ * @param {HTMLElement} mount
+ * @param {object} row
+ */
+export function renderPlanSlab(mount, row) {
+  mount.innerHTML = '';
+  if (!row?.showQuota) return;
+
+  const plan = Number(row.planOfficial) || 0;
+  if (plan <= 0) return;
+
+  const bvi = Number(row.admittedNoExam) || 0;
+  const target = Math.max(
+    Number(row.enrolledTargeted) || 0,
+    Number(row.planTargeted) || 0,
+  );
+  const out = Number(row.admittedOutOfCompetition) || 0;
+  const open = Number(row.openPlan) || 0;
+
+  /** @type {{ key: string, count: number, taken: boolean, label: string }[]} */
+  const segments = [
+    { key: 'bvi', count: bvi, taken: true, label: 'БВИ' },
+    { key: 'target', count: target, taken: true, label: 'целевые' },
+    { key: 'out', count: out, taken: true, label: 'вне' },
+    { key: 'open', count: open, taken: false, label: 'в общем' },
+  ].filter((s) => s.count > 0);
+
+  const caption = el('div', { className: 'plan-slab-caption' }, [
+    el('span', {
+      text: `План ${plan} − БВИ ${bvi} − целевые ${target} − вне ${out} = `,
+    }),
+    el('span', { className: 'is-answer', text: `в общем ${open}` }),
+  ]);
+
+  const bar = el('div', {
+    className: 'plan-slab-bar',
+    role: 'img',
+    'aria-label': `План ${plan} мест: ${formatQuotaCaptionCompact(row)}`,
+  });
+
+  for (const seg of segments) {
+    const pct = (seg.count / plan) * 100;
+    const node = el('div', {
+      className: `plan-slab-seg${seg.taken ? ' is-taken' : ' is-open'}`,
+      style: `flex-grow:${seg.count};flex-basis:0`,
+      title: `${seg.label}: ${seg.count}`,
+    });
+    if (pct >= 12) {
+      node.append(
+        el('span', {
+          className: 'plan-slab-seg-label',
+          text: `${seg.label} ${seg.count}`,
+        }),
+      );
+    }
+    bar.append(node);
+  }
+
+  const wrap = el(
+    'div',
+    { className: 'plan-slab-wrap', 'data-awaken': 'plan' },
+    [caption, bar],
+  );
+  mount.append(wrap);
 }
 
 /**
@@ -254,7 +390,7 @@ export function renderHistogram(mount, row, score) {
         className: 'hist-cut-line',
         'aria-hidden': 'true',
         style: `left:${outLeft.toFixed(3)}%`,
-        title: `План приёма: ${plan}`,
+        title: `Мест в общем конкурсе: ${plan}`,
       }),
     );
   }

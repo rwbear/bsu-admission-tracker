@@ -200,4 +200,52 @@ describe('enrich + prepare', () => {
     assert.ok(track.peopleAbove >= plan);
     assert.ok(track.myMarkerRatio > track.seatCutRatio);
   });
+
+  it('openPlan: биоинженерия-style quotas flip soft underfill into real contest', () => {
+    const ranges = ['400-391', '390-381', '380-371', '370-361', '360-351'];
+    const buckets = [4, 8, 10, 6, 3]; // 31
+    const spec = {
+      id: 'bioeng',
+      specName: 'биоинженерия',
+      plan: 32,
+      planTargeted: 0,
+      enrolledTargeted: 0,
+      admittedNoExam: 8,
+      admittedOutOfCompetition: 0,
+      quotaParseOk: true,
+      inCompetition: 31,
+      ranges,
+      buckets,
+    };
+    // Without openPlan, competition 31 < plan 32 → soft «В зоне» for any score.
+    const naive = enrichSpec({ ...spec, quotaParseOk: false }, 355);
+    assert.equal(naive.status, 'safe');
+
+    const row = enrichSpec(spec, 355);
+    assert.equal(row.planOfficial, 32);
+    assert.equal(row.openPlan, 24);
+    assert.equal(row.plan, 24);
+    assert.equal(row.taken, 8);
+    assert.equal(row.showQuota, true);
+    assert.ok(row.estimatedPassing != null);
+    assert.equal(row.status, 'below');
+    assert.equal(row.chance.plan, 24);
+  });
+
+  it('hides quota story when taken is zero', () => {
+    const row = enrichSpec(
+      {
+        ...base,
+        planTargeted: 0,
+        enrolledTargeted: 0,
+        admittedNoExam: 0,
+        admittedOutOfCompetition: 0,
+        quotaParseOk: true,
+      },
+      375,
+    );
+    assert.equal(row.showQuota, false);
+    assert.equal(row.openPlan, 10);
+    assert.equal(row.plan, 10);
+  });
 });

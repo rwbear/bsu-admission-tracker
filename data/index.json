@@ -1,16 +1,16 @@
 {
-  "generatedAt": "2026-07-17T14:41:16.696Z",
+  "generatedAt": "2026-07-17T15:44:51.464Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
-    "branch": "cursor/admission-tracker-rebuild-be86"
+    "branch": "cursor/quota-coverage-research-be86"
   },
   "universities": [
     {
       "id": "sb-bsu",
       "name": "БГУ",
       "fullName": "Белорусский государственный университет",
-      "specialtyCount": 200,
-      "updatedAt": "2026-07-17T14:41:16.698Z",
+      "specialtyCount": 192,
+      "updatedAt": "2026-07-17T15:44:51.468Z",
       "available": true,
       "faculties": [
         {
@@ -26,7 +26,7 @@
         {
           "id": "военный-факультет",
           "name": "Военный факультет",
-          "specialtyCount": 16
+          "specialtyCount": 8
         },
         {
           "id": "институт-теологии",
@@ -114,7 +114,7 @@
         {
           "id": "29",
           "name": "Военный факультет. Дневная форма. Бюджет",
-          "specialtyCount": 8,
+          "specialtyCount": 0,
           "trackId": "cert3"
         },
         {

@@ -3,8 +3,10 @@ import { el, fmtNum, fmtTime } from './dom.js';
 import {
   renderChanceTrack,
   renderHistogram,
+  renderPlanSlab,
+  formatQuotaNote,
   summarizeStatuses,
-} from './charts.js?v=20260715be';
+} from './charts.js?v=20260717qf';
 import { primeReveal, finalizeReveal } from './reveal.js';
 import { armScrollAwaken, disposeScrollAwaken } from './awaken.js';
 
@@ -171,17 +173,18 @@ export function renderOverviewList(container, specialties, score, opts) {
  * @param {{ updatedAt?: string | null }} meta
  */
 function buildDetailInner(row, score, meta) {
+  const seatPlan = Number(row.openPlan ?? row.plan) || 0;
   const people =
     score == null
       ? '—'
-      : `${fmtNum(row.peopleAbove)} / ${fmtNum(row.plan)}`;
+      : `${fmtNum(row.peopleAbove)} / ${fmtNum(seatPlan)}`;
 
   const pass = row.estimatedPassing == null ? '—' : fmtNum(row.estimatedPassing);
   const pressure =
     row.pressure == null ? '—' : `${row.pressure.toFixed(1)}×`;
 
   const updatedAt = meta.updatedAt || row.updatedAt;
-  const plan = Number(row.plan) || 0;
+  const plan = seatPlan;
   const competition =
     row.competition != null
       ? Number(row.competition)
@@ -193,6 +196,18 @@ function buildDetailInner(row, score, meta) {
     row.estimatedPassing == null && plan > 0 && competition < plan
       ? `Обновлено ${fmtTime(updatedAt)} · заявлений меньше мест — расчётный балл набора ещё не сложился`
       : `Обновлено ${fmtTime(updatedAt)} · расчётный балл — оценка по таблице`;
+
+  if (row.showQuota) {
+    note += ` · ${formatQuotaNote(row)}`;
+  } else if (
+    row.quotaParseOk === false &&
+    Number(row.totalApps) > Number(row.inCompetition) &&
+    Number(row.inCompetition) >= 0
+  ) {
+    const official = Number(row.planOfficial ?? row.plan) || 0;
+    note += ` · часть мест уже занята льготниками (БВИ, целевые, вне конкурса) — в общем конкурсе ${fmtNum(plan)} из ${fmtNum(official)}`;
+  }
+
   if (
     score != null &&
     row.peopleAbove != null &&
@@ -205,6 +220,7 @@ function buildDetailInner(row, score, meta) {
       ' · место по интервалам уже за чертой мест, статус — по расчётному баллу';
   }
 
+  const planMount = el('div');
   const trackMount = el('div');
   const histMount = el('div');
   const statusBits = [row.statusLabel, row.facultyName].filter(Boolean);
@@ -229,6 +245,15 @@ function buildDetailInner(row, score, meta) {
     metric('Конкурс', pressure, 'is-secondary'),
   ].map((cell) => revealStep(cell, step++));
 
+  const planBlock = revealStep(
+    el('div', { className: 'chart-block plan-slab-block' }, [
+      el('div', { className: 'chart-caption', text: 'План мест' }),
+      planMount,
+    ]),
+    step++,
+  );
+  if (!row.showQuota) planBlock.hidden = true;
+
   const chanceBlock = revealStep(
     el('div', { className: 'chart-block' }, [
       el('div', { className: 'chart-caption', text: 'Дорожка конкурса' }),
@@ -248,15 +273,43 @@ function buildDetailInner(row, score, meta) {
     step++,
   );
 
+  const methodBody = [
+    el(
+      'p',
+      {
+        text: 'Места идут сверху: сначала более высокие баллы, пока не закроется план общего конкурса.',
+      },
+    ),
+    el('p', {
+      text: 'БВИ (без вступительных — часто олимпиады), целевые и вне конкурса забирают места до общего конкурса. Они не стоят «над тобой» в гистограмме — их там нет.',
+    }),
+    el('p', {
+      text: '«Над тобой» внутри твоего интервала — оценка: баллы в полосе считаем равномерно. Это не очередь приёмной.',
+    }),
+    el('p', {
+      text: 'Статус («В зоне / На грани / Ниже») смотрит на расчётный балл. Место смотрит на людей выше тебя. Иногда они расходятся — оба сигнала остаются оценкой по таблице БГУ, не приказом.',
+    }),
+  ];
+  const method = revealStep(
+    el('details', { className: 'method-details' }, [
+      el('summary', { text: 'Как считается место' }),
+      el('div', { className: 'method-details-body' }, methodBody),
+    ]),
+    step++,
+  );
+
   const inner = el('div', { className: 'detail-inner', 'data-reveal-root': '' }, [
     title,
     status,
     el('div', { className: 'metric-grid' }, metrics),
+    planBlock,
     chanceBlock,
     histBlock,
     noteEl,
+    method,
   ]);
 
+  renderPlanSlab(planMount, row);
   renderChanceTrack(trackMount, { ...row, score });
   renderHistogram(histMount, { ...row, score }, score);
 

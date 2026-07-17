@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { calcPassing } from '../js/compute.js';
+import { calcPassing, resolveSeatQuota } from '../js/compute.js';
 
 const data = JSON.parse(readFileSync(new URL('../data/sb-bsu.json', import.meta.url), 'utf8'));
 
@@ -19,8 +19,8 @@ describe('published snapshot invariants', () => {
         (s.buckets || []).length,
         s.id,
       );
-      const plan = Number(s.plan) || 0;
-      const recomputed = calcPassing(s.ranges || [], s.buckets || [], plan);
+      const seatPlan = resolveSeatQuota(s).openPlan;
+      const recomputed = calcPassing(s.ranges || [], s.buckets || [], seatPlan);
       assert.equal(recomputed, s.estimatedPassing ?? null, s.id);
     }
   });
