@@ -513,7 +513,8 @@ html.faculty-overlay-open {
   transition: background-color var(--select-ms) var(--select-ease);
 }
 
-/* Full-height tick — cut by the option’s own border-radius. */
+/* Full-height tick — cut by the option’s own border-radius.
+   Appear: soft fade. Leave: instant (no scale-away). */
 .faculty-option::before {
   content: "";
   position: absolute;
@@ -522,9 +523,8 @@ html.faculty-overlay-open {
   bottom: 0;
   width: 2px;
   background: var(--select-line);
-  transform: scaleY(0);
-  transform-origin: center;
-  transition: transform var(--select-ms) var(--select-ease);
+  opacity: 0;
+  transition: opacity 0ms linear;
   pointer-events: none;
 }
 
@@ -552,7 +552,8 @@ html.faculty-overlay-open {
 }
 
 .faculty-option.is-active::before {
-  transform: scaleY(1);
+  opacity: 1;
+  transition: opacity var(--select-ms) var(--select-ease);
 }
 
 .faculty-option.is-active:hover,
