@@ -6,8 +6,9 @@ import {
   renderPlanSlab,
   renderTableFacts,
   formatQuotaNote,
+  buildHistCaption,
   summarizeStatuses,
-} from './charts.js?v=20260717dn';
+} from './charts.js?v=20260717hr';
 import { primeReveal, finalizeReveal } from './reveal.js';
 import { armScrollAwaken, disposeScrollAwaken, awakenEl } from './awaken.js';
 import { shouldAutoOpenMoreDetails } from './detail-density.js';
@@ -273,6 +274,18 @@ function buildDetailInner(row, score, meta) {
     step++,
   );
 
+  const histBlock = revealStep(
+    el('div', { className: 'chart-block hist-ridge-block' }, [
+      el('div', {
+        className: 'chart-caption',
+        text: buildHistCaption(row, score),
+      }),
+      histMount,
+    ]),
+    step++,
+  );
+  if (!(row.ranges || []).length) histBlock.hidden = true;
+
   const primaryMetrics = revealStep(
     el('div', { className: 'metric-grid' }, [
       metric('Над тобой / мест конкурса', people, 'is-primary'),
@@ -299,15 +312,9 @@ function buildDetailInner(row, score, meta) {
     metric('Конкурс', pressure, 'is-secondary'),
   ]);
 
-  const histBlock = el('div', { className: 'chart-block' }, [
-    el('div', { className: 'chart-caption', text: 'Интервалы баллов' }),
-    histMount,
-  ]);
-
   const moreBody = el('div', { className: 'panel-details-body' }, [
     factsBlock,
     secondaryMetrics,
-    histBlock,
   ]);
 
   const moreOpen = shouldAutoOpenMoreDetails(row, meta);
@@ -354,6 +361,7 @@ function buildDetailInner(row, score, meta) {
     status,
     planBlock,
     chanceBlock,
+    histBlock,
     primaryMetrics,
     noteEl,
     moreDetails,
