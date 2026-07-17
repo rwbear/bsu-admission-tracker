@@ -232,6 +232,61 @@ export function formatQuotaCaptionCompact(row) {
 }
 
 /**
+ * Always-on fact strip: every left-of-band number from formk1 we parsed.
+ * Shown whenever quotaParseOk — including when taken === 0 (zeros are proof).
+ * @param {HTMLElement} mount
+ * @param {object} row
+ */
+export function renderTableFacts(mount, row) {
+  mount.innerHTML = '';
+  if (!row?.showFacts && !row?.quotaParseOk) return;
+
+  const plan = Number(row.planOfficial ?? row.plan) || 0;
+  const targetPlan = Number(row.planTargeted) || 0;
+  const paidPlan = row.planPaid == null ? null : Number(row.planPaid) || 0;
+  const totalApps = Number(row.totalApps) || 0;
+  const enrolled = Number(row.enrolledTargeted) || 0;
+  const bvi = Number(row.admittedNoExam) || 0;
+  const out = Number(row.admittedOutOfCompetition) || 0;
+  const contest = Number(row.inCompetition ?? row.competition) || 0;
+  const open = Number(row.openPlan ?? row.plan) || 0;
+
+  /** @type {{ label: string, value: number | string, strong?: boolean }[]} */
+  const cells = [
+    { label: 'План', value: plan, strong: true },
+    { label: 'В т.ч. целевая', value: targetPlan },
+  ];
+  if (paidPlan != null) {
+    cells.push({ label: 'План · оплата', value: paidPlan });
+  }
+  cells.push(
+    { label: 'Подано всего', value: totalApps },
+    { label: 'Целевые (зачисл.)', value: enrolled },
+    { label: 'БВИ', value: bvi, strong: bvi > 0 },
+    { label: 'Вне конкурса', value: out, strong: out > 0 },
+    { label: 'По конкурсу', value: contest },
+    { label: 'Мест в общем', value: open, strong: true },
+  );
+
+  const grid = el('div', {
+    className: 'table-facts',
+    role: 'group',
+    'aria-label': 'Числа из таблицы мониторинга БГУ',
+  });
+  for (const cell of cells) {
+    grid.append(
+      el('div', {
+        className: `table-fact${cell.strong ? ' is-strong' : ''}`,
+      }, [
+        el('div', { className: 'table-fact-val', text: String(cell.value) }),
+        el('div', { className: 'table-fact-lbl', text: cell.label }),
+      ]),
+    );
+  }
+  mount.append(grid);
+}
+
+/**
  * Plan slab — seats story only. Never draws «ты» / people.
  * @param {HTMLElement} mount
  * @param {object} row

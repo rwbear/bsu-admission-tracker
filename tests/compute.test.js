@@ -245,7 +245,38 @@ describe('enrich + prepare', () => {
       375,
     );
     assert.equal(row.showQuota, false);
+    assert.equal(row.showFacts, true);
     assert.equal(row.openPlan, 10);
     assert.equal(row.plan, 10);
+  });
+
+  it('конфликтология: 10 plan / 8 БВИ → openPlan 2 and facts on', () => {
+    const row = enrichSpec(
+      {
+        id: 'conflict',
+        specName: 'международная конфликтология',
+        plan: 10,
+        planTargeted: 0,
+        planPaid: 10,
+        enrolledTargeted: 0,
+        admittedNoExam: 8,
+        admittedOutOfCompetition: 0,
+        quotaParseOk: true,
+        inCompetition: 4,
+        totalApps: 12,
+        ranges: ['396 и более', '395 - 391', '390 - 386', '385 - 381', '380 - 376', '375 - 371'],
+        buckets: [0, 0, 1, 1, 1, 1],
+      },
+      380,
+    );
+    assert.equal(row.showFacts, true);
+    assert.equal(row.showQuota, true);
+    assert.equal(row.planOfficial, 10);
+    assert.equal(row.openPlan, 2);
+    assert.equal(row.plan, 2);
+    assert.equal(row.taken, 8);
+    assert.equal(row.admittedNoExam, 8);
+    assert.ok(row.estimatedPassing != null);
+    assert.notEqual(row.status, 'safe');
   });
 });

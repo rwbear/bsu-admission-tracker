@@ -206,6 +206,7 @@ export function mapFormk1LeftColumns(leftHeaderTexts) {
   const map = {
     plan: null,
     planTargeted: null,
+    planPaid: null,
     totalApps: null,
     enrolledTargeted: null,
     admittedNoExam: null,
@@ -242,6 +243,11 @@ export function mapFormk1LeftColumns(leftHeaderTexts) {
     // Paid-track plan label (form id=7 etc.) — before generic «Всего».
     if (/план приема на условиях оплаты/i.test(t)) {
       map.plan = i;
+      continue;
+    }
+    // Budget page: separate paid-plan column under «План приема».
+    if (/^на условиях оплаты$/i.test(t)) {
+      map.planPaid = i;
       continue;
     }
     // Budget plan «всего» then apps «Всего»; or apps alone after paid plan.
@@ -422,6 +428,8 @@ export function parseScoreBucketTables(html, meta) {
       /** @type {number | null} */
       let planTargeted = null;
       /** @type {number | null} */
+      let planPaid = null;
+      /** @type {number | null} */
       let enrolledTargeted = null;
       /** @type {number | null} */
       let admittedNoExam = null;
@@ -438,6 +446,8 @@ export function parseScoreBucketTables(html, meta) {
           colMap.planTargeted != null
             ? readMappedCount(before, colMap.planTargeted)
             : 0;
+        planPaid =
+          colMap.planPaid != null ? readMappedCount(before, colMap.planPaid) : 0;
         enrolledTargeted =
           colMap.enrolledTargeted != null
             ? readMappedCount(before, colMap.enrolledTargeted)
@@ -511,6 +521,7 @@ export function parseScoreBucketTables(html, meta) {
         specName: cleanSpecName(specName),
         plan,
         planTargeted,
+        planPaid,
         enrolledTargeted,
         admittedNoExam,
         admittedOutOfCompetition,

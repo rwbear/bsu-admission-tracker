@@ -211,6 +211,27 @@ describe('formk1 golden slices', () => {
     assert.ok(row.estimatedPassing != null);
   });
 
+  it('form 32 FMO конфликтология: 8 БВИ → 2 места в общем', () => {
+    const rows = parseScoreBucketTables(fixture('slice-32-fmo-conflict.html'), {
+      universityId: 'sb-bsu',
+      form: '32',
+      facultyName: 'Факультет международных отношений',
+      sourceUrl: 'https://abit.bsu.by/formk1?id=32',
+      updatedAt: '2026-07-17T00:00:00.000Z',
+    });
+    const row = rows.find((r) => /конфликтолог/i.test(r.specName));
+    assert.ok(row, 'expected международная конфликтология');
+    assert.equal(row.plan, 10);
+    assert.equal(row.planPaid, 10);
+    assert.equal(row.admittedNoExam, 8);
+    assert.equal(row.admittedOutOfCompetition, 0);
+    assert.equal(row.inCompetition, 4);
+    assert.equal(row.taken, 8);
+    assert.equal(row.openPlan, 2);
+    assert.equal(row.quotaParseOk, true);
+    assert.ok(row.estimatedPassing != null);
+  });
+
   it('form 29 правоведение (м): Всего 19 / bands 14', () => {
     const rows = parseScoreBucketTables(fixture('slice-29-military.html'), {
       universityId: 'sb-bsu',

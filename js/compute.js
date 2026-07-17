@@ -260,6 +260,10 @@ export function resolveSeatQuota(spec) {
   const planOfficial = Number(spec.plan) || 0;
   const quotaParseOk = spec.quotaParseOk === true;
   const planTargeted = quotaParseOk ? Number(spec.planTargeted) || 0 : null;
+  const planPaid =
+    spec.planPaid == null || spec.planPaid === ''
+      ? null
+      : Number(spec.planPaid) || 0;
   const enrolledTargeted = quotaParseOk
     ? Number(spec.enrolledTargeted) || 0
     : null;
@@ -281,12 +285,15 @@ export function resolveSeatQuota(spec) {
   return {
     planOfficial,
     planTargeted,
+    planPaid,
     enrolledTargeted,
     admittedNoExam,
     admittedOutOfCompetition,
     quotaParseOk,
     taken,
     openPlan,
+    /** Always show table facts when columns were parsed — not only when taken > 0. */
+    showFacts: quotaParseOk,
     showQuota: quotaParseOk && taken > 0,
   };
 }
@@ -352,12 +359,14 @@ export function enrichSpec(spec, score) {
     planOfficial,
     plan,
     planTargeted: quota.planTargeted,
+    planPaid: quota.planPaid,
     enrolledTargeted: quota.enrolledTargeted,
     admittedNoExam: quota.admittedNoExam,
     admittedOutOfCompetition: quota.admittedOutOfCompetition,
     quotaParseOk: quota.quotaParseOk,
     taken: quota.taken,
     openPlan: quota.openPlan,
+    showFacts: quota.showFacts,
     showQuota: quota.showQuota,
     estimatedPassing,
     peopleAbove: above,

@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-17T15:44:51.464Z",
+  "generatedAt": "2026-07-17T17:13:42.008Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
     "branch": "cursor/quota-coverage-research-be86"
@@ -7,8 +7,8 @@
   "universities": [
     {
       "id": "sb-bsu",
-      "updatedAt": "2026-07-17T15:44:51.468Z",
-      "specialtyCount": 192
+      "updatedAt": "2026-07-17T17:13:42.013Z",
+      "specialtyCount": 200
     }
   ]
 }
