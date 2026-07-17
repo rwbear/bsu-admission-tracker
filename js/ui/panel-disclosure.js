@@ -1,35 +1,31 @@
 /**
- * Panel disclosure open/close — height + meta fade, staggered body steps.
+ * Panel disclosure open/close — CSS grid 0fr→1fr + opacity.
+ *
+ * Why not WAAPI height:
+ * - Animating `height` forces layout every frame → mobile lag.
+ * - Child stagger on top of that doubled paint work and stretched the feel.
+ * - Blocking mid-flight clicks made toggles feel sticky.
  *
  * Contract:
- * - Targets native `<details class="panel-details">` inside a scope.
- * - Summary click is intercepted (unless reduced motion): height animates,
- *   then `[open]` toggles — never an instant snap.
- * - Open: ease-out `cubic-bezier(0.16, 1, 0.3, 1)` — same family as reveal/chance.
- * - Close: ease-in `cubic-bezier(0.55, 0, 1, 1)` — same family as graphic sleep.
- * - Body children stagger on open (48 ms); quick reverse fade on close.
- * - `[data-awaken]` inside wakes after open settles (or instant open).
- * - `data-disclosure-pending-open="true"`: defer open until parent reveal step
- *   fires `reveal:done` (intro cascade).
- * - `disposePanelDisclosures(scope)` aborts listeners + in-flight motion.
+ * - CSS transitions `grid-template-rows: 0fr↔1fr` + opacity (one shell).
+ * - Mid-flight reverse: open↔close from current progress (no click lock).
+ * - Keep `[open]` during close so the browser doesn't snap content away.
+ * - Auto-open waits for `reveal:done` when pending.
+ * - Reduced motion: native <details>, no interception.
+ * - Body markup: `.panel-details-body > .panel-details-inner` (inner clips).
  */
 
 import { awakenEl } from './awaken.js';
 
-/** @typedef {{ abort: AbortController, running: WeakMap<HTMLDetailsElement, Animation[]> }} DisclosureScope */
+/** @typedef {{ abort: AbortController, finishers: WeakMap<HTMLDetailsElement, () => void> }} DisclosureScope */
 
 /** @type {WeakMap<Element, DisclosureScope>} */
 const scopeState = new WeakMap();
 
+/** Snappy budgets — sit with panel-swap select (~140–190), not reveal cascade. */
 export const DISCLOSURE_TIMING = Object.freeze({
-  openMs: 320,
-  closeMs: 260,
-  childMs: 280,
-  childCloseMs: 180,
-  staggerMs: 48,
-  openDelayMs: 56,
-  closeStaggerMs: 24,
-  bodyFromY: 6,
+  openMs: 200,
+  closeMs: 160,
   easeOpen: 'cubic-bezier(0.16, 1, 0.3, 1)',
   easeClose: 'cubic-bezier(0.55, 0, 1, 1)',
 });
@@ -48,9 +44,9 @@ export function armPanelDisclosures(scope, opts = {}) {
   if (!nodes.length) return;
 
   const abort = new AbortController();
-  /** @type {WeakMap<HTMLDetailsElement, Animation[]>} */
-  const running = new WeakMap();
-  scopeState.set(scope, { abort, running });
+  /** @type {WeakMap<HTMLDetailsElement, () => void>} */
+  const finishers = new WeakMap();
+  scopeState.set(scope, { abort, finishers });
 
   for (const details of nodes) {
     if (reduceMotion) {
@@ -64,11 +60,10 @@ export function armPanelDisclosures(scope, opts = {}) {
     }
 
     details.classList.add('is-disclosure-armed');
-    if (!details.open) prepareClosedShell(details);
 
     if (details.dataset.disclosurePendingOpen === 'true') {
       details.removeAttribute('open');
-      queuePendingOpen(details, abort.signal, running, { instant: false });
+      queuePendingOpen(details, abort.signal, finishers, { instant: false });
       continue;
     }
 
@@ -84,18 +79,27 @@ export function armPanelDisclosures(scope, opts = {}) {
         const summary = details.querySelector(':scope > summary');
         if (!(summary instanceof HTMLElement)) return;
         const target = ev.target;
-        if (!(target instanceof Node) || (target !== summary && !summary.contains(target))) {
-          return;
-        }
-        if (isAnimating(details, running)) {
-          ev.preventDefault();
+        if (
+          !(target instanceof Node) ||
+          (target !== summary && !summary.contains(target))
+        ) {
           return;
         }
         ev.preventDefault();
-        if (details.open) {
-          closeDisclosure(details, running, abort.signal);
+
+        const closing = details.classList.contains('is-disclosure-closing');
+        const opening = details.classList.contains('is-disclosure-opening');
+        const shown =
+          details.open &&
+          (details.classList.contains('is-disclosure-open') ||
+            details.classList.contains('is-disclosure-instant') ||
+            opening);
+
+        // Reverse mid-flight — never lock the summary.
+        if (closing || (!shown && !opening)) {
+          openDisclosure(details, finishers, abort.signal);
         } else {
-          openDisclosure(details, running, abort.signal);
+          closeDisclosure(details, finishers, abort.signal);
         }
       },
       { signal: abort.signal },
@@ -112,7 +116,7 @@ export function disposePanelDisclosures(scope) {
   prev.abort.abort();
   for (const details of scope.querySelectorAll('details.panel-details')) {
     if (!(details instanceof HTMLDetailsElement)) continue;
-    cancelAnimations(details, prev.running);
+    clearFinisher(details, prev.finishers);
     details.classList.remove(
       'is-disclosure-armed',
       'is-disclosure-open',
@@ -120,325 +124,138 @@ export function disposePanelDisclosures(scope) {
       'is-disclosure-closing',
       'is-disclosure-instant',
     );
-    const body = getBody(details);
-    if (body) {
-      clearBodyStyles(body);
-      clearChildrenStyles(body);
-    }
   }
   scopeState.delete(scope);
 }
 
 /**
  * @param {HTMLDetailsElement} details
- * @returns {HTMLElement | null}
- */
-function getBody(details) {
-  const body = details.querySelector(':scope > .panel-details-body');
-  return body instanceof HTMLElement ? body : null;
-}
-
-/**
- * @param {HTMLDetailsElement} details
- */
-function prepareClosedShell(details) {
-  if (details.open) return;
-  const body = getBody(details);
-  if (!body) return;
-  body.style.height = '0px';
-  body.style.opacity = '0';
-  body.style.paddingTop = '0px';
-  body.style.overflow = 'hidden';
-}
-
-/**
- * @param {HTMLDetailsElement} details
  */
 function markOpenInstant(details) {
+  details.classList.remove('is-disclosure-opening', 'is-disclosure-closing');
   details.classList.add('is-disclosure-open', 'is-disclosure-instant');
-  const body = getBody(details);
-  if (body) clearBodyStyles(body);
 }
 
 /**
  * @param {HTMLDetailsElement} details
- * @param {WeakMap<HTMLDetailsElement, Animation[]>} running
+ * @param {WeakMap<HTMLDetailsElement, () => void>} finishers
  */
-function isAnimating(details, running) {
-  const list = running.get(details);
-  return Boolean(list?.length);
+function clearFinisher(details, finishers) {
+  const fn = finishers.get(details);
+  if (fn) {
+    fn();
+    finishers.delete(details);
+  }
 }
 
 /**
  * @param {HTMLDetailsElement} details
- * @param {WeakMap<HTMLDetailsElement, Animation[]>} running
- */
-function cancelAnimations(details, running) {
-  const list = running.get(details);
-  if (!list?.length) return;
-  for (const anim of list) anim.cancel();
-  running.delete(details);
-}
-
-/**
- * @param {HTMLDetailsElement} details
- * @param {WeakMap<HTMLDetailsElement, Animation[]>} running
+ * @param {WeakMap<HTMLDetailsElement, () => void>} finishers
  * @param {AbortSignal} signal
+ * @param {'open' | 'close'} kind
+ * @param {() => void} onDone
  */
-function openDisclosure(details, running, signal) {
-  const body = getBody(details);
-  if (!body) {
-    details.open = true;
-    awakenInside(details, { instant: false });
+function awaitShellSettle(details, finishers, signal, kind, onDone) {
+  clearFinisher(details, finishers);
+  const body = details.querySelector(':scope > .panel-details-body');
+  if (!(body instanceof HTMLElement)) {
+    onDone();
     return;
   }
 
-  cancelAnimations(details, running);
-  details.classList.remove('is-disclosure-closing', 'is-disclosure-instant');
-  details.classList.add('is-disclosure-opening');
+  const ms =
+    kind === 'open' ? DISCLOSURE_TIMING.openMs : DISCLOSURE_TIMING.closeMs;
+  let done = false;
+
+  const cleanup = () => {
+    body.removeEventListener('transitionend', onEnd);
+    clearTimeout(timer);
+    finishers.delete(details);
+  };
+
+  const finish = () => {
+    if (done) return;
+    done = true;
+    cleanup();
+    if (!signal.aborted && details.isConnected) onDone();
+  };
+
+  const onEnd = (ev) => {
+    if (ev.target !== body) return;
+    // Wait for the row clip — opacity finishes earlier and must not cut close.
+    if (ev.propertyName !== 'grid-template-rows') return;
+    finish();
+  };
+
+  body.addEventListener('transitionend', onEnd);
+  const timer = setTimeout(finish, ms + 40);
+  finishers.set(details, () => {
+    if (done) return;
+    done = true;
+    cleanup();
+  });
+
+  signal.addEventListener(
+    'abort',
+    () => {
+      if (done) return;
+      done = true;
+      cleanup();
+    },
+    { once: true },
+  );
+}
+
+/**
+ * @param {HTMLDetailsElement} details
+ * @param {WeakMap<HTMLDetailsElement, () => void>} finishers
+ * @param {AbortSignal} signal
+ */
+function openDisclosure(details, finishers, signal) {
+  clearFinisher(details, finishers);
+  const reversing = details.classList.contains('is-disclosure-closing');
+  details.classList.remove(
+    'is-disclosure-closing',
+    'is-disclosure-instant',
+    'is-disclosure-open',
+  );
   details.open = true;
 
-  body.style.overflow = 'hidden';
-  body.style.height = '0px';
-  body.style.opacity = '0';
-  body.style.paddingTop = '0px';
-  body.style.transform = `translateY(-${DISCLOSURE_TIMING.bodyFromY}px)`;
-
-  /** @type {Animation[]} */
-  const anims = [];
-
-  requestAnimationFrame(() => {
+  const start = () => {
     if (signal.aborted || !details.isConnected) return;
+    details.classList.add('is-disclosure-opening');
+    awaitShellSettle(details, finishers, signal, 'open', () => {
+      details.classList.remove('is-disclosure-opening');
+      details.classList.add('is-disclosure-open');
+      awakenInside(details, { instant: false });
+    });
+  };
 
-    const targetH = body.scrollHeight;
-    const shell = body.animate(
-      [
-        {
-          height: '0px',
-          opacity: 0,
-          paddingTop: '0px',
-          transform: `translateY(-${DISCLOSURE_TIMING.bodyFromY}px)`,
-        },
-        {
-          height: `${targetH}px`,
-          opacity: 1,
-          paddingTop: '',
-          transform: 'translateY(0)',
-        },
-      ],
-      {
-        duration: DISCLOSURE_TIMING.openMs,
-        easing: DISCLOSURE_TIMING.easeOpen,
-        fill: 'forwards',
-      },
-    );
-    anims.push(shell);
-
-    shell.addEventListener(
-      'finish',
-      () => {
-        if (signal.aborted || !details.isConnected) return;
-        finishOpen(details, body, running);
-        awakenInside(details, { instant: false });
-      },
-      { once: true },
-    );
-
-    anims.push(...staggerChildrenOpen(body, signal));
-    running.set(details, anims);
-  });
+  // Cold open needs one painted 0fr frame or the browser skips the transition.
+  // Reverse from mid-close keeps the current interpolated value — no rAF.
+  if (reversing) start();
+  else requestAnimationFrame(start);
 }
 
 /**
  * @param {HTMLDetailsElement} details
- * @param {WeakMap<HTMLDetailsElement, Animation[]>} running
+ * @param {WeakMap<HTMLDetailsElement, () => void>} finishers
  * @param {AbortSignal} signal
  */
-function closeDisclosure(details, running, signal) {
-  const body = getBody(details);
-  if (!body) {
-    details.open = false;
-    return;
-  }
-
-  cancelAnimations(details, running);
-  details.classList.remove('is-disclosure-open', 'is-disclosure-instant');
+function closeDisclosure(details, finishers, signal) {
+  clearFinisher(details, finishers);
+  details.classList.remove(
+    'is-disclosure-open',
+    'is-disclosure-opening',
+    'is-disclosure-instant',
+  );
   details.classList.add('is-disclosure-closing');
+  // Keep [open] until the shell finishes — otherwise the UA snaps content away.
 
-  const startH = body.scrollHeight;
-  body.style.overflow = 'hidden';
-  body.style.height = `${startH}px`;
-
-  /** @type {Animation[]} */
-  const anims = [];
-  anims.push(...staggerChildrenClose(body, signal));
-
-  requestAnimationFrame(() => {
-    if (signal.aborted || !details.isConnected) return;
-
-    const shell = body.animate(
-      [
-        {
-          height: `${startH}px`,
-          opacity: 1,
-          paddingTop: '',
-          transform: 'translateY(0)',
-        },
-        {
-          height: '0px',
-          opacity: 0,
-          paddingTop: '0px',
-          transform: `translateY(-${Math.round(DISCLOSURE_TIMING.bodyFromY * 0.5)}px)`,
-        },
-      ],
-      {
-        duration: DISCLOSURE_TIMING.closeMs,
-        easing: DISCLOSURE_TIMING.easeClose,
-        fill: 'forwards',
-      },
-    );
-    anims.push(shell);
-
-    shell.addEventListener(
-      'finish',
-      () => {
-        if (signal.aborted || !details.isConnected) return;
-        finishClose(details, body, running);
-      },
-      { once: true },
-    );
-
-    running.set(details, anims);
+  awaitShellSettle(details, finishers, signal, 'close', () => {
+    details.open = false;
+    details.classList.remove('is-disclosure-closing');
   });
-}
-
-/**
- * @param {HTMLDetailsElement} details
- * @param {HTMLElement} body
- * @param {WeakMap<HTMLDetailsElement, Animation[]>} running
- */
-function finishOpen(details, body, running) {
-  running.delete(details);
-  clearBodyStyles(body);
-  details.classList.remove('is-disclosure-opening');
-  details.classList.add('is-disclosure-open');
-}
-
-/**
- * @param {HTMLDetailsElement} details
- * @param {HTMLElement} body
- * @param {WeakMap<HTMLDetailsElement, Animation[]>} running
- */
-function finishClose(details, body, running) {
-  running.delete(details);
-  details.open = false;
-  clearBodyStyles(body);
-  clearChildrenStyles(body);
-  details.classList.remove('is-disclosure-closing');
-}
-
-/**
- * @param {HTMLElement} body
- */
-function clearBodyStyles(body) {
-  body.style.height = '';
-  body.style.opacity = '';
-  body.style.paddingTop = '';
-  body.style.transform = '';
-  body.style.overflow = '';
-}
-
-/**
- * @param {HTMLElement} body
- */
-function clearChildrenStyles(body) {
-  for (const kid of body.children) {
-    if (kid instanceof HTMLElement) {
-      kid.style.opacity = '';
-      kid.style.transform = '';
-    }
-  }
-}
-
-/**
- * @param {HTMLElement} body
- * @param {AbortSignal} signal
- * @returns {Animation[]}
- */
-function staggerChildrenOpen(body, signal) {
-  /** @type {Animation[]} */
-  const anims = [];
-  const kids = [...body.children].filter((n) => n instanceof HTMLElement);
-
-  kids.forEach((kid, i) => {
-    kid.style.opacity = '0';
-    kid.style.transform = `translateY(${DISCLOSURE_TIMING.bodyFromY}px)`;
-    const anim = kid.animate(
-      [
-        { opacity: 0, transform: `translateY(${DISCLOSURE_TIMING.bodyFromY}px)` },
-        { opacity: 1, transform: 'translateY(0)' },
-      ],
-      {
-        duration: DISCLOSURE_TIMING.childMs,
-        delay: DISCLOSURE_TIMING.openDelayMs + i * DISCLOSURE_TIMING.staggerMs,
-        easing: DISCLOSURE_TIMING.easeOpen,
-        fill: 'forwards',
-      },
-    );
-    anim.addEventListener(
-      'finish',
-      () => {
-        if (signal.aborted) return;
-        kid.style.opacity = '';
-        kid.style.transform = '';
-      },
-      { once: true },
-    );
-    anims.push(anim);
-  });
-
-  return anims;
-}
-
-/**
- * @param {HTMLElement} body
- * @param {AbortSignal} signal
- * @returns {Animation[]}
- */
-function staggerChildrenClose(body, signal) {
-  /** @type {Animation[]} */
-  const anims = [];
-  const kids = [...body.children].filter((n) => n instanceof HTMLElement);
-
-  kids.forEach((kid, i) => {
-    const anim = kid.animate(
-      [
-        { opacity: 1, transform: 'translateY(0)' },
-        {
-          opacity: 0,
-          transform: `translateY(${Math.round(DISCLOSURE_TIMING.bodyFromY * 0.5)}px)`,
-        },
-      ],
-      {
-        duration: DISCLOSURE_TIMING.childCloseMs,
-        delay: i * DISCLOSURE_TIMING.closeStaggerMs,
-        easing: DISCLOSURE_TIMING.easeClose,
-        fill: 'forwards',
-      },
-    );
-    anim.addEventListener(
-      'finish',
-      () => {
-        if (signal.aborted) return;
-        kid.style.opacity = '';
-        kid.style.transform = '';
-      },
-      { once: true },
-    );
-    anims.push(anim);
-  });
-
-  return anims;
 }
 
 /**
@@ -464,10 +281,10 @@ function queuePendingOpenNative(details, signal) {
 /**
  * @param {HTMLDetailsElement} details
  * @param {AbortSignal} signal
- * @param {WeakMap<HTMLDetailsElement, Animation[]>} running
+ * @param {WeakMap<HTMLDetailsElement, () => void>} finishers
  * @param {{ instant: boolean }} opts
  */
-function queuePendingOpen(details, signal, running, opts) {
+function queuePendingOpen(details, signal, finishers, opts) {
   const step = details.closest('[data-reveal-step]');
 
   const run = () => {
@@ -479,7 +296,7 @@ function queuePendingOpen(details, signal, running, opts) {
       delete details.dataset.disclosurePendingOpen;
       return;
     }
-    openDisclosure(details, running, signal);
+    openDisclosure(details, finishers, signal);
     delete details.dataset.disclosurePendingOpen;
   };
 
