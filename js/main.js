@@ -185,7 +185,9 @@ function onSelectTable(id) {
   // setForm emits once; if faculty was remapped for the new table, refresh again.
   if (state.facultyId !== facultyBefore) emit();
 
-  const closeAfter = prefersReducedMotion() ? 0 : 400;
+  // Cover the board dissolve briefly, then leave — short enough to feel
+  // instant, long enough that empty chrome doesn't flash through the dialog.
+  const closeAfter = prefersReducedMotion() ? 0 : 180;
   window.setTimeout(() => {
     tableMenuOpen = false;
     renderHeroChrome();
@@ -272,7 +274,9 @@ function onSelectFaculty(id) {
   // the overlay still covers it, then leave — never dissolve in the open.
   setFaculty(id);
 
-  const closeAfter = prefersReducedMotion() ? 0 : 400;
+  // Cover the board dissolve briefly, then leave — short enough to feel
+  // instant, long enough that empty chrome doesn't flash through the dialog.
+  const closeAfter = prefersReducedMotion() ? 0 : 180;
   window.setTimeout(() => {
     if (state.facultyId !== id) return;
     facultyMenuOpen = false;

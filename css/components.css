@@ -23,7 +23,8 @@
   transition: background-color var(--select-ms) var(--select-ease);
 }
 
-/* Full-height ink tick — clipped by row radius on first/last. */
+/* Full-height ink tick — clipped by row radius on first/last.
+   Appear: soft fade. Leave: instant (no shrink / dissolve). */
 .overview-row::before {
   content: "";
   position: absolute;
@@ -32,9 +33,8 @@
   bottom: 0;
   width: 2px;
   background: var(--select-line);
-  transform: scaleY(0);
-  transform-origin: center;
-  transition: transform var(--select-ms) var(--select-ease);
+  opacity: 0;
+  transition: opacity 0ms linear;
   pointer-events: none;
 }
 
@@ -74,7 +74,8 @@
 }
 
 .overview-row.selected::before {
-  transform: scaleY(1);
+  opacity: 1;
+  transition: opacity var(--select-ms) var(--select-ease);
 }
 
 .ov-mark {

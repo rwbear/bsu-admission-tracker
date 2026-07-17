@@ -53,7 +53,7 @@
   --max: 44rem;
   --command-h: 3.25rem;
   --transition: 160ms ease;
-  /* Selection fills — longer, non-linear so active state never pops. */
+  /* Selection fills — snappy but still non-linear. */
   --select-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --select-ms: 220ms;
+  --select-ms: 180ms;
 }
