@@ -350,8 +350,14 @@ html.method-overlay-open {
   inset: 0;
   display: grid;
   place-items: center;
-  padding: var(--space-5);
+  /* Tighter pad on short visual viewports (keyboard open). */
+  padding: max(0.75rem, env(safe-area-inset-top, 0px))
+    max(0.75rem, env(safe-area-inset-right, 0px))
+    max(0.75rem, env(safe-area-inset-bottom, 0px))
+    max(0.75rem, env(safe-area-inset-left, 0px));
   pointer-events: none;
+  /* JS pinOverlayShell overrides top/left/width/height to visualViewport. */
+  box-sizing: border-box;
 }
 
 .faculty-overlay-backdrop {
@@ -373,7 +379,8 @@ html.method-overlay-open {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   width: min(100%, 28rem);
-  max-height: min(70vh, 28rem);
+  /* dvh tracks the visible viewport better than vh when the keyboard is up. */
+  max-height: min(70dvh, 70vh, 28rem);
   margin: 0;
   padding: 0;
   border: 1px solid var(--line);
@@ -408,9 +415,10 @@ html.method-overlay-open {
 
 .faculty-overlay-shell.is-motion .faculty-overlay {
   animation: none;
-  /* Fixed height while open so filtering never shrinks the dialog. */
-  height: min(70vh, 28rem);
-  max-height: min(70vh, 28rem);
+  /* Fixed height while open so filtering never shrinks the dialog.
+     pinOverlayShell overrides these with visualViewport-based px on mobile. */
+  height: min(70dvh, 70vh, 28rem);
+  max-height: min(70dvh, 70vh, 28rem);
   opacity: 0;
   /* Rise only — scale left a GPU flicker on close (same fix as method sheet). */
   transform: translateY(0.4rem);
@@ -440,7 +448,7 @@ html.method-overlay-open {
 .faculty-overlay.method-overlay {
   grid-template-rows: auto minmax(0, 1fr);
   height: auto;
-  max-height: min(70vh, 28rem);
+  max-height: min(70dvh, 70vh, 28rem);
   animation: none;
 }
 
@@ -463,7 +471,7 @@ html.method-overlay-open {
 .faculty-overlay-shell.method-shell.is-motion .faculty-overlay.method-overlay {
   animation: none;
   height: auto;
-  max-height: min(70vh, 28rem);
+  max-height: min(70dvh, 70vh, 28rem);
   opacity: 0;
   transform: translateY(0.4rem);
   transition:
@@ -581,6 +589,7 @@ html.method-overlay-open {
   min-height: 0;
   padding: 0 var(--space-2) var(--space-3);
   -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .faculty-option {
@@ -591,6 +600,8 @@ html.method-overlay-open {
   gap: var(--space-3);
   width: 100%;
   margin: 0;
+  /* Comfortable touch target while search keyboard is up. */
+  min-height: 2.75rem;
   padding: 0.75rem 0.75rem;
   border: 0;
   border-radius: var(--radius-sm);
@@ -600,7 +611,9 @@ html.method-overlay-open {
   color: var(--ink);
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
+  touch-action: none; /* option-activate owns pan vs tap */
   transition: background-color var(--select-ms) var(--select-ease);
+  user-select: none;
 }
 
 /* Full-height tick — cut by the option’s own border-radius.
