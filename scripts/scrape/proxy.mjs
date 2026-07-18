@@ -8,7 +8,7 @@ function sleep(ms) {
 }
 
 const UA =
-  'Mozilla/5.0 (compatible; ProhodAdmissionBot/2.0; +https://github.com/rwbear/bsu-admission-tracker)';
+  'Mozilla/5.0 (compatible; RwbAdmissionBot/2.0; +https://github.com/rwbear/bsu-admission-tracker)';
 
 /** @type {string | null} */
 let cachedProxy = null;
@@ -63,7 +63,7 @@ export async function discoverHttpProxies() {
  */
 export function curlFetch(url, opts = {}) {
   const timeoutSec = opts.timeoutSec ?? 30;
-  const dir = mkdtempSync(join(tmpdir(), 'prohod-fetch-'));
+  const dir = mkdtempSync(join(tmpdir(), 'rwb-fetch-'));
   const out = join(dir, 'body');
   try {
     const args = [

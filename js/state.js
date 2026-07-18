@@ -1,7 +1,16 @@
 import { DEFAULT_FACULTY_ID } from './faculties.js';
 import { DEFAULT_TABLE_ID } from './tables.js';
 
+/** Current prefs namespace — never expose legacy product nickname in storage keys. */
 const KEYS = {
+  score: 'rwb-sb-score',
+  selected: 'rwb-sb-selected',
+  faculty: 'rwb-sb-faculty',
+  form: 'rwb-sb-form',
+};
+
+/** Pre-rename keys — read once, then migrate. */
+const LEGACY_KEYS = {
   score: 'prohod-sb-score',
   selected: 'prohod-sb-selected',
   faculty: 'prohod-sb-faculty',
@@ -52,21 +61,45 @@ export function parseStoredScore(raw) {
   return n;
 }
 
+/**
+ * Read current key, falling back to legacy once and migrating.
+ * @param {keyof typeof KEYS} name
+ */
+function readPref(name) {
+  const cur = localStorage.getItem(KEYS[name]);
+  if (cur != null) return cur;
+  const legacy = localStorage.getItem(LEGACY_KEYS[name]);
+  if (legacy == null) return null;
+  localStorage.setItem(KEYS[name], legacy);
+  localStorage.removeItem(LEGACY_KEYS[name]);
+  return legacy;
+}
+
+/**
+ * @param {keyof typeof KEYS} name
+ * @param {string | null} value
+ */
+function writePref(name, value) {
+  if (value) localStorage.setItem(KEYS[name], value);
+  else localStorage.removeItem(KEYS[name]);
+  localStorage.removeItem(LEGACY_KEYS[name]);
+}
+
 export function loadPrefs() {
-  const score = parseStoredScore(localStorage.getItem(KEYS.score));
+  const score = parseStoredScore(readPref('score'));
   if (score != null) {
     state.score = score;
     state.scoreSubmitted = true;
   } else {
     state.score = null;
     state.scoreSubmitted = false;
-    localStorage.removeItem(KEYS.score);
+    writePref('score', null);
   }
 
-  state.selectedId = localStorage.getItem(KEYS.selected);
-  const savedFaculty = localStorage.getItem(KEYS.faculty);
+  state.selectedId = readPref('selected');
+  const savedFaculty = readPref('faculty');
   state.facultyId = savedFaculty || DEFAULT_FACULTY_ID;
-  const savedForm = localStorage.getItem(KEYS.form);
+  const savedForm = readPref('form');
   state.formId = savedForm || DEFAULT_TABLE_ID;
 }
 
@@ -74,17 +107,17 @@ export function setScore(value) {
   if (value == null || value === '') {
     state.score = null;
     state.scoreSubmitted = false;
-    localStorage.removeItem(KEYS.score);
+    writePref('score', null);
   } else {
     const n = parseStoredScore(value);
     if (n == null) {
       state.score = null;
       state.scoreSubmitted = false;
-      localStorage.removeItem(KEYS.score);
+      writePref('score', null);
     } else {
       state.score = n;
       state.scoreSubmitted = true;
-      localStorage.setItem(KEYS.score, String(state.score));
+      writePref('score', String(state.score));
     }
   }
   emit();
@@ -95,8 +128,7 @@ export function setScore(value) {
  */
 export function setSelected(id) {
   state.selectedId = id;
-  if (id) localStorage.setItem(KEYS.selected, id);
-  else localStorage.removeItem(KEYS.selected);
+  writePref('selected', id);
   emit();
 }
 
@@ -106,19 +138,23 @@ export function setSelected(id) {
  */
 export function quietSetSelected(id) {
   state.selectedId = id;
-  if (id) localStorage.setItem(KEYS.selected, id);
-  else localStorage.removeItem(KEYS.selected);
+  writePref('selected', id);
 }
 
 /**
  * @param {string | null} id
+ * @param {string | null} [preferredSelectedId] specialty to keep after faculty change
  */
-export function setFaculty(id) {
+export function setFaculty(id, preferredSelectedId = null) {
   state.facultyId = id;
-  if (id) localStorage.setItem(KEYS.faculty, id);
-  else localStorage.removeItem(KEYS.faculty);
-  state.selectedId = null;
-  localStorage.removeItem(KEYS.selected);
+  writePref('faculty', id);
+  if (preferredSelectedId) {
+    state.selectedId = preferredSelectedId;
+    writePref('selected', preferredSelectedId);
+  } else {
+    state.selectedId = null;
+    writePref('selected', null);
+  }
   emit();
 }
 
@@ -127,10 +163,20 @@ export function setFaculty(id) {
  */
 export function setForm(id) {
   state.formId = id;
-  if (id) localStorage.setItem(KEYS.form, id);
-  else localStorage.removeItem(KEYS.form);
+  writePref('form', id);
   // Switching monitoring table resets faculty scope + selection.
   state.selectedId = null;
-  localStorage.removeItem(KEYS.selected);
+  writePref('selected', null);
   emit();
+}
+
+/** Pref key helpers for sync paths that write without going through setters. */
+export const prefKeys = KEYS;
+
+export function writeFormPref(id) {
+  writePref('form', id);
+}
+
+export function writeFacultyPref(id) {
+  writePref('faculty', id);
 }

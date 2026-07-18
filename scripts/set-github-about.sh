@@ -5,7 +5,7 @@
 set -euo pipefail
 
 REPO="${REPO:-rwbear/bsu-admission-tracker}"
-DESC='Визуализация проходных таблиц в live формате. Введите свой проходной балл и увидите своё место в конкурсе. made by: r.w.b. | production'
+DESC='Введи балл и отследи своё место в Конкурсе БГУ по live-таблицам и графикам.'
 HOME_URL='https://rwbear.github.io/bsu-admission-tracker/'
 
 if [[ -z "${GH_TOKEN:-${GITHUB_TOKEN:-}}" ]] && ! gh auth status >/dev/null 2>&1; then
