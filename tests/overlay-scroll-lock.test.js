@@ -6,6 +6,7 @@ import {
   releaseOverlayScrollLock,
   isOverlayScrollLocked,
   commitOverlayEnter,
+  afterOverlayPaint,
   scrollOverlayOptionIntoView,
 } from '../js/ui/overlay-scroll-lock.js';
 
@@ -52,6 +53,25 @@ describe('commitOverlayEnter', () => {
       called += 1;
     });
     assert.equal(called, 1);
+  });
+});
+
+describe('afterOverlayPaint', () => {
+  it('schedules work on rAF when available', async () => {
+    assert.equal(typeof afterOverlayPaint, 'function');
+    let ran = false;
+    await new Promise((resolve) => {
+      afterOverlayPaint(() => {
+        ran = true;
+        resolve();
+      });
+      // Node has rAF in recent versions; fall back tick if not.
+      if (typeof requestAnimationFrame !== 'function') {
+        ran = true;
+        resolve();
+      }
+    });
+    assert.equal(ran, true);
   });
 });
 

@@ -130,11 +130,22 @@ input {
   -webkit-appearance: none;
   text-align: end;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background var(--transition),
+    border-color var(--transition);
 }
 
 .command-meta:hover {
   background: color-mix(in srgb, var(--ink) 4%, transparent);
   border-color: color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+/* Instant press — ease only on release. */
+.command-meta:active {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border-color: color-mix(in srgb, var(--line) 85%, transparent);
+  transition-duration: 0ms;
 }
 
 .command-meta:focus-visible {
@@ -229,6 +240,7 @@ input {
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: color var(--transition), background var(--transition);
 }
 
@@ -236,6 +248,12 @@ input {
 .table-picker.is-open .table-trigger {
   color: var(--ink-dim);
   background: var(--soft);
+}
+
+.table-trigger:active {
+  color: var(--ink-dim);
+  background: var(--soft);
+  transition-duration: 0ms;
 }
 
 .table-trigger:focus-visible {
@@ -304,6 +322,7 @@ input {
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: color var(--transition), background var(--transition);
 }
 
@@ -311,6 +330,12 @@ input {
 .faculty-picker.is-open .faculty-trigger {
   color: var(--ink);
   background: var(--soft);
+}
+
+.faculty-trigger:active {
+  color: var(--ink);
+  background: var(--soft);
+  transition-duration: 0ms;
 }
 
 .faculty-trigger:focus-visible {
@@ -694,6 +719,7 @@ html.updates-overlay-open {
   text-align: left;
   color: var(--ink);
   overflow: hidden;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--select-ms) var(--select-ease);
 }
@@ -724,6 +750,7 @@ html.updates-overlay-open {
 
 .faculty-option:active {
   background-color: var(--select);
+  transition-duration: 0ms;
 }
 
 /* Keyboard only — never flash an inset ring on pointer click. */
@@ -853,6 +880,8 @@ html.updates-overlay-open {
   text-transform: uppercase;
   font-size: var(--text-sm);
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: opacity var(--transition), transform var(--transition);
 }
 
@@ -861,7 +890,9 @@ html.updates-overlay-open {
 }
 
 .btn-apply:active {
+  opacity: 0.88;
   transform: translateY(1px);
+  transition-duration: 0ms;
 }
 
 .banner {

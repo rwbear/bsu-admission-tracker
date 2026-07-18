@@ -85,14 +85,32 @@ export function focusNoScroll(node) {
  * be added synchronously — the opacity/transform transition still runs, and
  * the first paint already includes the enter, with no blank waiting frame.
  *
+ * Keep `open` to class toggles only. Defer focus / list scroll with
+ * `afterOverlayPaint` so layout work does not block the first open frame.
+ *
  * @param {HTMLElement} shell
- * @param {() => void} open add `.is-open`, focus, list scroll, etc.
+ * @param {() => void} open add `.is-open` (and nothing layout-heavy)
  */
 export function commitOverlayEnter(shell, open) {
   if (!shell || typeof open !== 'function') return;
   if (typeof shell.offsetWidth !== 'number') return;
   void shell.offsetWidth;
   open();
+}
+
+/**
+ * Run after the browser has a chance to paint the open shell.
+ * @param {() => void} fn
+ */
+export function afterOverlayPaint(fn) {
+  if (typeof fn !== 'function') return;
+  if (typeof requestAnimationFrame !== 'function') {
+    fn();
+    return;
+  }
+  requestAnimationFrame(() => {
+    fn();
+  });
 }
 
 /**
