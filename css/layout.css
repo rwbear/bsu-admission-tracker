@@ -262,11 +262,8 @@ input {
   color: var(--ink-faint);
 }
 
-html.table-overlay-open {
-  overflow: hidden;
-}
-
-#table-overlay-root {
+#table-overlay-root,
+#method-overlay-root {
   position: relative;
   z-index: 80;
 }
@@ -333,7 +330,9 @@ html.table-overlay-open {
   transform: rotate(0deg);
 }
 
-html.faculty-overlay-open {
+html.faculty-overlay-open,
+html.table-overlay-open,
+html.method-overlay-open {
   overflow: hidden;
 }
 
@@ -421,6 +420,39 @@ html.faculty-overlay-open {
 .faculty-overlay-shell.is-motion.is-leaving .faculty-overlay {
   opacity: 0;
   transform: translateY(0.4rem) scale(0.985);
+}
+
+/* Methodology sheet — same shell motion, content-sized (not list-fixed) */
+.faculty-overlay.method-overlay {
+  grid-template-rows: auto minmax(0, 1fr);
+  height: auto;
+  max-height: min(70vh, 28rem);
+}
+
+.faculty-overlay-shell.is-motion .faculty-overlay.method-overlay {
+  height: auto;
+  max-height: min(70vh, 28rem);
+}
+
+.method-overlay-body {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-2) var(--space-4) var(--space-5);
+  display: grid;
+  gap: var(--space-3);
+  -webkit-overflow-scrolling: touch;
+}
+
+.method-overlay-body:focus {
+  outline: none;
+}
+
+.method-overlay-body p {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--ink-dim);
 }
 
 .faculty-overlay:focus {

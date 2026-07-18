@@ -34,6 +34,12 @@ import { patchOptionSelection } from './ui/selection-list.js';
 import { renderFacultyPicker } from './ui/faculty-picker.js';
 import { renderTablePicker } from './ui/table-picker.js';
 import {
+  armMethodSheetChrome,
+  closeMethodSheet,
+  isMethodSheetOpen,
+  METHOD_SHEET,
+} from './ui/method-sheet.js';
+import {
   formatCountdown,
   resolvePollMs,
   resolveEffectivePollMs,
@@ -152,6 +158,7 @@ function closeTableMenu() {
 }
 
 function openTableMenu() {
+  closeMethodSheet({ restoreFocus: false });
   closeFacultyMenu();
   tableMenuOpen = true;
   tableSearchQuery = '';
@@ -238,6 +245,7 @@ function closeFacultyMenu() {
 }
 
 function openFacultyMenu() {
+  closeMethodSheet({ restoreFocus: false });
   closeTableMenu();
   facultyMenuOpen = true;
   facultySearchQuery = '';
@@ -728,7 +736,28 @@ function bindPickerChrome() {
   if (facultyOutsideBound) return;
   facultyOutsideBound = true;
 
+  armMethodSheetChrome({
+    beforeOpen: () => {
+      // Silent — don't steal focus back to faculty/table triggers.
+      if (tableMenuOpen) {
+        tableMenuOpen = false;
+        tableSearchQuery = '';
+        renderTableChrome();
+      }
+      if (facultyMenuOpen) {
+        facultyMenuOpen = false;
+        facultySearchQuery = '';
+        renderFacultyChrome();
+      }
+    },
+  });
+
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isMethodSheetOpen()) {
+      e.preventDefault();
+      closeMethodSheet();
+      return;
+    }
     if (e.key === 'Escape' && tableMenuOpen) {
       e.preventDefault();
       closeTableMenu();
@@ -740,11 +769,13 @@ function bindPickerChrome() {
       return;
     }
 
-    const overlayId = facultyMenuOpen
-      ? 'faculty-overlay'
-      : tableMenuOpen
-        ? 'table-overlay'
-        : null;
+    const overlayId = isMethodSheetOpen()
+      ? METHOD_SHEET.overlayId
+      : facultyMenuOpen
+        ? 'faculty-overlay'
+        : tableMenuOpen
+          ? 'table-overlay'
+          : null;
     if (!overlayId) return;
 
     // Soft Tab trap inside the open dialog (search + options + close).

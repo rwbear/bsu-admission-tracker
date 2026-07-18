@@ -8,11 +8,16 @@ import {
   formatQuotaNote,
   buildHistCaption,
   summarizeStatuses,
-} from './charts.js?v=20260717ds';
+} from './charts.js?v=20260717ms';
 import { primeReveal, finalizeReveal } from './reveal.js';
 import { armScrollAwaken, disposeScrollAwaken } from './awaken.js';
 import { armPanelDisclosures, disposePanelDisclosures } from './panel-disclosure.js';
 import { shouldAutoOpenMoreDetails } from './detail-density.js';
+import {
+  openMethodSheet,
+  closeMethodSheet,
+  METHOD_SHEET,
+} from './method-sheet.js';
 
 /**
  * @param {object} row
@@ -329,27 +334,34 @@ function buildDetailInner(row, score, meta) {
   );
   if (moreOpen) moreDetails.setAttribute('open', '');
 
-  const methodInner = [
-    el('p', {
-      text: 'Места идут сверху: сначала более высокие баллы, пока не закроется план общего конкурса.',
-    }),
-    el('p', {
-      text: '«Подробные данные» повторяют левые колонки мониторинга: план, целевая, БВИ (без вступительных — часто олимпиады), вне конкурса, по конкурсу. «Мест в общем» = план минус уже занятые до конкурса места.',
-    }),
-    el('p', {
-      text: '«Над тобой» внутри твоего интервала — оценка: баллы в полосе считаем равномерно. Это не очередь приёмной. БВИ и вне конкурса в гистограмме не стоят «над тобой» — их там нет.',
-    }),
-    el('p', {
-      text: 'Статус («В зоне / На грани / Ниже») смотрит на расчётный балл. Место смотрит на людей выше тебя. Иногда они расходятся — оба сигнала остаются оценкой по таблице БГУ, не приказом.',
-    }),
-  ];
-  const method = revealStep(
-    el('details', { className: 'panel-details method-details' }, [
-      el('summary', { text: 'Как считается место' }),
-      el('div', { className: 'panel-details-body' }, [
-        el('div', { className: 'panel-details-inner' }, methodInner),
-      ]),
-    ]),
+  const methodTrigger = el('button', {
+    className: 'detail-method-trigger',
+    id: METHOD_SHEET.triggerId,
+    type: 'button',
+    'aria-haspopup': 'dialog',
+    'aria-controls': METHOD_SHEET.overlayId,
+    text: 'Как считается место',
+  });
+  methodTrigger.addEventListener('click', () => {
+    openMethodSheet({ returnFocusId: METHOD_SHEET.triggerId });
+  });
+
+  /** @type {Node[]} */
+  const footerKids = [methodTrigger];
+  if (row.sourceUrl) {
+    footerKids.push(
+      el('a', {
+        className: 'detail-link',
+        href: row.sourceUrl,
+        target: '_blank',
+        rel: 'noopener',
+        text: 'Открыть источник →',
+      }),
+    );
+  }
+
+  const footer = revealStep(
+    el('div', { className: 'detail-footer' }, footerKids),
     step++,
   );
 
@@ -362,28 +374,13 @@ function buildDetailInner(row, score, meta) {
     primaryMetrics,
     noteEl,
     moreDetails,
-    method,
+    footer,
   ]);
 
   renderTableFacts(factsMount, row);
   renderPlanSlab(planMount, row);
   renderChanceTrack(trackMount, { ...row, score });
   renderHistogram(histMount, { ...row, score }, score);
-
-  if (row.sourceUrl) {
-    inner.append(
-      revealStep(
-        el('a', {
-          className: 'detail-link',
-          href: row.sourceUrl,
-          target: '_blank',
-          rel: 'noopener',
-          text: 'Открыть источник →',
-        }),
-        step++,
-      ),
-    );
-  }
 
   return inner;
 }
@@ -401,6 +398,8 @@ export function renderDetailPanel(container, row, score, meta = {}, motion = {})
   container.dataset.selectionKey = selectionKey;
   disposeScrollAwaken(container);
   disposePanelDisclosures(container);
+  // Trigger dies with the panel — never leave a sheet open over a new specialty.
+  closeMethodSheet({ instant: true, restoreFocus: false });
   container.innerHTML = '';
 
   if (!row) {
