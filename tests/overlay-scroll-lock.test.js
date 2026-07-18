@@ -12,6 +12,18 @@ describe('overlay scroll lock', () => {
     assert.ok(OVERLAY_LEAVE_MS >= 240);
   });
 
+  it('documents unlock must defeat smooth scroll-behavior', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { fileURLToPath } = await import('node:url');
+    const { dirname, join } = await import('node:path');
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '../js/ui/overlay-scroll-lock.js'),
+      'utf8',
+    );
+    assert.match(src, /behavior:\s*['"]instant['"]/);
+    assert.match(src, /scrollBehavior\s*=\s*['"]auto['"]/);
+  });
+
   it('locks body once for nested holders and unlocks on last release', () => {
     // jsdom-less: exercise the Set / depth logic via side-effect-free checks.
     // DOM style writes are no-ops without document.body in node — still validate API.

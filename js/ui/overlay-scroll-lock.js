@@ -8,8 +8,10 @@
  * Contract:
  * - `acquireOverlayScrollLock(id)` freezes the page via `body { position: fixed }`.
  * - Nested / overlapping holders use a Set — unlock only when the last releases.
- * - `releaseOverlayScrollLock(id)` restores scrollY with behavior: 'auto'.
+ * - `releaseOverlayScrollLock(id)` restores scrollY with behavior: 'instant'/'auto'.
  * - `focusNoScroll` for return-focus after close.
+ * - Callers must restore focus in the SAME synchronous turn as unlock
+ *   (before the browser can paint with focus on <body> after dialog removal).
  */
 
 /** @type {Set<string>} */
@@ -50,10 +52,15 @@ export function releaseOverlayScrollLock(id) {
   body.style.right = '';
   body.style.width = '';
 
+  // Defeat html { scroll-behavior: smooth } — animated restore = visible blink.
   const root = document.documentElement;
   const prev = root.style.scrollBehavior;
   root.style.scrollBehavior = 'auto';
-  window.scrollTo(0, lockY);
+  try {
+    window.scrollTo({ top: lockY, left: 0, behavior: 'instant' });
+  } catch {
+    window.scrollTo(0, lockY);
+  }
   root.style.scrollBehavior = prev;
 }
 

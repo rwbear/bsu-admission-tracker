@@ -2,7 +2,7 @@
  * Methodology sheet — faculty overlay chrome, bulletproof open/close.
  *
  * Scroll lock via shared overlay-scroll-lock (body position:fixed).
- * Opacity-first leave; teardown after backdrop transitionend.
+ * Opacity-first leave; focus restore + unlock in the same sync teardown turn.
  */
 
 import { el } from './dom.js';
@@ -186,16 +186,24 @@ export function closeMethodSheet(opts = {}) {
   const finish = () => {
     clearCloseTimer(host);
     open = false;
+    returnFocusId = null;
+
+    // Focus BEFORE remove so dialog teardown never drops focus to <body>
+    // (same contract as faculty/table — one sync turn, no paint gap).
+    if (restoreFocus && focusId) {
+      const trigger = document.getElementById(focusId);
+      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    } else {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement && shell?.contains(active)) {
+        active.blur();
+      }
+    }
+
     if (shell && host.contains(shell)) shell.remove();
     if (!host.querySelector('.method-shell')) host.innerHTML = '';
     document.documentElement.classList.remove('method-overlay-open');
     releaseOverlayScrollLock(LOCK_ID);
-    returnFocusId = null;
-
-    if (restoreFocus && focusId) {
-      const trigger = document.getElementById(focusId);
-      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
-    }
   };
 
   if (instant || !shell || prefersReducedMotion()) {
