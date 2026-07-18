@@ -2,13 +2,16 @@
  * Scroll awaken / sleep foundation for visual graphics.
  *
  * Contract:
- * - Mark graphic roots with `data-awaken="<kind>"` (chance | hist).
+ * - Mark graphic roots with `data-awaken="<kind>"` (plan | chance | hist).
  * - States: dormant → `.is-awake` → (optional) `.is-sleeping` → dormant.
+ * - Dormant and sleep-end must read as an empty shell (track/ridge only) —
+ *   no ghost fills, no partial hatch. Content exists only while awake.
  * - `armScrollAwaken(scope)` keeps an IntersectionObserver for the life of
  *   the scope: enter view → awaken, leave view → reverse sleep animation.
  * - Hysteresis: wake ≥ WAKE_RATIO, sleep ≤ SLEEP_RATIO (no threshold flicker).
  * - If under a `[data-reveal-step]` not yet `.is-revealed`, wait for
- *   `reveal:done` before waking (never animate into opacity 0).
+ *   `reveal:done` before waking (never animate into a hidden step).
+ * - Never sleep under `.is-panel-swapping` (height lock clips IO ratios).
  * - `.is-instant` skips intro on quiet/first paint; first sleep clears it
  *   so later cycles use full motion.
  * - Reduced motion: stay visually complete (no sleep cycle).
@@ -303,7 +306,8 @@ export function sleepEl(el, opts = {}) {
   }
 
   el.classList.add("is-sleeping");
-  // Keep `.is-awake` until settle so base dormant styles don't flash.
+  // Keep `.is-awake` until settle so base dormant styles don't flash
+  // under a half-finished sleep animation (ghost hatch / half fill).
 
   const timer = setTimeout(() => {
     if (!el.isConnected) {
@@ -314,6 +318,7 @@ export function sleepEl(el, opts = {}) {
       onSettled?.();
       return;
     }
+    // Drop both classes together → CSS dormant = empty shell.
     el.classList.remove("is-awake", "is-sleeping");
     el.dispatchEvent(new CustomEvent("sleep:done", { bubbles: true }));
     onSettled?.();
