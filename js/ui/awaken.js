@@ -2,13 +2,16 @@
  * Scroll awaken / sleep foundation for visual graphics.
  *
  * Contract:
- * - Mark graphic roots with `data-awaken="<kind>"` (chance | hist).
+ * - Mark graphic roots with `data-awaken="<kind>"` (plan | chance | hist).
  * - States: dormant → `.is-awake` → (optional) `.is-sleeping` → dormant.
+ * - Dormant and sleep-end must read as an empty shell (track/ridge only) —
+ *   no ghost fills, no partial hatch. Content exists only while awake.
  * - `armScrollAwaken(scope)` keeps an IntersectionObserver for the life of
  *   the scope: enter view → awaken, leave view → reverse sleep animation.
  * - Hysteresis: wake ≥ WAKE_RATIO, sleep ≤ SLEEP_RATIO (no threshold flicker).
  * - If under a `[data-reveal-step]` not yet `.is-revealed`, wait for
- *   `reveal:done` before waking (never animate into opacity 0).
+ *   `reveal:done` before waking (never animate into a hidden step).
+ * - Never sleep under `.is-panel-swapping` (height lock clips IO ratios).
  * - `.is-instant` skips intro on quiet/first paint; first sleep clears it
  *   so later cycles use full motion.
  * - Reduced motion: stay visually complete (no sleep cycle).
@@ -37,9 +40,10 @@ export const AWAKEN_SLEEP_MS = 420;
 /**
  * After a wake, ignore sleep for this long. Layout/IO flicker during reveal
  * or panel height settle was putting graphics to sleep mid-intro and waking
- * them again — CSS replayed plan-slab / chance fill twice on load.
+ * them again — CSS replayed plan-slab / chance fill twice on load / faculty
+ * select (dual-panel height lock clips IntersectionObserver).
  */
-export const AWAKEN_SLEEP_GRACE_MS = 700;
+export const AWAKEN_SLEEP_GRACE_MS = 900;
 
 /** @type {WeakMap<Element, number>} */
 const awakeAt = new WeakMap();
@@ -128,12 +132,16 @@ export function armScrollAwaken(scope, opts = {}) {
         step.removeEventListener("reveal:done", onDone);
         waitingOnReveal.delete(el);
         if (abort.signal.aborted || !el.isConnected) return;
+        // Always wake when the reveal step finishes — do not gate on
+        // visibilityRatio. During faculty dual-panel swaps the detail is
+        // height-locked + overflow:hidden; ratio can read ~0 while the
+        // cascade is intentionally introducing the graphic. Skipping here
+        // left plan-slab dormant (empty track) until a later IO pulse,
+        // which replayed the intro and looked broken.
         requestAnimationFrame(() => {
           if (abort.signal.aborted || !el.isConnected) return;
-          if (visibilityRatio(el) >= AWAKEN_WAKE_RATIO) {
-            clearSleepTimer(el);
-            awakenEl(el);
-          }
+          clearSleepTimer(el);
+          awakenEl(el);
         });
       };
       step.addEventListener("reveal:done", onDone, { once: true });
@@ -155,6 +163,8 @@ export function armScrollAwaken(scope, opts = {}) {
       return;
     }
     if (shouldDeferSleep(el)) return;
+    // Panel height settle clips descendants; IO reports "gone" falsely.
+    if (isUnderPanelSwap(el)) return;
     sleepEl(el, {
       settleMs: AWAKEN_SLEEP_MS,
       onSchedule: (timer) => {
@@ -198,6 +208,15 @@ export function disposeScrollAwaken(scope) {
   for (const t of prev.sleepTimers.values()) clearTimeout(t);
   prev.sleepTimers.clear();
   scopeState.delete(scope);
+}
+
+/**
+ * True while a sequential panel dissolve still owns layout (height lock +
+ * overflow clip). IO ratios are unreliable for descendants in this window.
+ * @param {Element} el
+ */
+export function isUnderPanelSwap(el) {
+  return Boolean(el?.closest?.(".is-panel-swapping"));
 }
 
 /**
@@ -287,7 +306,8 @@ export function sleepEl(el, opts = {}) {
   }
 
   el.classList.add("is-sleeping");
-  // Keep `.is-awake` until settle so base dormant styles don't flash.
+  // Keep `.is-awake` until settle so the sleep keyframes own the wipe;
+  // `:not(.is-awake)` hard-locks empty only after this timer.
 
   const timer = setTimeout(() => {
     if (!el.isConnected) {
@@ -298,7 +318,10 @@ export function sleepEl(el, opts = {}) {
       onSettled?.();
       return;
     }
-    el.classList.remove("is-awake", "is-sleeping");
+    // One atomic drop — never leave `.is-awake` without `.is-sleeping`
+    // (that would replay the enter wipe). CSS `:not(.is-awake)` then
+    // forces the blank track.
+    el.classList.remove("is-awake", "is-sleeping", "is-instant");
     el.dispatchEvent(new CustomEvent("sleep:done", { bubbles: true }));
     onSettled?.();
   }, settleMs);

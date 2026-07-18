@@ -8,7 +8,7 @@ import {
   formatQuotaNote,
   buildHistCaption,
   summarizeStatuses,
-} from './charts.js?v=20260718ol';
+} from './charts.js?v=20260718px';
 import { primeReveal, finalizeReveal } from './reveal.js';
 import { armScrollAwaken, disposeScrollAwaken } from './awaken.js';
 import { armPanelDisclosures, disposePanelDisclosures } from './panel-disclosure.js';
@@ -429,6 +429,8 @@ export function renderDetailPanel(container, row, score, meta = {}, motion = {})
   armPanelDisclosures(container, { reduceMotion });
 
   if (intro) {
+    // Plan stays dormant (empty soft track) under the reveal veil, then
+    // wakes once on reveal:done — clip wipe paints seats as one unit.
     primeReveal(inner);
     armScrollAwaken(container, { immediate: false, reduceMotion: false });
   } else {
