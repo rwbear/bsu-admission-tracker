@@ -39,6 +39,7 @@ import {
   isMethodSheetOpen,
   METHOD_SHEET,
 } from './ui/method-sheet.js';
+import { focusNoScroll } from './ui/overlay-scroll-lock.js';
 import {
   formatCountdown,
   resolvePollMs,
@@ -154,7 +155,7 @@ function closeTableMenu() {
   tableSearchQuery = '';
   renderTableChrome();
   const trigger = document.getElementById('table-trigger');
-  if (trigger instanceof HTMLElement) trigger.focus();
+  if (trigger instanceof HTMLElement) focusNoScroll(trigger);
 }
 
 function openTableMenu() {
@@ -165,7 +166,7 @@ function openTableMenu() {
   renderTableChrome();
   queueMicrotask(() => {
     const dialog = document.getElementById('table-overlay');
-    if (dialog instanceof HTMLElement) dialog.focus();
+    if (dialog instanceof HTMLElement) focusNoScroll(dialog);
   });
 }
 
@@ -180,7 +181,7 @@ function onSelectTable(id) {
     tableMenuOpen = false;
     renderHeroChrome();
     const trigger = document.getElementById('table-trigger');
-    if (trigger instanceof HTMLElement) trigger.focus();
+    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
     return;
   }
 
@@ -199,7 +200,7 @@ function onSelectTable(id) {
     tableMenuOpen = false;
     renderHeroChrome();
     const trigger = document.getElementById('table-trigger');
-    if (trigger instanceof HTMLElement) trigger.focus();
+    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
   }, closeAfter);
 }
 
@@ -240,8 +241,8 @@ function closeFacultyMenu() {
   window.setTimeout(() => {
     if (facultyMenuOpen) return;
     const trigger = document.getElementById('faculty-trigger');
-    if (trigger instanceof HTMLElement) trigger.focus();
-  }, 220);
+    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+  }, 280);
 }
 
 function openFacultyMenu() {
@@ -252,7 +253,7 @@ function openFacultyMenu() {
   renderFacultyChrome();
   queueMicrotask(() => {
     const dialog = document.getElementById('faculty-overlay');
-    if (dialog instanceof HTMLElement) dialog.focus();
+    if (dialog instanceof HTMLElement) focusNoScroll(dialog);
     const active = dialog?.querySelector('.faculty-option.is-active');
     if (active instanceof HTMLElement) {
       active.scrollIntoView({ block: 'nearest' });
@@ -273,8 +274,8 @@ function onSelectFaculty(id) {
     window.setTimeout(() => {
       if (facultyMenuOpen) return;
       const trigger = document.getElementById('faculty-trigger');
-      if (trigger instanceof HTMLElement) trigger.focus();
-    }, 220);
+      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    }, 280);
     return;
   }
 
@@ -292,8 +293,8 @@ function onSelectFaculty(id) {
     window.setTimeout(() => {
       if (facultyMenuOpen) return;
       const trigger = document.getElementById('faculty-trigger');
-      if (trigger instanceof HTMLElement) trigger.focus();
-    }, 220);
+      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    }, 280);
   }, closeAfter);
 }
 

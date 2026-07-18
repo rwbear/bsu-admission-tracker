@@ -1,28 +1,24 @@
 /**
  * Methodology sheet — faculty overlay chrome, bulletproof open/close.
  *
- * Why the old close blinked:
- * - `html { overflow: hidden }` is not a real scroll lock (esp. mobile).
- * - Unlock + DOM remove in one turn shifts the page under a fading dim.
- * - `html { scroll-behavior: smooth }` can animate scrollY restore → visible jump.
- * - Scale transform on leave paints a soft flicker on some GPUs.
- *
- * Contract now:
- * - Body `position: fixed` lock; restore scrollY with behavior: 'auto'.
- * - Opacity-first leave (no scale); teardown only after backdrop transitionend.
- * - Backdrop is a non-focusable div (pointerdown close).
- * - Focus restore uses preventScroll, after unlock.
+ * Scroll lock via shared overlay-scroll-lock (body position:fixed).
+ * Opacity-first leave; teardown after backdrop transitionend.
  */
 
 import { el } from './dom.js';
 import { METHOD_PARAGRAPHS } from './method-copy.js';
+import {
+  acquireOverlayScrollLock,
+  releaseOverlayScrollLock,
+  focusNoScroll,
+  OVERLAY_LEAVE_MS,
+} from './overlay-scroll-lock.js';
 
 const OVERLAY_ID = 'method-overlay-root';
 const DIALOG_ID = 'method-overlay';
 const TITLE_ID = 'method-overlay-title';
 const TRIGGER_ID = 'method-sheet-trigger';
-/** Fallback if transitionend never fires (must be ≥ CSS leave). */
-const CLOSE_MS_FULL = 280;
+const LOCK_ID = 'method';
 
 /** @type {ReturnType<typeof setTimeout> | null} */
 let closeTimer = null;
@@ -31,8 +27,6 @@ let returnFocusId = null;
 /** @type {null | (() => void)} */
 let beforeOpenHook = null;
 let open = false;
-let scrollLocked = false;
-let lockY = 0;
 
 /**
  * Wire mutual exclusion with faculty/table menus (from main.js).
@@ -75,48 +69,6 @@ function clearCloseTimer(host) {
   host._methodClosing = false;
 }
 
-function lockPageScroll() {
-  if (scrollLocked) return;
-  lockY = window.scrollY || window.pageYOffset || 0;
-  scrollLocked = true;
-  const { body } = document;
-  body.style.position = 'fixed';
-  body.style.top = `-${lockY}px`;
-  body.style.left = '0';
-  body.style.right = '0';
-  body.style.width = '100%';
-  document.documentElement.classList.add('method-overlay-open');
-}
-
-function unlockPageScroll() {
-  document.documentElement.classList.remove('method-overlay-open');
-  if (!scrollLocked) return;
-  scrollLocked = false;
-  const { body } = document;
-  body.style.position = '';
-  body.style.top = '';
-  body.style.left = '';
-  body.style.right = '';
-  body.style.width = '';
-  // Must defeat html { scroll-behavior: smooth } or restore animates = blink.
-  const root = document.documentElement;
-  const prev = root.style.scrollBehavior;
-  root.style.scrollBehavior = 'auto';
-  window.scrollTo(0, lockY);
-  root.style.scrollBehavior = prev;
-}
-
-/**
- * @param {HTMLElement} node
- */
-function focusNoScroll(node) {
-  try {
-    node.focus({ preventScroll: true });
-  } catch {
-    node.focus();
-  }
-}
-
 /**
  * @returns {boolean}
  */
@@ -140,7 +92,8 @@ export function openMethodSheet(opts = {}) {
   returnFocusId =
     opts.returnFocusId != null ? opts.returnFocusId : TRIGGER_ID;
 
-  lockPageScroll();
+  acquireOverlayScrollLock(LOCK_ID);
+  document.documentElement.classList.add('method-overlay-open');
 
   const backdrop = el('div', {
     className: 'faculty-overlay-backdrop method-shell-backdrop',
@@ -223,7 +176,8 @@ export function closeMethodSheet(opts = {}) {
   const shell = host.querySelector('.method-shell');
 
   if (!open && !shell) {
-    unlockPageScroll();
+    document.documentElement.classList.remove('method-overlay-open');
+    releaseOverlayScrollLock(LOCK_ID);
     return;
   }
 
@@ -234,7 +188,8 @@ export function closeMethodSheet(opts = {}) {
     open = false;
     if (shell && host.contains(shell)) shell.remove();
     if (!host.querySelector('.method-shell')) host.innerHTML = '';
-    unlockPageScroll();
+    document.documentElement.classList.remove('method-overlay-open');
+    releaseOverlayScrollLock(LOCK_ID);
     returnFocusId = null;
 
     if (restoreFocus && focusId) {
@@ -274,12 +229,12 @@ export function closeMethodSheet(opts = {}) {
   };
 
   if (backdrop) backdrop.addEventListener('transitionend', onEnd);
-  closeTimer = setTimeout(settle, CLOSE_MS_FULL);
+  closeTimer = setTimeout(settle, OVERLAY_LEAVE_MS);
 }
 
 export const METHOD_SHEET = Object.freeze({
   overlayId: DIALOG_ID,
   rootId: OVERLAY_ID,
   triggerId: TRIGGER_ID,
-  closeMs: CLOSE_MS_FULL,
+  closeMs: OVERLAY_LEAVE_MS,
 });
