@@ -33,21 +33,25 @@ describe('updates sheet', () => {
   });
 
   it('keeps Russian copy locked and frozen', () => {
-    assert.match(UPDATES_TITLE, /Как обновляются данные/);
+    assert.match(UPDATES_TITLE, /Схема обновления данных/);
     assert.match(UPDATES_LEDE, /Этот сервис не подключен к БГУ напрямую/);
     assert.match(UPDATES_LEDE, /abit\.bsu\.by/);
-    assert.match(UPDATES_LEDE, /стабильный прокси-канал/);
-    assert.match(UPDATES_LEDE, /каждые 4–5 минут/);
+    // Bot: arm 3 min + scrape ≈ tip every ~5–7 min (not the page's 3 min poll).
+    assert.match(UPDATES_LEDE, /примерно каждые 5–7 минут/);
+    assert.doesNotMatch(UPDATES_LEDE, /4–5 минут/);
     assert.match(UPDATES_FOOT, /Сайт всегда старается показать самый актуальный снимок/);
     assert.match(UPDATES_FOOT, /прокси-канал не сработал/);
     assert.match(UPDATES_FOOT, /помечает это в баннере/);
     assert.equal(UPDATES_FACTS.length, 3);
     assert.equal(UPDATES_FACTS[0].term, 'Данные HH:MM');
-    assert.match(UPDATES_FACTS[0].def, /снимка от бота/);
+    assert.match(UPDATES_FACTS[0].def, /скана от бота/);
     assert.equal(UPDATES_FACTS[1].term, 'След HH:MM');
     assert.match(UPDATES_FACTS[1].def, /следующего автоматического обновления/);
-    assert.doesNotMatch(UPDATES_FACTS[1].def, /вледуйщегг/);
+    assert.match(UPDATES_FACTS[1].def, /3 минуты/);
+    assert.doesNotMatch(UPDATES_FACTS[1].def, /вледуйщегг|следущего/);
     assert.equal(UPDATES_FACTS[2].term, 'Точка слева');
+    assert.match(UPDATES_FACTS[2].def, /следующего опроса/);
+    assert.doesNotMatch(UPDATES_FACTS[2].def, /следущего/);
     assert.match(UPDATES_FACTS[2].def, /~12 минут/);
     assert.ok(Object.isFrozen(UPDATES_FACTS));
     assert.ok(Object.isFrozen(UPDATES_FACTS[0]));
