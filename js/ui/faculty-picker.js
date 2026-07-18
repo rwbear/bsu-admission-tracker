@@ -12,6 +12,8 @@ import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
   focusNoScroll,
+  commitOverlayEnter,
+  scrollOverlayOptionIntoView,
   OVERLAY_LEAVE_MS,
 } from './overlay-scroll-lock.js';
 
@@ -312,20 +314,22 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
   host.append(shell);
   host._facultyOpts = opts;
 
-  if (prefersReducedMotion()) {
+  const reveal = () => {
     shell.classList.add('is-open');
     focusNoScroll(dialog);
+    scrollOverlayOptionIntoView(
+      list,
+      list.querySelector('.faculty-option.is-active'),
+    );
+  };
+
+  if (prefersReducedMotion()) {
+    reveal();
     return { dialog, search, list, shell };
   }
 
-  // Enter on next frames so the browser paints the initial (hidden) state first.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!host.contains(shell)) return;
-      shell.classList.add('is-open');
-      focusNoScroll(dialog);
-    });
-  });
+  // Sync flush + open — double-rAF sat invisible after tap on mobile.
+  commitOverlayEnter(shell, reveal);
 
   return { dialog, search, list, shell };
 }

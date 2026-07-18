@@ -157,26 +157,24 @@ function currentSpecialties() {
   return inTable.filter((s) => s.facultyId === state.facultyId);
 }
 
-function closeTableMenu() {
+function closeTableMenu(opts = {}) {
   if (!tableMenuOpen) return;
   tableMenuOpen = false;
   tableSearchQuery = '';
   renderTableChrome();
+  if (opts.restoreFocus === false) return;
   const trigger = document.getElementById('table-trigger');
   if (trigger instanceof HTMLElement) focusNoScroll(trigger);
 }
 
 function openTableMenu() {
   closeUpdatesSheet({ instant: true, restoreFocus: false });
-  closeMethodSheet({ restoreFocus: false });
-  closeFacultyMenu();
+  closeMethodSheet({ instant: true, restoreFocus: false });
+  closeFacultyMenu({ restoreFocus: false });
   tableMenuOpen = true;
   tableSearchQuery = '';
+  // Picker mounts + commitOverlayEnter handles focus/scroll — no microtask.
   renderTableChrome();
-  queueMicrotask(() => {
-    const dialog = document.getElementById('table-overlay');
-    if (dialog instanceof HTMLElement) focusNoScroll(dialog);
-  });
 }
 
 function toggleTableMenu() {
@@ -242,11 +240,12 @@ function renderTableChrome() {
   });
 }
 
-function closeFacultyMenu() {
+function closeFacultyMenu(opts = {}) {
   if (!facultyMenuOpen) return;
   facultyMenuOpen = false;
   facultySearchQuery = '';
   renderFacultyChrome();
+  if (opts.restoreFocus === false) return;
   window.setTimeout(() => {
     if (facultyMenuOpen) return;
     const trigger = document.getElementById('faculty-trigger');
@@ -256,19 +255,13 @@ function closeFacultyMenu() {
 
 function openFacultyMenu() {
   closeUpdatesSheet({ instant: true, restoreFocus: false });
-  closeMethodSheet({ restoreFocus: false });
-  closeTableMenu();
+  closeMethodSheet({ instant: true, restoreFocus: false });
+  closeTableMenu({ restoreFocus: false });
   facultyMenuOpen = true;
   facultySearchQuery = '';
+  // Picker mounts + commitOverlayEnter focuses/scrolls the list port —
+  // no microtask scrollIntoView (that fought body position:fixed on mobile).
   renderFacultyChrome();
-  queueMicrotask(() => {
-    const dialog = document.getElementById('faculty-overlay');
-    if (dialog instanceof HTMLElement) focusNoScroll(dialog);
-    const active = dialog?.querySelector('.faculty-option.is-active');
-    if (active instanceof HTMLElement) {
-      active.scrollIntoView({ block: 'nearest' });
-    }
-  });
 }
 
 function toggleFacultyMenu() {

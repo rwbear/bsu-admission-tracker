@@ -12,6 +12,8 @@ import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
   focusNoScroll,
+  commitOverlayEnter,
+  scrollOverlayOptionIntoView,
   OVERLAY_LEAVE_MS,
 } from './overlay-scroll-lock.js';
 
@@ -306,19 +308,21 @@ function mountOverlay(host, opts, tables, groups, query, selectedId) {
   host.append(shell);
   host._tableOpts = opts;
 
-  if (prefersReducedMotion()) {
+  const reveal = () => {
     shell.classList.add('is-open');
     focusNoScroll(dialog);
+    scrollOverlayOptionIntoView(
+      list,
+      list.querySelector('.faculty-option.is-active'),
+    );
+  };
+
+  if (prefersReducedMotion()) {
+    reveal();
     return { dialog, search, list, shell };
   }
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!host.contains(shell)) return;
-      shell.classList.add('is-open');
-      focusNoScroll(dialog);
-    });
-  });
+  commitOverlayEnter(shell, reveal);
 
   return { dialog, search, list, shell };
 }
