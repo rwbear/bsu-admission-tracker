@@ -9,8 +9,9 @@ name: Scrape admission tables
 # invoked with GITHUB_TOKEN. See:
 # https://docs.github.com/en/actions/using-workflows/triggering-a-workflow
 #
-# REQUIRED secret: SCRAPE_PROXY — stable HTTP proxy (cloud IPs cannot TLS
-# to abit.bsu.by). Public proxy lists are disabled on Actions.
+# Preferred secret: SCRAPE_PROXY — stable HTTP proxy (cloud IPs cannot TLS
+# to abit.bsu.by). When unset, Actions fall back to public proxy discovery
+# with strict formk1/minBytes gates so tables cannot be wiped by junk HTML.
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -52,15 +53,18 @@ jobs:
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "Scraping Pages branch: $BRANCH"
 
-      - name: Require SCRAPE_PROXY secret
+      - name: Proxy channel
+        id: proxy
         env:
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
         run: |
-          if [ -z "${SCRAPE_PROXY}" ]; then
-            echo "::error::SCRAPE_PROXY secret is required. Add a stable HTTP proxy under Settings → Secrets → Actions (http://user:pass@host:port). Cloud runners cannot TLS to abit.bsu.by; public proxy lists are not used on Actions."
-            exit 1
+          if [ -n "${SCRAPE_PROXY}" ]; then
+            echo "mode=trusted" >> "$GITHUB_OUTPUT"
+            echo "SCRAPE_PROXY is set — trusted channel only."
+          else
+            echo "mode=public" >> "$GITHUB_OUTPUT"
+            echo "::warning::SCRAPE_PROXY secret is not set. Falling back to public proxy discovery with formk1/minBytes gates. Add a stable proxy under Settings → Secrets → Actions for reliability."
           fi
-          echo "SCRAPE_PROXY is set (value hidden)."
 
       - name: Checkout Pages branch
         uses: actions/checkout@v4
@@ -84,7 +88,8 @@ jobs:
         id: scrape
         env:
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
-          SCRAPE_ALLOW_PUBLIC_PROXIES: "0"
+          # Trusted secret → pin to it. Missing secret → allow public discovery.
+          SCRAPE_ALLOW_PUBLIC_PROXIES: ${{ steps.proxy.outputs.mode == 'trusted' && '0' || '1' }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PROHOD_DATA_BRANCH: ${{ steps.target.outputs.branch }}
         run: npm run scrape
@@ -180,26 +185,26 @@ jobs:
 
       # Keep ~5-minute cadence without trusting cron or push-tick recursion.
       # workflow_dispatch always starts a run, even with GITHUB_TOKEN.
+      # Use -R always — early failures may skip checkout, so cwd is not a git repo.
       - name: Arm next scrape
         if: always() && !cancelled()
         env:
           GH_TOKEN: ${{ github.token }}
           THIS_RUN: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          BRANCH: ${{ steps.target.outputs.branch }}
         run: |
           set -e
           echo "Waiting 180s before arming the next scrape…"
           sleep 180
 
           # Avoid piling up if cron/manual already queued another run.
-          QUEUED=$(gh run list --workflow="Scrape admission tables" --status queued --limit 5 --json databaseId --jq 'length')
-          INPROG=$(gh run list --workflow="Scrape admission tables" --status in_progress --limit 5 --json databaseId --jq "[.[] | select(.databaseId != ${THIS_RUN})] | length")
+          QUEUED=$(gh run list -R "${REPO}" --workflow="Scrape admission tables" --status queued --limit 5 --json databaseId --jq 'length')
+          INPROG=$(gh run list -R "${REPO}" --workflow="Scrape admission tables" --status in_progress --limit 5 --json databaseId --jq "[.[] | select(.databaseId != ${THIS_RUN})] | length")
           if [ "${QUEUED:-0}" -gt 0 ] || [ "${INPROG:-0}" -gt 0 ]; then
             echo "Another scrape is already queued/in progress — skip dispatch (queued=${QUEUED}, other_in_progress=${INPROG})"
             exit 0
           fi
 
-          # Dispatch on the Pages/scrape branch (scripts + data live there).
-          # workflow_dispatch always starts a run, even with GITHUB_TOKEN.
-          BRANCH="${{ steps.target.outputs.branch }}"
-          gh workflow run "Scrape admission tables" --ref "${BRANCH}"
+          gh workflow run "Scrape admission tables" -R "${REPO}" --ref "${BRANCH}"
           echo "Dispatched next scrape via workflow_dispatch → ${BRANCH}"
