@@ -333,7 +333,7 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       const first = dialog.querySelector('.faculty-option');
-      if (first instanceof HTMLElement) first.focus();
+      if (first instanceof HTMLElement) focusNoScroll(first);
     }
   });
   // Focus must not scroll the page — iOS still pans visualViewport; pan
@@ -413,16 +413,21 @@ function teardownFacultyOverlay(host, shell, restoreFocus) {
  * @param {{ restoreFocus?: boolean }} [opts]
  */
 function beginCloseOverlay(host, opts = {}) {
-  const restoreFocus = opts.restoreFocus !== false;
-  host._facultyRestoreFocus = restoreFocus;
-
   const shell = host.querySelector('.faculty-overlay-shell');
   if (!shell) {
-    teardownFacultyOverlay(host, null, restoreFocus);
+    // Idle cleanup only — never focus the trigger here.
+    // renderBoard re-renders closed chrome constantly; stealing focus
+    // on every specialty/score update was a high-severity regression.
+    disposeFacultyViewport(host);
+    document.documentElement.classList.remove('faculty-overlay-open');
+    releaseOverlayScrollLock(LOCK_ID);
     return;
   }
+  // Already leaving — keep the restoreFocus flag from the close that started it
+  // (handoff with restoreFocus:false must not be overwritten by later paints).
   if (host._facultyClosing) return;
 
+  host._facultyRestoreFocus = opts.restoreFocus !== false;
   host._facultyClosing = true;
   shell.style.pointerEvents = 'none';
 

@@ -335,7 +335,7 @@ function mountOverlay(host, opts, tables, groups, query, selectedId) {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       const first = dialog.querySelector('.faculty-option');
-      if (first instanceof HTMLElement) first.focus();
+      if (first instanceof HTMLElement) focusNoScroll(first);
     }
   });
   searchWrap.append(search);
@@ -407,16 +407,17 @@ function teardownTableOverlay(host, shell, restoreFocus) {
  * @param {{ restoreFocus?: boolean }} [opts]
  */
 function beginCloseOverlay(host, opts = {}) {
-  const restoreFocus = opts.restoreFocus !== false;
-  host._tableRestoreFocus = restoreFocus;
-
   const shell = host.querySelector('.faculty-overlay-shell');
   if (!shell) {
-    teardownTableOverlay(host, null, restoreFocus);
+    // Idle cleanup only — never focus the trigger on routine chrome paints.
+    disposeTableViewport(host);
+    document.documentElement.classList.remove('table-overlay-open');
+    releaseOverlayScrollLock(LOCK_ID);
     return;
   }
   if (host._tableClosing) return;
 
+  host._tableRestoreFocus = opts.restoreFocus !== false;
   host._tableClosing = true;
   shell.style.pointerEvents = 'none';
   freezeTableViewport(host);

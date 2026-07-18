@@ -213,6 +213,9 @@ export function closeMethodSheet(opts = {}) {
 
   if (host._methodClosing) return;
   host._methodClosing = true;
+  // Drop the "open" flag immediately so Escape/Tab hand off to faculty/table
+  // while this shell is still fading out.
+  open = false;
 
   const dialog = host.querySelector(`#${DIALOG_ID}`);
   if (dialog instanceof HTMLElement) focusNoScroll(dialog);

@@ -61,11 +61,14 @@ export function bindOptionActivate(option, onActivate, opts = {}) {
     if (!tracking || pointerId !== e.pointerId) return;
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
-    if (Math.hypot(dx, dy) <= 2) return;
-    dragged = true;
-    if (scrollParent) {
+    const dist = Math.hypot(dx, dy);
+    // Pan the list as soon as the finger moves a little…
+    if (dist > 2 && scrollParent) {
       scrollParent.scrollTop = listScroll0 - dy;
     }
+    // …but only cancel the tap once movement exceeds the tap budget.
+    // (Old code marked dragged at 2px — iOS jitter ate real taps.)
+    if (dist > MOVE_PX) dragged = true;
   });
 
   option.addEventListener('pointerup', (e) => {
@@ -77,9 +80,7 @@ export function bindOptionActivate(option, onActivate, opts = {}) {
     } catch {
       /* ignore */
     }
-    if (dragged || Math.hypot(e.clientX - startX, e.clientY - startY) > MOVE_PX) {
-      return;
-    }
+    if (dragged) return;
     e.preventDefault();
     e.stopPropagation();
     fire();

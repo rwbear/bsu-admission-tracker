@@ -170,10 +170,7 @@ function openTableMenu() {
   tableMenuOpen = true;
   tableSearchQuery = '';
   renderTableChrome();
-  queueMicrotask(() => {
-    const dialog = document.getElementById('table-overlay');
-    if (dialog instanceof HTMLElement) focusNoScroll(dialog);
-  });
+  // Focus owned by table-picker openShellMotion — no second focus here.
 }
 
 function toggleTableMenu() {
@@ -771,12 +768,12 @@ function bindPickerChrome() {
       const active = document.activeElement;
       if (e.shiftKey && active === first) {
         e.preventDefault();
-        last.focus();
+        focusNoScroll(last);
         return;
       }
       if (!e.shiftKey && active === last) {
         e.preventDefault();
-        first.focus();
+        focusNoScroll(first);
         return;
       }
     }
@@ -825,14 +822,14 @@ function bindPickerChrome() {
         idx = selected >= 0 ? selected : 0;
       } else if (idx <= 0) {
         const search = document.getElementById(searchId);
-        if (search instanceof HTMLElement) search.focus();
+        if (search instanceof HTMLElement) focusNoScroll(search);
         return;
       } else {
         idx -= 1;
       }
     }
     const next = options[idx];
-    if (next instanceof HTMLElement) next.focus();
+    if (next instanceof HTMLElement) focusNoScroll(next);
   });
 }
 

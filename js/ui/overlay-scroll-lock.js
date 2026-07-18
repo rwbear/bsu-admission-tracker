@@ -61,19 +61,22 @@ export function releaseOverlayScrollLock(id) {
   root.style.overscrollBehavior = '';
 
   // Defeat html { scroll-behavior: smooth } — animated restore = visible blink.
+  const y = lockY;
   const prev = root.style.scrollBehavior;
   root.style.scrollBehavior = 'auto';
   try {
-    window.scrollTo({ top: lockY, left: 0, behavior: 'instant' });
+    window.scrollTo({ top: y, left: 0, behavior: 'instant' });
   } catch {
-    window.scrollTo(0, lockY);
+    window.scrollTo(0, y);
   }
   // Second paint: some mobile WebKits apply the unlock layout one frame late.
+  // Skip if another overlay locked again before the frame (handoff race).
   requestAnimationFrame(() => {
+    if (holders.size > 0) return;
     try {
-      window.scrollTo({ top: lockY, left: 0, behavior: 'instant' });
+      window.scrollTo({ top: y, left: 0, behavior: 'instant' });
     } catch {
-      window.scrollTo(0, lockY);
+      window.scrollTo(0, y);
     }
   });
   root.style.scrollBehavior = prev;

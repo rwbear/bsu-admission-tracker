@@ -20,6 +20,8 @@ describe('option activate (mobile search tap)', () => {
     assert.match(src, /scrollParent\.scrollTop/);
     assert.match(src, /pointerdown/);
     assert.match(src, /pointerup/);
+    // Tap budget must gate cancel — not the 2px pan threshold.
+    assert.match(src, /if \(dist > MOVE_PX\) dragged = true/);
   });
 
   it('faculty and table pickers wire scrollParent', () => {
