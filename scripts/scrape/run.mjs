@@ -6,6 +6,7 @@ import { scrapeBsuir } from './adapters/bsuir.mjs';
 import { scrapeBntu } from './adapters/bntu.mjs';
 import { scrapeGrsu } from './adapters/grsu.mjs';
 import { dedupeSpecs } from './normalize.mjs';
+import { retentionStateChanged } from './retention.mjs';
 import { sortFaculties } from '../../js/faculties.js';
 import {
   listCatalogTables,
@@ -60,21 +61,6 @@ function stablePayload(payload) {
     }
   }
   return JSON.stringify(copy);
-}
-
-/**
- * Retention flags must publish even when specialty rows are unchanged —
- * otherwise the client never learns a form/table failed this run.
- * @param {object | null | undefined} next
- * @param {object | null | undefined} prev
- */
-function retentionStateChanged(next, prev) {
-  const nextPrev = Boolean(next?.scrapeMeta?.retainedPrevious);
-  const prevPrev = Boolean(prev?.scrapeMeta?.retainedPrevious);
-  if (nextPrev !== prevPrev) return true;
-  const a = JSON.stringify([...(next?.scrapeMeta?.retainedFormIds || [])].map(String).sort());
-  const b = JSON.stringify([...(prev?.scrapeMeta?.retainedFormIds || [])].map(String).sort());
-  return a !== b;
 }
 
 async function main() {
