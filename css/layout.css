@@ -333,9 +333,14 @@ input {
 }
 
 html.faculty-overlay-open,
-html.table-overlay-open,
-html.method-overlay-open {
+html.table-overlay-open {
   overflow: hidden;
+}
+
+/* Method sheet locks via body position:fixed (see method-sheet.js).
+   overflow:hidden here would fight that restore and reintroduce blink. */
+html.method-overlay-open {
+  overscroll-behavior: none;
 }
 
 #faculty-overlay-root {
@@ -424,16 +429,56 @@ html.method-overlay-open {
   transform: translateY(0.4rem) scale(0.985);
 }
 
-/* Methodology sheet — same shell motion, content-sized (not list-fixed) */
+/*
+ * Methodology sheet — owns its motion (do not inherit faculty scale leave).
+ * Opacity + light rise only; scale was a GPU flicker source on close.
+ * Body scroll lock is position:fixed in method-sheet.js, not overflow:hidden alone.
+ */
 .faculty-overlay.method-overlay {
   grid-template-rows: auto minmax(0, 1fr);
   height: auto;
   max-height: min(70vh, 28rem);
+  animation: none;
 }
 
-.faculty-overlay-shell.is-motion .faculty-overlay.method-overlay {
+.faculty-overlay-shell.method-shell.is-motion .method-shell-backdrop {
+  animation: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  cursor: pointer;
+}
+
+.faculty-overlay-shell.method-shell.is-motion.is-open .method-shell-backdrop {
+  opacity: 1;
+}
+
+.faculty-overlay-shell.method-shell.is-motion.is-leaving .method-shell-backdrop {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.faculty-overlay-shell.method-shell.is-motion .faculty-overlay.method-overlay {
+  animation: none;
   height: auto;
   max-height: min(70vh, 28rem);
+  opacity: 0;
+  transform: translateY(0.4rem);
+  transition:
+    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.faculty-overlay-shell.method-shell.is-motion.is-open .faculty-overlay.method-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.faculty-overlay-shell.method-shell.is-motion.is-leaving .faculty-overlay.method-overlay {
+  opacity: 0;
+  transform: translateY(0.2rem);
+  transition:
+    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
+    transform 160ms cubic-bezier(0.55, 0, 1, 1);
 }
 
 .method-overlay-body {
@@ -455,6 +500,13 @@ html.method-overlay-open {
   font-size: var(--text-sm);
   line-height: 1.55;
   color: var(--ink-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .faculty-overlay-shell.method-shell.is-motion .method-shell-backdrop,
+  .faculty-overlay-shell.method-shell.is-motion .faculty-overlay.method-overlay {
+    transition: none;
+  }
 }
 
 .faculty-overlay:focus {
