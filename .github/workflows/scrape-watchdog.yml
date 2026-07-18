@@ -52,8 +52,8 @@ jobs:
         run: |
           set -uo pipefail
 
-          QUEUED=$(gh run list --workflow="Scrape admission tables" --status queued --limit 5 --json databaseId --jq 'length')
-          INPROG=$(gh run list --workflow="Scrape admission tables" --status in_progress --limit 5 --json databaseId --jq 'length')
+          QUEUED=$(gh run list -R "${{ github.repository }}" --workflow="Scrape admission tables" --status queued --limit 5 --json databaseId --jq 'length')
+          INPROG=$(gh run list -R "${{ github.repository }}" --workflow="Scrape admission tables" --status in_progress --limit 5 --json databaseId --jq 'length')
           if [ "${QUEUED:-0}" -gt 0 ] || [ "${INPROG:-0}" -gt 0 ]; then
             echo "Scrape already queued/in progress — watchdog idle."
             exit 0
@@ -102,5 +102,5 @@ jobs:
             exit "$STATUS"
           fi
 
-          gh workflow run "Scrape admission tables" --ref "${BRANCH}"
+          gh workflow run "Scrape admission tables" -R "${{ github.repository }}" --ref "${BRANCH}"
           echo "Dispatched scrape via watchdog → ${BRANCH}"
