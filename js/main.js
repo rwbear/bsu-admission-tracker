@@ -8,11 +8,17 @@ import {
   quietSetSelected,
   setFaculty,
   setForm,
+  writeFormPref,
+  writeFacultyPref,
 } from './state.js';
 import { prepareSpecs } from './compute.js';
 import { loadUniversity } from './load-data.js';
 import { CONFIG } from './config.js';
-import { resolveFacultyId, sortFaculties } from './faculties.js';
+import {
+  matchSpecialtyIdBySearch,
+  resolveFacultyId,
+  sortFaculties,
+} from './faculties.js';
 import { normalizeUniversityPayload } from './spec-id.js';
 import {
   DEFAULT_TABLE_ID,
@@ -114,9 +120,9 @@ function syncTableSelection() {
   const next = resolveTableId(tableList(), state.formId);
   if (next !== state.formId) {
     state.formId = next;
-    localStorage.setItem('prohod-sb-form', next);
+    writeFormPref(next);
   } else if (next) {
-    localStorage.setItem('prohod-sb-form', next);
+    writeFormPref(next);
   }
 }
 
@@ -134,10 +140,9 @@ function syncFacultySelection() {
   const next = resolveFacultyId(facultyList(), state.facultyId);
   if (next !== state.facultyId) {
     state.facultyId = next;
-    if (next) localStorage.setItem('prohod-sb-faculty', next);
-    else localStorage.removeItem('prohod-sb-faculty');
+    writeFacultyPref(next);
   } else if (next) {
-    localStorage.setItem('prohod-sb-faculty', next);
+    writeFacultyPref(next);
   }
 }
 
@@ -266,35 +271,47 @@ function toggleFacultyMenu() {
   else openFacultyMenu();
 }
 
+function tableSpecialties() {
+  const formId = state.formId || DEFAULT_TABLE_ID;
+  return (state.uniData?.specialties || []).filter(
+    (s) => String(s.form) === String(formId),
+  );
+}
+
+function closeFacultyMenuAfterSelect() {
+  facultyMenuOpen = false;
+  renderFacultyChrome();
+  window.setTimeout(() => {
+    if (facultyMenuOpen) return;
+    const trigger = document.getElementById('faculty-trigger');
+    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+  }, 280);
+}
+
 function onSelectFaculty(id) {
+  // Capture before clear — specialty-name search must drive selection.
+  const q = facultySearchQuery;
+  const matchedSpecId = matchSpecialtyIdBySearch(tableSpecialties(), id, q);
   facultySearchQuery = '';
+
   if (id === state.facultyId) {
-    facultyMenuOpen = false;
-    renderFacultyChrome();
-    window.setTimeout(() => {
-      if (facultyMenuOpen) return;
-      const trigger = document.getElementById('faculty-trigger');
-      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
-    }, 280);
+    if (matchedSpecId && matchedSpecId !== state.selectedId) {
+      setSelected(matchedSpecId);
+    }
+    closeFacultyMenuAfterSelect();
     return;
   }
 
   // Optimistic `.is-active` is already on the option. Update the board while
   // the overlay still covers it, then leave — never dissolve in the open.
-  setFaculty(id);
+  setFaculty(id, matchedSpecId);
 
   // Cover the board dissolve briefly, then leave — short enough to feel
   // instant, long enough that empty chrome doesn't flash through the dialog.
   const closeAfter = prefersReducedMotion() ? 0 : 180;
   window.setTimeout(() => {
     if (state.facultyId !== id) return;
-    facultyMenuOpen = false;
-    renderFacultyChrome();
-    window.setTimeout(() => {
-      if (facultyMenuOpen) return;
-      const trigger = document.getElementById('faculty-trigger');
-      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
-    }, 280);
+    closeFacultyMenuAfterSelect();
   }, closeAfter);
 }
 
@@ -305,13 +322,9 @@ function onFacultyQuery(q) {
 }
 
 function renderFacultyChrome() {
-  const formId = state.formId || DEFAULT_TABLE_ID;
-  const tableSpecs = (state.uniData?.specialties || []).filter(
-    (s) => String(s.form) === String(formId),
-  );
   renderFacultyPicker($facultyMount, {
     faculties: facultyList(),
-    specialties: tableSpecs,
+    specialties: tableSpecialties(),
     selectedId: state.facultyId,
     open: facultyMenuOpen,
     query: facultySearchQuery,

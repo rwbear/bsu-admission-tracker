@@ -6,6 +6,7 @@ import {
   resolveFacultyId,
   sortFaculties,
   filterFacultiesByName,
+  matchSpecialtyIdBySearch,
   normalizeFacultySearch,
   FACULTY_ALIASES,
   DEFAULT_FACULTY_ID,
@@ -136,6 +137,44 @@ describe('faculty labels', () => {
     assert.equal(
       filterFacultiesByName(list, 'бизнес-администрирование', []).length,
       0,
+    );
+  });
+
+  it('resolves specialty id from search query under a faculty', () => {
+    const specs = [
+      {
+        id: 'biz-admin',
+        facultyId: 'институт-бизнеса-бгу',
+        specName: 'бизнес-администрирование',
+      },
+      {
+        id: 'biz-info',
+        facultyId: 'институт-бизнеса-бгу',
+        specName: 'информационные ресурсы',
+      },
+      {
+        id: 'law',
+        facultyId: 'юридический-факультет',
+        specName: 'правоведение',
+      },
+    ];
+    assert.equal(
+      matchSpecialtyIdBySearch(specs, 'институт-бизнеса-бгу', 'бизнес'),
+      'biz-admin',
+    );
+    assert.equal(
+      matchSpecialtyIdBySearch(specs, 'институт-бизнеса-бгу', 'информационные'),
+      'biz-info',
+    );
+    // Wrong faculty → no match
+    assert.equal(
+      matchSpecialtyIdBySearch(specs, 'юридический-факультет', 'бизнес'),
+      null,
+    );
+    // Too short for specialty search
+    assert.equal(
+      matchSpecialtyIdBySearch(specs, 'институт-бизнеса-бгу', 'би'),
+      null,
     );
   });
 

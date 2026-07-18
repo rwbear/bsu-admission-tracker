@@ -64,7 +64,7 @@ Hero still reads as one composition: channel → faculty → score → CTA. No c
 - Soft-fail retention is per-table-id when possible.
 
 ## Client
-- Prefs: `prohod-sb-form` (table id), keep `prohod-sb-faculty`, score.
+- Prefs: `rwb-sb-form` (table id), keep `rwb-sb-faculty`, score.
 - State/filter: specialties where `form === selectedFormId`, then faculty.
 - Footer/source link follows the selected table URL.
 - Default resolution: catalog `default: true` → id=7; faculty still prefers Институт бизнеса when present in that table.

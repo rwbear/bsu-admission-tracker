@@ -216,6 +216,37 @@ function specialtyMatches(specNames, q) {
 }
 
 /**
+ * Best specialty id under a faculty for the current search query.
+ * Used so picking a faculty found via specialty name also selects that specialty.
+ *
+ * @param {{ id?: string, facultyId?: string, specName?: string }[]} specialties
+ * @param {string} facultyId
+ * @param {string} [query]
+ * @returns {string | null}
+ */
+export function matchSpecialtyIdBySearch(specialties, facultyId, query) {
+  const q = normalizeFacultySearch(query);
+  if (!facultyId || !q || q.length < FACULTY_SPEC_SEARCH_MIN) return null;
+
+  /** @type {{ id: string, score: number } | null} */
+  let best = null;
+  for (const s of specialties || []) {
+    if (s.facultyId !== facultyId || !s.id) continue;
+    const name = normalizeFacultySearch(s.specName);
+    if (!name || !name.includes(q)) continue;
+
+    let score = 1000;
+    if (name === q) score = 3000;
+    else if (name.startsWith(q)) score = 2000;
+    score += q.length * 10;
+    score -= name.length; // tighter titles win ties
+
+    if (!best || score > best.score) best = { id: String(s.id), score };
+  }
+  return best?.id ?? null;
+}
+
+/**
  * Faculty overlay search: name, campus abbreviations, specialty titles.
  * Specialties must already be scoped to the active monitoring table.
  *
