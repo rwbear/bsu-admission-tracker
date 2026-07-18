@@ -16,6 +16,7 @@ import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
   focusNoScroll,
+  restoreFocus as restoreFocusQuiet,
   commitOverlayEnter,
   afterOverlayPaint,
   OVERLAY_LEAVE_MS,
@@ -213,7 +214,7 @@ export function closeUpdatesSheet(opts = {}) {
 
     if (restoreFocus && focusId) {
       const trigger = document.getElementById(focusId);
-      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+      if (trigger instanceof HTMLElement) restoreFocusQuiet(trigger);
     }
   };
 

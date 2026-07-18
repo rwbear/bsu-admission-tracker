@@ -77,6 +77,23 @@ export function focusNoScroll(node) {
 }
 
 /**
+ * Return focus after closing an overlay — keyboard only.
+ * Pointer closes must not refocus the trigger (that paints the outline ring).
+ *
+ * @param {HTMLElement | null | undefined} node
+ */
+export function restoreFocus(node) {
+  if (!(node instanceof HTMLElement)) return;
+  try {
+    const mode = document.documentElement.getAttribute('data-input');
+    if (mode !== 'keyboard') return;
+  } catch {
+    return;
+  }
+  focusNoScroll(node);
+}
+
+/**
  * Open an overlay shell with CSS enter transitions in the same turn as mount.
  *
  * Double-rAF (paint closed → wait → paint open) felt like tap lag on mobile:

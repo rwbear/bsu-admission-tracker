@@ -52,8 +52,10 @@
   border-bottom-right-radius: var(--radius);
 }
 
-.overview-row:hover {
-  background-color: var(--soft);
+@media (hover: hover) and (pointer: fine) {
+  .overview-row:hover {
+    background-color: var(--soft);
+  }
 }
 
 .overview-row:active {
@@ -70,9 +72,14 @@
   background-color: var(--select);
 }
 
-.overview-row.selected:hover,
 .overview-row.selected:active {
   background-color: var(--select);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .overview-row.selected:hover {
+    background-color: var(--select);
+  }
 }
 
 .overview-row.selected::before {
@@ -1169,15 +1176,9 @@
   text-align: left;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  transition: opacity var(--transition);
 }
 
-.detail-method-trigger:active {
-  opacity: 0.72;
-  transition-duration: 0ms;
-}
-
-.detail-method-trigger:focus-visible {
+html[data-input='keyboard'] .detail-method-trigger:focus-visible {
   outline: 1.5px solid var(--line-strong);
   outline-offset: 2px;
 }
