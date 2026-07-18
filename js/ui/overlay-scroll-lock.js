@@ -76,5 +76,40 @@ export function focusNoScroll(node) {
   }
 }
 
+/**
+ * Open an overlay shell with CSS enter transitions in the same turn as mount.
+ *
+ * Double-rAF (paint closed → wait → paint open) felt like tap lag on mobile:
+ * the shell sat at opacity 0 for two frames after the click. A single forced
+ * style flush (`offsetWidth`) commits the pre-open styles, then `.is-open` can
+ * be added synchronously — the opacity/transform transition still runs, and
+ * the first paint already includes the enter, with no blank waiting frame.
+ *
+ * @param {HTMLElement} shell
+ * @param {() => void} open add `.is-open`, focus, list scroll, etc.
+ */
+export function commitOverlayEnter(shell, open) {
+  if (!shell || typeof open !== 'function') return;
+  if (typeof shell.offsetWidth !== 'number') return;
+  void shell.offsetWidth;
+  open();
+}
+
+/**
+ * Scroll an option into view inside an overlay list port.
+ * Prefer this over `scrollIntoView` — under `body { position: fixed }` that
+ * API can thrash the page scrollport and delay the first open paint.
+ *
+ * @param {HTMLElement} list
+ * @param {Element | null} active
+ */
+export function scrollOverlayOptionIntoView(list, active) {
+  if (!list || !active || typeof list.contains !== 'function') return;
+  if (!list.contains(active)) return;
+  const top =
+    active.offsetTop - list.clientHeight / 2 + active.offsetHeight / 2;
+  list.scrollTop = Math.max(0, top);
+}
+
 /** Leave budget — must be ≥ CSS backdrop opacity transition. */
 export const OVERLAY_LEAVE_MS = 280;

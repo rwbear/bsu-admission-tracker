@@ -1166,6 +1166,7 @@
   cursor: pointer;
   text-align: left;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .detail-method-trigger:focus-visible {
