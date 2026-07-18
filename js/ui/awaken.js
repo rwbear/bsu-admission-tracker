@@ -34,6 +34,29 @@ export const AWAKEN_SLEEP_RATIO = 0.08;
 /** Longest sleep animation + stagger budget (hist bars). */
 export const AWAKEN_SLEEP_MS = 420;
 
+/**
+ * After a wake, ignore sleep for this long. Layout/IO flicker during reveal
+ * or panel height settle was putting graphics to sleep mid-intro and waking
+ * them again — CSS replayed plan-slab / chance fill twice on load.
+ */
+export const AWAKEN_SLEEP_GRACE_MS = 700;
+
+/** @type {WeakMap<Element, number>} */
+const awakeAt = new WeakMap();
+
+/**
+ * True while sleep should be ignored after a recent wake (IO flicker guard).
+ * @param {Element} el
+ * @param {number} [now]
+ */
+export function shouldDeferSleep(
+  el,
+  now = typeof performance !== "undefined" ? performance.now() : 0,
+) {
+  const woke = awakeAt.get(el);
+  return woke != null && now - woke < AWAKEN_SLEEP_GRACE_MS;
+}
+
 const IO_OPTIONS = Object.freeze({
   root: null,
   rootMargin: "0px 0px -8% 0px",
@@ -131,6 +154,7 @@ export function armScrollAwaken(scope, opts = {}) {
     if (!el.classList.contains("is-awake") && !el.classList.contains("is-sleeping")) {
       return;
     }
+    if (shouldDeferSleep(el)) return;
     sleepEl(el, {
       settleMs: AWAKEN_SLEEP_MS,
       onSchedule: (timer) => {
@@ -204,6 +228,9 @@ export function awakenEl(el, opts = {}) {
 
   if (opts.instant) {
     el.classList.add("is-awake", "is-instant");
+    if (typeof performance !== "undefined") {
+      awakeAt.set(el, performance.now());
+    }
     el.dispatchEvent(new CustomEvent("awaken:done", { bubbles: true }));
     return;
   }
@@ -221,6 +248,9 @@ export function awakenEl(el, opts = {}) {
   }
 
   el.classList.add("is-awake");
+  if (typeof performance !== "undefined") {
+    awakeAt.set(el, performance.now());
+  }
   el.dispatchEvent(new CustomEvent("awaken:done", { bubbles: true }));
 }
 

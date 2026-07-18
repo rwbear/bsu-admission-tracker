@@ -404,8 +404,16 @@ async function paintMasterDetail(specs, score, signal) {
   const prevDetailKey = $detail.dataset.selectionKey || '';
 
   // First paint (empty → content): no motion. Same keys: quiet refresh.
-  const animateOverview = Boolean(prevOverviewKey) && prevOverviewKey !== nextOverviewKey;
-  const animateDetail = Boolean(prevDetailKey) && prevDetailKey !== nextDetailKey;
+  // Treat the 'empty' sentinel like unset — otherwise empty→first specialty
+  // falsely looks like a selection change and replays detail intro.
+  const animateOverview =
+    Boolean(prevOverviewKey) &&
+    prevOverviewKey !== 'empty' &&
+    prevOverviewKey !== nextOverviewKey;
+  const animateDetail =
+    Boolean(prevDetailKey) &&
+    prevDetailKey !== 'empty' &&
+    prevDetailKey !== nextDetailKey;
 
   renderSummary($summary, rows);
 
@@ -655,6 +663,8 @@ function fetchData(opts = {}) {
 
     let ok = false;
     let changed = false;
+    /** True when we already emitted a board paint for this run. */
+    let painted = false;
     try {
       const prev = state.uniData;
       const payload = normalizeUniversityPayload(
@@ -666,8 +676,12 @@ function fetchData(opts = {}) {
       syncFacultySelection();
       state.error = null;
       applyBanner(payload);
-      if (!silent || changed) emit();
-      else {
+      if (!silent || changed) {
+        // Drop loading before paint so finally doesn't need a second emit.
+        state.loading = false;
+        emit();
+        painted = true;
+      } else {
         renderHeroChrome();
         renderCommandMeta();
       }
@@ -675,7 +689,9 @@ function fetchData(opts = {}) {
     } catch (err) {
       if (!state.uniData) {
         state.error = err.message || String(err);
+        state.loading = false;
         emit();
+        painted = true;
       } else {
         console.warn('snapshot refresh failed, keeping previous data', err);
         // Re-evaluate freshness even when the poll fails — otherwise a
@@ -687,7 +703,8 @@ function fetchData(opts = {}) {
       refreshing = false;
       if (armSchedule) armNextRefresh();
       else renderCommandMeta();
-      if (!silent) emit();
+      // Avoid a second full board paint (was replaying detail awaken on load).
+      if (!silent && !painted) emit();
       else renderCommandMeta();
     }
     return { ok, changed };
