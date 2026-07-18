@@ -943,6 +943,10 @@ async function bootstrap() {
   $sourceLink.href = sourceUrlForTable(state.formId || DEFAULT_TABLE_ID);
   bindPickerChrome();
   state.loading = true;
+  // First paint before any fetch — mark refreshing so liveState resolves to
+  // 'fetching', not 'chase'. Otherwise the amber "ждём свежий сбор" flashes
+  // for a frame before the fetch even starts and reads as a scraper problem.
+  refreshing = true;
   renderBoard();
   await fetchData({ silent: false, armSchedule: true });
   startAutoRefresh();

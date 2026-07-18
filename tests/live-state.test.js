@@ -60,4 +60,63 @@ describe('resolveLiveState', () => {
       'chase',
     );
   });
+
+  it('boundary: one ms younger than STALE_AFTER_MS → idle', () => {
+    const justFresh = new Date(now - STALE_AFTER_MS + 1).toISOString();
+    assert.equal(isSnapshotStale(justFresh, now), false);
+    assert.equal(
+      resolveLiveState({ refreshing: false, updatedAt: justFresh, now }),
+      'idle',
+    );
+  });
+
+  it('malformed updatedAt → chase (never lies "idle")', () => {
+    assert.equal(isSnapshotStale('not-a-date', now), true);
+    assert.equal(
+      resolveLiveState({ refreshing: false, updatedAt: 'not-a-date', now }),
+      'chase',
+    );
+    assert.equal(
+      resolveLiveState({ refreshing: false, updatedAt: '', now }),
+      'chase',
+    );
+  });
+
+  it('future updatedAt → idle (clock skew tolerated, not stale)', () => {
+    const future = new Date(now + 60_000).toISOString();
+    assert.equal(isSnapshotStale(future, now), false);
+    assert.equal(
+      resolveLiveState({ refreshing: false, updatedAt: future, now }),
+      'idle',
+    );
+  });
+
+  it('fetching wins even with malformed updatedAt', () => {
+    assert.equal(
+      resolveLiveState({ refreshing: true, updatedAt: 'garbage', now }),
+      'fetching',
+    );
+  });
+
+  it('respects a caller-supplied staleAfterMs override', () => {
+    const oneMinuteOld = new Date(now - 60_000).toISOString();
+    assert.equal(
+      resolveLiveState({
+        refreshing: false,
+        updatedAt: oneMinuteOld,
+        now,
+        staleAfterMs: 30_000,
+      }),
+      'chase',
+    );
+    assert.equal(
+      resolveLiveState({
+        refreshing: false,
+        updatedAt: oneMinuteOld,
+        now,
+        staleAfterMs: 120_000,
+      }),
+      'idle',
+    );
+  });
 });
