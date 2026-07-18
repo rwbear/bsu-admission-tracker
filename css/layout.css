@@ -350,14 +350,22 @@ html.method-overlay-open {
   inset: 0;
   display: grid;
   place-items: center;
-  /* Tighter pad on short visual viewports (keyboard open). */
   padding: max(0.75rem, env(safe-area-inset-top, 0px))
     max(0.75rem, env(safe-area-inset-right, 0px))
     max(0.75rem, env(safe-area-inset-bottom, 0px))
     max(0.75rem, env(safe-area-inset-left, 0px));
   pointer-events: none;
-  /* JS pinOverlayShell overrides top/left/width/height to visualViewport. */
   box-sizing: border-box;
+}
+
+/* Narrow viewports: top-anchor so search sits above the keyboard without
+   Safari having to pan the visual viewport (the search-focus jump). */
+@media (max-width: 40rem) {
+  .faculty-overlay-shell.is-picker-shell {
+    align-content: start;
+    place-items: start center;
+    padding-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  }
 }
 
 .faculty-overlay-backdrop {
@@ -400,7 +408,8 @@ html.method-overlay-open {
 .faculty-overlay-shell.is-motion .faculty-overlay-backdrop {
   animation: none;
   opacity: 0;
-  transition: opacity 180ms ease;
+  /* Snappy enter — double-rAF was removed; keep the fade short. */
+  transition: opacity 120ms ease;
   cursor: pointer;
 }
 
@@ -410,21 +419,19 @@ html.method-overlay-open {
 
 .faculty-overlay-shell.is-motion.is-leaving .faculty-overlay-backdrop {
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 180ms ease;
 }
 
 .faculty-overlay-shell.is-motion .faculty-overlay {
   animation: none;
-  /* Fixed height while open so filtering never shrinks the dialog.
-     pinOverlayShell overrides these with visualViewport-based px on mobile. */
+  /* Fixed height while open so filtering never shrinks the dialog. */
   height: min(70dvh, 70vh, 28rem);
   max-height: min(70dvh, 70vh, 28rem);
   opacity: 0;
-  /* Rise only — scale left a GPU flicker on close (same fix as method sheet). */
-  transform: translateY(0.4rem);
+  transform: translateY(0.25rem);
   transition:
-    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .faculty-overlay-shell.is-motion.is-open .faculty-overlay {
@@ -433,11 +440,10 @@ html.method-overlay-open {
 }
 
 .faculty-overlay-shell.is-motion.is-leaving .faculty-overlay {
+  /* Opacity only on leave — transform during unlock was a residual blink. */
   opacity: 0;
-  transform: translateY(0.2rem);
-  transition:
-    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
-    transform 160ms cubic-bezier(0.55, 0, 1, 1);
+  transform: translateY(0);
+  transition: opacity 140ms cubic-bezier(0.55, 0, 1, 1);
 }
 
 /*
@@ -486,10 +492,8 @@ html.method-overlay-open {
 
 .faculty-overlay-shell.method-shell.is-motion.is-leaving .faculty-overlay.method-overlay {
   opacity: 0;
-  transform: translateY(0.2rem);
-  transition:
-    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
-    transform 160ms cubic-bezier(0.55, 0, 1, 1);
+  transform: translateY(0);
+  transition: opacity 140ms cubic-bezier(0.55, 0, 1, 1);
 }
 
 .method-overlay-body {

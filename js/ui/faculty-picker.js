@@ -9,10 +9,7 @@ import {
   patchOptionSelection,
 } from './selection-list.js';
 import { bindOptionActivate } from './option-activate.js';
-import {
-  followOverlayViewport,
-  pinOverlayShell,
-} from './overlay-viewport.js';
+import { pinOverlayShell } from './overlay-viewport.js';
 import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
@@ -71,8 +68,15 @@ function disposeFacultyViewport(host) {
 }
 
 /**
- * Blur search before leave so the keyboard starts dismissing with the fade,
- * not after unlock (which reads as a second layout jump on mobile).
+ * @param {HTMLElement} host
+ */
+function freezeFacultyViewport(host) {
+  host._facultyViewport?.freeze?.();
+}
+
+/**
+ * Blur search before leave so the keyboard starts dismissing under a
+ * full-bleed frozen shell (not while geometry is still tracking vv).
  * @param {ParentNode | null} root
  */
 function blurFacultySearch(root) {
@@ -80,6 +84,24 @@ function blurFacultySearch(root) {
   if (search instanceof HTMLElement && document.activeElement === search) {
     search.blur();
   }
+}
+
+/**
+ * Snappy open: force one reflow, then add is-open in the same turn.
+ * Double-rAF deferred the first paint of the enter motion (~32ms+ lag).
+ * @param {HTMLElement} shell
+ * @param {HTMLElement} dialog
+ */
+function openShellMotion(shell, dialog) {
+  if (prefersReducedMotion()) {
+    shell.classList.add('is-open');
+    focusNoScroll(dialog);
+    return;
+  }
+  // Ensure the browser commits the hidden state before transitioning.
+  void shell.offsetWidth;
+  shell.classList.add('is-open');
+  focusNoScroll(dialog);
 }
 
 /**
@@ -168,7 +190,6 @@ function paintFacultyList(list, model) {
     bindOptionActivate(
       option,
       () => {
-        // Optimistic highlight on this frame so the color can ease before close.
         patchOptionSelection(list, '.faculty-option', fac.id, 'is-active');
         model.onSelect(fac.id);
       },
@@ -242,6 +263,7 @@ function paintTrigger(mount, label, open, onToggle) {
  */
 function mountOverlay(host, opts, faculties, filtered, query, selected) {
   clearCloseTimer(host);
+  disposeFacultyViewport(host);
   host.innerHTML = '';
   acquireOverlayScrollLock(LOCK_ID);
   document.documentElement.classList.add('faculty-overlay-open');
@@ -252,8 +274,6 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
     'aria-label': 'Закрыть',
     tabindex: '-1',
   });
-  // pointerdown + preventDefault: don't steal focus onto the backdrop
-  // (focus→trigger with smooth scroll was a close blink).
   backdrop.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -305,7 +325,6 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
     'aria-label': 'Поиск факультета по названию, сокращению или специальности',
   });
   search.value = query;
-  // Keep the input node alive across keystrokes — query updates patch the list only.
   search.addEventListener('input', () => {
     const current = host._facultyOpts;
     if (current?.onQuery) current.onQuery(search.value);
@@ -317,6 +336,19 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
       if (first instanceof HTMLElement) first.focus();
     }
   });
+  // Focus must not scroll the page — iOS still pans visualViewport; pan
+  // counter in pinOverlayShell absorbs that without resizing the dialog.
+  search.addEventListener(
+    'focus',
+    () => {
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+    },
+    true,
+  );
   searchWrap.append(search);
 
   const list = el('div', {
@@ -337,54 +369,20 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
   dialog.append(header, searchWrap, list);
   dialog.addEventListener('click', (e) => e.stopPropagation());
 
-  const shell = el('div', { className: 'faculty-overlay-shell is-motion' });
+  const shell = el('div', {
+    className: 'faculty-overlay-shell is-motion is-picker-shell',
+  });
   shell.append(backdrop, dialog);
   host.append(shell);
   host._facultyOpts = opts;
-  disposeFacultyViewport(host);
   host._facultyViewport = pinOverlayShell(shell);
 
-  // visualViewport events lag the keyboard on iOS — sync on focus/blur too.
-  search.addEventListener('focus', () => {
-    host._facultyViewport?.sync?.();
-    followOverlayViewport(
-      host._facultyViewport,
-      () =>
-        host.contains(shell) &&
-        document.activeElement === search &&
-        !host._facultyClosing,
-    );
-  });
-  search.addEventListener('blur', () => {
-    host._facultyViewport?.sync?.();
-    followOverlayViewport(
-      host._facultyViewport,
-      () => host.contains(shell) && !host._facultyClosing,
-    );
-  });
-
-  if (prefersReducedMotion()) {
-    shell.classList.add('is-open');
-    focusNoScroll(dialog);
-    return { dialog, search, list, shell };
-  }
-
-  // Enter on next frames so the browser paints the initial (hidden) state first.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!host.contains(shell)) return;
-      shell.classList.add('is-open');
-      focusNoScroll(dialog);
-    });
-  });
+  openShellMotion(shell, dialog);
 
   return { dialog, search, list, shell };
 }
 
 /**
- * Restore trigger focus + unlock in one synchronous turn.
- * A separate timer for focus (old main.js path) painted a frame with
- * focus on <body> after dialog removal — same blink as the method sheet.
  * @param {HTMLElement} host
  * @param {HTMLElement | null} shell
  * @param {boolean} restoreFocus
@@ -394,7 +392,7 @@ function teardownFacultyOverlay(host, shell, restoreFocus) {
   blurFacultySearch(shell);
   disposeFacultyViewport(host);
 
-  // Focus BEFORE remove so tearing down the dialog never drops focus to <body>.
+  // Focus → remove → unlock in one sync turn (no paint gap on <body>).
   if (restoreFocus) {
     const trigger = document.getElementById(TRIGGER_ID);
     if (trigger instanceof HTMLElement) focusNoScroll(trigger);
@@ -411,7 +409,6 @@ function teardownFacultyOverlay(host, shell, restoreFocus) {
 }
 
 /**
- * Play exit motion, then tear down after the backdrop fade settles.
  * @param {HTMLElement} host
  * @param {{ restoreFocus?: boolean }} [opts]
  */
@@ -428,8 +425,12 @@ function beginCloseOverlay(host, opts = {}) {
 
   host._facultyClosing = true;
   shell.style.pointerEvents = 'none';
-  // Dismiss keyboard with the leave motion — not after unlock.
+
+  // 1) Freeze geometry to full layout viewport (covers keyboard dismiss).
+  freezeFacultyViewport(host);
+  // 2) Blur search — keyboard animates under the frozen full-bleed shell.
   blurFacultySearch(shell);
+  // 3) Park focus on dialog (not trigger yet) so remove doesn't drop to body early.
   const dialog = shell.querySelector(`#${DIALOG_ID}`);
   if (dialog instanceof HTMLElement) focusNoScroll(dialog);
 
@@ -461,9 +462,7 @@ function beginCloseOverlay(host, opts = {}) {
 }
 
 /**
- * Hero title button + centered popover.
- * Overlay is mounted once per open session; typing only refreshes the list
- * so the dialog does not blink, remount, or re-animate on each key.
+ * Hero title button + centered (desktop) / top-anchored (mobile) popover.
  *
  * @param {HTMLElement} mount
  * @param {{
@@ -500,7 +499,6 @@ export function renderFacultyPicker(mount, opts) {
     return { button: btn, menu: null, search: null };
   }
 
-  // Still animating out — cancel leave and treat as a fresh open.
   if (existing?.classList.contains('is-leaving')) {
     clearCloseTimer(host);
     disposeFacultyViewport(host);

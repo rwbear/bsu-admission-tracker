@@ -9,10 +9,7 @@ import {
 } from '../tables.js';
 import { patchOptionSelection } from './selection-list.js';
 import { bindOptionActivate } from './option-activate.js';
-import {
-  followOverlayViewport,
-  pinOverlayShell,
-} from './overlay-viewport.js';
+import { pinOverlayShell } from './overlay-viewport.js';
 import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
@@ -70,6 +67,13 @@ function disposeTableViewport(host) {
 }
 
 /**
+ * @param {HTMLElement} host
+ */
+function freezeTableViewport(host) {
+  host._tableViewport?.freeze?.();
+}
+
+/**
  * @param {ParentNode | null} root
  */
 function blurTableSearch(root) {
@@ -77,6 +81,21 @@ function blurTableSearch(root) {
   if (search instanceof HTMLElement && document.activeElement === search) {
     search.blur();
   }
+}
+
+/**
+ * @param {HTMLElement} shell
+ * @param {HTMLElement} dialog
+ */
+function openShellMotion(shell, dialog) {
+  if (prefersReducedMotion()) {
+    shell.classList.add('is-open');
+    focusNoScroll(dialog);
+    return;
+  }
+  void shell.offsetWidth;
+  shell.classList.add('is-open');
+  focusNoScroll(dialog);
 }
 
 
@@ -246,6 +265,7 @@ function paintTrigger(mount, label, open, onToggle) {
  */
 function mountOverlay(host, opts, tables, groups, query, selectedId) {
   clearCloseTimer(host);
+  disposeTableViewport(host);
   host.innerHTML = '';
   acquireOverlayScrollLock(LOCK_ID);
   document.documentElement.classList.add('table-overlay-open');
@@ -330,44 +350,28 @@ function mountOverlay(host, opts, tables, groups, query, selectedId) {
   dialog.append(header, searchWrap, list);
   dialog.addEventListener('click', (e) => e.stopPropagation());
 
-  const shell = el('div', { className: 'faculty-overlay-shell is-motion' });
+  search.addEventListener(
+    'focus',
+    () => {
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+    },
+    true,
+  );
+
+  const shell = el('div', {
+    className: 'faculty-overlay-shell is-motion is-picker-shell',
+  });
   shell.append(backdrop, dialog);
   host.append(shell);
   host._tableOpts = opts;
   disposeTableViewport(host);
   host._tableViewport = pinOverlayShell(shell);
 
-  search.addEventListener('focus', () => {
-    host._tableViewport?.sync?.();
-    followOverlayViewport(
-      host._tableViewport,
-      () =>
-        host.contains(shell) &&
-        document.activeElement === search &&
-        !host._tableClosing,
-    );
-  });
-  search.addEventListener('blur', () => {
-    host._tableViewport?.sync?.();
-    followOverlayViewport(
-      host._tableViewport,
-      () => host.contains(shell) && !host._tableClosing,
-    );
-  });
-
-  if (prefersReducedMotion()) {
-    shell.classList.add('is-open');
-    focusNoScroll(dialog);
-    return { dialog, search, list, shell };
-  }
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!host.contains(shell)) return;
-      shell.classList.add('is-open');
-      focusNoScroll(dialog);
-    });
-  });
+  openShellMotion(shell, dialog);
 
   return { dialog, search, list, shell };
 }
@@ -415,6 +419,7 @@ function beginCloseOverlay(host, opts = {}) {
 
   host._tableClosing = true;
   shell.style.pointerEvents = 'none';
+  freezeTableViewport(host);
   blurTableSearch(shell);
   const dialog = shell.querySelector(`#${DIALOG_ID}`);
   if (dialog instanceof HTMLElement) focusNoScroll(dialog);

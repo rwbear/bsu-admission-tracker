@@ -7,22 +7,24 @@ import { dirname, join } from 'node:path';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 describe('overlay visualViewport pin', () => {
-  it('pins shell to visualViewport offset/size', () => {
+  it('counters pan without thrashing height every frame', () => {
     const src = readFileSync(join(root, 'js/ui/overlay-viewport.js'), 'utf8');
     assert.match(src, /visualViewport/);
     assert.match(src, /offsetTop/);
-    assert.match(src, /vv\?\.height/);
-    assert.match(src, /followOverlayViewport/);
+    assert.match(src, /translate\(/);
+    assert.match(src, /freeze/);
+    // Continuous rAF follow was the search-focus thrash — must stay gone.
+    assert.match(src, /intentionally empty/);
+    assert.doesNotMatch(src, /requestAnimationFrame\(step\)/);
   });
 
-  it('faculty and table mount a pin and dispose on teardown', () => {
+  it('faculty and table freeze viewport before leave', () => {
     const faculty = readFileSync(join(root, 'js/ui/faculty-picker.js'), 'utf8');
     const table = readFileSync(join(root, 'js/ui/table-picker.js'), 'utf8');
-    assert.match(faculty, /pinOverlayShell\(shell\)/);
-    assert.match(table, /pinOverlayShell\(shell\)/);
-    assert.match(faculty, /disposeFacultyViewport/);
-    assert.match(table, /disposeTableViewport/);
-    assert.match(faculty, /blurFacultySearch/);
-    assert.match(table, /blurTableSearch/);
+    assert.match(faculty, /freezeFacultyViewport/);
+    assert.match(table, /freezeTableViewport/);
+    assert.match(faculty, /openShellMotion/);
+    assert.match(table, /openShellMotion/);
+    assert.doesNotMatch(faculty, /requestAnimationFrame\(\s*\(\)\s*=>\s*\{\s*requestAnimationFrame/);
   });
 });

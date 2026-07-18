@@ -182,28 +182,12 @@ function toggleTableMenu() {
 }
 
 function onSelectTable(id) {
-  tableSearchQuery = '';
-  if (id === state.formId) {
-    closeTableMenu();
-    return;
-  }
-
-  // Keep the dialog open so the board dissolve runs under an opaque overlay
-  // (closing at the same time as the dissolve is what read as a blink).
+  // Stay open — board updates under the overlay; user dismisses explicitly.
+  if (id === state.formId) return;
   setForm(id);
   const facultyBefore = state.facultyId;
   syncFacultySelection();
-  // setForm emits once; if faculty was remapped for the new table, refresh again.
   if (state.facultyId !== facultyBefore) emit();
-
-  // Cover the board dissolve briefly, then leave — short enough to feel
-  // instant, long enough that empty chrome doesn't flash through the dialog.
-  // Focus returns inside table-picker teardown (same turn as unlock).
-  const closeAfter = prefersReducedMotion() ? 0 : 180;
-  window.setTimeout(() => {
-    if (state.formId !== id) return;
-    closeTableMenu();
-  }, closeAfter);
 }
 
 function onTableQuery(q) {
@@ -269,9 +253,10 @@ function openFacultyMenu() {
   facultyMenuOpen = true;
   facultySearchQuery = '';
   renderFacultyChrome();
+  // Focus is owned by faculty-picker openShellMotion — only scroll the
+  // active row into the list here (no second focus = no open lag/jump).
   queueMicrotask(() => {
     const dialog = document.getElementById('faculty-overlay');
-    if (dialog instanceof HTMLElement) focusNoScroll(dialog);
     const list = dialog?.querySelector('.faculty-overlay-list');
     const active = dialog?.querySelector('.faculty-option.is-active');
     if (list instanceof HTMLElement && active instanceof HTMLElement) {
@@ -286,24 +271,10 @@ function toggleFacultyMenu() {
 }
 
 function onSelectFaculty(id) {
-  facultySearchQuery = '';
-  if (id === state.facultyId) {
-    closeFacultyMenu();
-    return;
-  }
-
-  // Optimistic `.is-active` is already on the option. Update the board while
-  // the overlay still covers it, then leave — never dissolve in the open.
+  // Stay open: board updates under the overlay; user dismisses explicitly.
+  // Auto-close right after click felt abrupt and raced the dissolve.
+  if (id === state.facultyId) return;
   setFaculty(id);
-
-  // Cover the board dissolve briefly, then leave — short enough to feel
-  // instant, long enough that empty chrome doesn't flash through the dialog.
-  // Focus returns inside faculty-picker teardown (same turn as unlock).
-  const closeAfter = prefersReducedMotion() ? 0 : 180;
-  window.setTimeout(() => {
-    if (state.facultyId !== id) return;
-    closeFacultyMenu();
-  }, closeAfter);
 }
 
 function onFacultyQuery(q) {

@@ -1,109 +1,174 @@
 /**
- * Pin body-portal overlay shells to the visual viewport.
+ * Calm visual-viewport handling for body-portal overlays.
  *
- * iOS Safari keeps the layout viewport tall when the keyboard opens and only
- * shrinks/offsets the visual viewport. A `position:fixed; inset:0` shell then
- * sits half under the keyboard — search feels broken and list taps miss.
+ * Why the old pin thrashed on search focus:
+ * - iOS animates visualViewport for ~300–700ms when the keyboard opens.
+ * - Resizing shell/dialog every frame (and pulsing 16 rAFs) made the page
+ *   blink and slide under the finger.
  *
- * Contract: call `pinOverlayShell(shell)` after mount; call `dispose()` in
- * teardown. Call `sync()` on search focus/blur to catch keyboard transitions
- * before visualViewport events settle.
+ * Contract now:
+ * - Counter keyboard *pan* with a transform only (no height thrash).
+ * - Snap geometry once after the viewport settles (~stable 2 frames).
+ * - `freeze()` before leave so dismiss/keyboard can't resize a fading shell.
+ * - Dialog height stays CSS-driven (dvh) — JS does not fight it.
  */
 
 /**
  * @param {HTMLElement} shell
- * @param {{ dialogSelector?: string, padPx?: number, maxDialogPx?: number }} [opts]
- * @returns {{ sync: () => void, dispose: () => void }}
+ * @returns {{ sync: () => void, freeze: () => void, dispose: () => void }}
  */
-export function pinOverlayShell(shell, opts = {}) {
+export function pinOverlayShell(shell) {
   if (!(shell instanceof HTMLElement)) {
-    return { sync: () => {}, dispose: () => {} };
+    return { sync: () => {}, freeze: () => {}, dispose: () => {} };
   }
 
-  const dialogSelector = opts.dialogSelector || '.faculty-overlay';
-  const padPx = opts.padPx ?? 16;
-  const maxDialogPx = opts.maxDialogPx ?? 28 * 16;
   let alive = true;
+  let frozen = false;
+  /** @type {ReturnType<typeof setTimeout> | null} */
+  let settleTimer = null;
+  let lastH = 0;
+  let stableCount = 0;
 
-  const sync = () => {
-    if (!alive) return;
+  const clearSettle = () => {
+    if (settleTimer != null) {
+      clearTimeout(settleTimer);
+      settleTimer = null;
+    }
+  };
+
+  /** Pan counter only — keeps the shell glued to what the user sees. */
+  const applyPan = () => {
+    if (!alive || frozen) return;
     const vv = window.visualViewport;
-    const width = vv?.width ?? window.innerWidth;
-    const height = vv?.height ?? window.innerHeight;
-    const top = vv?.offsetTop ?? 0;
-    const left = vv?.offsetLeft ?? 0;
+    if (!vv) {
+      shell.style.transform = '';
+      return;
+    }
+    const x = vv.offsetLeft || 0;
+    const y = vv.offsetTop || 0;
+    shell.style.transform = x || y ? `translate(${x}px, ${y}px)` : '';
+  };
 
+  /**
+   * After keyboard motion settles, size the shell to the visible viewport once.
+   * Never animate through intermediate heights.
+   */
+  const applySettledBox = () => {
+    if (!alive || frozen) return;
+    const vv = window.visualViewport;
+    if (!vv) {
+      shell.style.top = '0';
+      shell.style.left = '0';
+      shell.style.width = '';
+      shell.style.height = '';
+      shell.style.right = '';
+      shell.style.bottom = '';
+      shell.style.inset = '0';
+      return;
+    }
     shell.style.position = 'fixed';
-    shell.style.top = `${top}px`;
-    shell.style.left = `${left}px`;
-    shell.style.width = `${width}px`;
-    shell.style.height = `${height}px`;
+    shell.style.top = '0';
+    shell.style.left = '0';
     shell.style.right = 'auto';
     shell.style.bottom = 'auto';
     shell.style.inset = 'auto';
-
-    const dialog = shell.querySelector(dialogSelector);
-    if (!(dialog instanceof HTMLElement)) return;
-    // Method sheet sizes to content; faculty/table keep a stable frame.
-    if (dialog.classList.contains('method-overlay')) {
-      const maxH = Math.max(160, Math.min(height - padPx * 2, maxDialogPx));
-      dialog.style.maxHeight = `${maxH}px`;
-      dialog.style.height = '';
-      return;
-    }
-    const maxH = Math.max(200, Math.min(height - padPx * 2, maxDialogPx));
-    dialog.style.height = `${maxH}px`;
-    dialog.style.maxHeight = `${maxH}px`;
+    shell.style.width = `${vv.width}px`;
+    shell.style.height = `${vv.height}px`;
+    applyPan();
   };
 
-  sync();
+  const onViewportChange = () => {
+    if (!alive || frozen) return;
+    applyPan();
+
+    const vv = window.visualViewport;
+    const h = vv?.height ?? window.innerHeight;
+    if (Math.abs(h - lastH) < 1) {
+      stableCount += 1;
+    } else {
+      stableCount = 0;
+      lastH = h;
+    }
+
+    clearSettle();
+    // Snap box only after the keyboard animation stops changing height.
+    settleTimer = setTimeout(() => {
+      settleTimer = null;
+      if (!alive || frozen) return;
+      if (stableCount >= 1 || !vv) applySettledBox();
+      else {
+        // Still moving — one more wait.
+        lastH = vv.height;
+        settleTimer = setTimeout(() => {
+          settleTimer = null;
+          applySettledBox();
+        }, 120);
+      }
+    }, 100);
+  };
+
+  // Initial: full layout shell, pan at 0.
+  shell.style.position = 'fixed';
+  shell.style.inset = '0';
+  shell.style.width = '';
+  shell.style.height = '';
+  shell.style.transform = '';
+  applyPan();
 
   const vv = window.visualViewport;
   if (vv) {
-    vv.addEventListener('resize', sync);
-    vv.addEventListener('scroll', sync);
+    vv.addEventListener('resize', onViewportChange);
+    vv.addEventListener('scroll', applyPan);
   }
-  window.addEventListener('resize', sync);
+  window.addEventListener('resize', onViewportChange);
+
+  const freeze = () => {
+    if (frozen) return;
+    frozen = true;
+    clearSettle();
+    // Expand to layout viewport under the opaque backdrop before keyboard
+    // dismiss / unlock — prevents a shrinking hole during leave.
+    shell.style.transform = '';
+    shell.style.top = '0';
+    shell.style.left = '0';
+    shell.style.right = '0';
+    shell.style.bottom = '0';
+    shell.style.width = '';
+    shell.style.height = '';
+    shell.style.inset = '0';
+  };
 
   const dispose = () => {
     if (!alive) return;
     alive = false;
+    clearSettle();
     if (vv) {
-      vv.removeEventListener('resize', sync);
-      vv.removeEventListener('scroll', sync);
+      vv.removeEventListener('resize', onViewportChange);
+      vv.removeEventListener('scroll', applyPan);
     }
-    window.removeEventListener('resize', sync);
+    window.removeEventListener('resize', onViewportChange);
     shell.style.position = '';
     shell.style.top = '';
     shell.style.left = '';
-    shell.style.width = '';
-    shell.style.height = '';
     shell.style.right = '';
     shell.style.bottom = '';
+    shell.style.width = '';
+    shell.style.height = '';
     shell.style.inset = '';
-    const dialog = shell.querySelector(dialogSelector);
-    if (dialog instanceof HTMLElement) {
-      dialog.style.height = '';
-      dialog.style.maxHeight = '';
-    }
+    shell.style.transform = '';
   };
 
-  return { sync, dispose };
+  return {
+    sync: applySettledBox,
+    freeze,
+    dispose,
+  };
 }
 
 /**
- * visualViewport resize lags the iOS keyboard animation — pulse sync for a
- * few frames after search focus/blur so the shell tracks the visible area.
- * @param {{ sync?: () => void } | null | undefined} pin
- * @param {() => boolean} stillLive
- * @param {number} [frames]
+ * @deprecated No-op kept so old imports don't break mid-refactor.
+ * Continuous rAF follow was the search-focus thrash source — do not revive.
  */
-export function followOverlayViewport(pin, stillLive, frames = 16) {
-  let n = 0;
-  const step = () => {
-    if (!stillLive()) return;
-    pin?.sync?.();
-    if (++n < frames) requestAnimationFrame(step);
-  };
-  requestAnimationFrame(step);
+export function followOverlayViewport() {
+  /* intentionally empty */
 }
