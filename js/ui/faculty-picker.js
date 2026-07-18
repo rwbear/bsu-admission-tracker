@@ -8,19 +8,24 @@ import {
   optionListMatches,
   patchOptionSelection,
 } from './selection-list.js';
+import {
+  acquireOverlayScrollLock,
+  releaseOverlayScrollLock,
+  focusNoScroll,
+  OVERLAY_LEAVE_MS,
+} from './overlay-scroll-lock.js';
 
 const OVERLAY_ID = 'faculty-overlay-root';
-const CLOSE_MS_FULL = 220;
+const LOCK_ID = 'faculty';
 
-function closeDelayMs() {
+function prefersReducedMotion() {
   try {
-    if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
-      return 0;
-    }
+    return Boolean(
+      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
+    );
   } catch {
-    /* ignore */
+    return false;
   }
-  return CLOSE_MS_FULL;
 }
 
 /** @type {ReturnType<typeof setTimeout> | null} */
@@ -208,14 +213,20 @@ function paintTrigger(mount, label, open, onToggle) {
 function mountOverlay(host, opts, faculties, filtered, query, selected) {
   clearCloseTimer(host);
   host.innerHTML = '';
+  acquireOverlayScrollLock(LOCK_ID);
   document.documentElement.classList.add('faculty-overlay-open');
 
-  const backdrop = el('button', {
+  const backdrop = el('div', {
     className: 'faculty-overlay-backdrop',
-    type: 'button',
+    role: 'button',
     'aria-label': 'Закрыть',
+    tabindex: '-1',
   });
-  backdrop.addEventListener('click', () => {
+  // pointerdown + preventDefault: don't steal focus onto the backdrop
+  // (focus→trigger with smooth scroll was a close blink).
+  backdrop.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     const current = host._facultyOpts;
     if (current?.onClose) current.onClose();
   });
@@ -301,11 +312,18 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
   host.append(shell);
   host._facultyOpts = opts;
 
+  if (prefersReducedMotion()) {
+    shell.classList.add('is-open');
+    focusNoScroll(dialog);
+    return { dialog, search, list, shell };
+  }
+
   // Enter on next frames so the browser paints the initial (hidden) state first.
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       if (!host.contains(shell)) return;
       shell.classList.add('is-open');
+      focusNoScroll(dialog);
     });
   });
 
@@ -313,31 +331,53 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
 }
 
 /**
- * Play exit motion, then tear down. Search field stays put until the end.
+ * Play exit motion, then tear down after the backdrop fade settles.
  * @param {HTMLElement} host
  */
 function beginCloseOverlay(host) {
   const shell = host.querySelector('.faculty-overlay-shell');
   if (!shell) {
     document.documentElement.classList.remove('faculty-overlay-open');
+    releaseOverlayScrollLock(LOCK_ID);
     host.innerHTML = '';
     return;
   }
   if (host._facultyClosing) return;
 
   host._facultyClosing = true;
+  shell.style.pointerEvents = 'none';
+  const dialog = shell.querySelector('#faculty-overlay');
+  if (dialog instanceof HTMLElement) focusNoScroll(dialog);
+
   shell.classList.remove('is-open');
   shell.classList.add('is-leaving');
-  // Keep scroll-lock until leave finishes — unlocking mid-fade shifts layout.
 
+  const backdrop = shell.querySelector('.faculty-overlay-backdrop');
+  let settled = false;
   const finish = () => {
+    if (settled) return;
+    settled = true;
+    if (backdrop) backdrop.removeEventListener('transitionend', onEnd);
     clearCloseTimer(host);
     document.documentElement.classList.remove('faculty-overlay-open');
     if (host.contains(shell)) shell.remove();
     if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
+    releaseOverlayScrollLock(LOCK_ID);
   };
 
-  closeTimer = setTimeout(finish, closeDelayMs());
+  const onEnd = (ev) => {
+    if (ev.target !== backdrop) return;
+    if (ev.propertyName !== 'opacity') return;
+    finish();
+  };
+
+  if (prefersReducedMotion()) {
+    finish();
+    return;
+  }
+
+  if (backdrop) backdrop.addEventListener('transitionend', onEnd);
+  closeTimer = setTimeout(finish, OVERLAY_LEAVE_MS);
 }
 
 /**
@@ -400,6 +440,7 @@ export function renderFacultyPicker(mount, opts) {
       });
     }
     live.classList.add('is-open');
+    acquireOverlayScrollLock(LOCK_ID);
     document.documentElement.classList.add('faculty-overlay-open');
     const dialog = live.querySelector('.faculty-overlay');
     const search = live.querySelector('#faculty-search-input');

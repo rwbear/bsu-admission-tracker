@@ -8,19 +8,24 @@ import {
   tableById,
 } from '../tables.js';
 import { patchOptionSelection } from './selection-list.js';
+import {
+  acquireOverlayScrollLock,
+  releaseOverlayScrollLock,
+  focusNoScroll,
+  OVERLAY_LEAVE_MS,
+} from './overlay-scroll-lock.js';
 
 const OVERLAY_ID = 'table-overlay-root';
-const CLOSE_MS_FULL = 220;
+const LOCK_ID = 'table';
 
-function closeDelayMs() {
+function prefersReducedMotion() {
   try {
-    if (globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
-      return 0;
-    }
+    return Boolean(
+      globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches,
+    );
   } catch {
-    /* ignore */
+    return false;
   }
-  return CLOSE_MS_FULL;
 }
 
 /** @type {ReturnType<typeof setTimeout> | null} */
@@ -213,14 +218,18 @@ function paintTrigger(mount, label, open, onToggle) {
 function mountOverlay(host, opts, tables, groups, query, selectedId) {
   clearCloseTimer(host);
   host.innerHTML = '';
+  acquireOverlayScrollLock(LOCK_ID);
   document.documentElement.classList.add('table-overlay-open');
 
-  const backdrop = el('button', {
+  const backdrop = el('div', {
     className: 'faculty-overlay-backdrop',
-    type: 'button',
+    role: 'button',
     'aria-label': 'Закрыть',
+    tabindex: '-1',
   });
-  backdrop.addEventListener('click', () => {
+  backdrop.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     const current = host._tableOpts;
     if (current?.onClose) current.onClose();
   });
@@ -297,10 +306,17 @@ function mountOverlay(host, opts, tables, groups, query, selectedId) {
   host.append(shell);
   host._tableOpts = opts;
 
+  if (prefersReducedMotion()) {
+    shell.classList.add('is-open');
+    focusNoScroll(dialog);
+    return { dialog, search, list, shell };
+  }
+
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
       if (!host.contains(shell)) return;
       shell.classList.add('is-open');
+      focusNoScroll(dialog);
     });
   });
 
@@ -314,23 +330,46 @@ function beginCloseOverlay(host) {
   const shell = host.querySelector('.faculty-overlay-shell');
   if (!shell) {
     document.documentElement.classList.remove('table-overlay-open');
+    releaseOverlayScrollLock(LOCK_ID);
     host.innerHTML = '';
     return;
   }
   if (host._tableClosing) return;
 
   host._tableClosing = true;
+  shell.style.pointerEvents = 'none';
+  const dialog = shell.querySelector('#table-overlay');
+  if (dialog instanceof HTMLElement) focusNoScroll(dialog);
+
   shell.classList.remove('is-open');
   shell.classList.add('is-leaving');
 
+  const backdrop = shell.querySelector('.faculty-overlay-backdrop');
+  let settled = false;
   const finish = () => {
+    if (settled) return;
+    settled = true;
+    if (backdrop) backdrop.removeEventListener('transitionend', onEnd);
     clearCloseTimer(host);
     document.documentElement.classList.remove('table-overlay-open');
     if (host.contains(shell)) shell.remove();
     if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
+    releaseOverlayScrollLock(LOCK_ID);
   };
 
-  closeTimer = setTimeout(finish, closeDelayMs());
+  const onEnd = (ev) => {
+    if (ev.target !== backdrop) return;
+    if (ev.propertyName !== 'opacity') return;
+    finish();
+  };
+
+  if (prefersReducedMotion()) {
+    finish();
+    return;
+  }
+
+  if (backdrop) backdrop.addEventListener('transitionend', onEnd);
+  closeTimer = setTimeout(finish, OVERLAY_LEAVE_MS);
 }
 
 /**
@@ -390,6 +429,7 @@ export function renderTablePicker(mount, opts) {
       });
     }
     live.classList.add('is-open');
+    acquireOverlayScrollLock(LOCK_ID);
     document.documentElement.classList.add('table-overlay-open');
     const dialog = live.querySelector('.faculty-overlay');
     const search = live.querySelector('#table-search-input');

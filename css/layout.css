@@ -332,13 +332,10 @@ input {
   transform: rotate(0deg);
 }
 
+/* All body-portal overlays lock via overlay-scroll-lock.js (position:fixed).
+   overflow:hidden alone caused the close blink — do not reintroduce it. */
 html.faculty-overlay-open,
-html.table-overlay-open {
-  overflow: hidden;
-}
-
-/* Method sheet locks via body position:fixed (see method-sheet.js).
-   overflow:hidden here would fight that restore and reintroduce blink. */
+html.table-overlay-open,
 html.method-overlay-open {
   overscroll-behavior: none;
 }
@@ -396,7 +393,8 @@ html.method-overlay-open {
 .faculty-overlay-shell.is-motion .faculty-overlay-backdrop {
   animation: none;
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 180ms ease;
+  cursor: pointer;
 }
 
 .faculty-overlay-shell.is-motion.is-open .faculty-overlay-backdrop {
@@ -405,6 +403,7 @@ html.method-overlay-open {
 
 .faculty-overlay-shell.is-motion.is-leaving .faculty-overlay-backdrop {
   opacity: 0;
+  transition: opacity 200ms ease;
 }
 
 .faculty-overlay-shell.is-motion .faculty-overlay {
@@ -413,20 +412,24 @@ html.method-overlay-open {
   height: min(70vh, 28rem);
   max-height: min(70vh, 28rem);
   opacity: 0;
-  transform: translateY(0.55rem) scale(0.985);
+  /* Rise only — scale left a GPU flicker on close (same fix as method sheet). */
+  transform: translateY(0.4rem);
   transition:
-    opacity 220ms ease,
-    transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .faculty-overlay-shell.is-motion.is-open .faculty-overlay {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
 }
 
 .faculty-overlay-shell.is-motion.is-leaving .faculty-overlay {
   opacity: 0;
-  transform: translateY(0.4rem) scale(0.985);
+  transform: translateY(0.2rem);
+  transition:
+    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
+    transform 160ms cubic-bezier(0.55, 0, 1, 1);
 }
 
 /*

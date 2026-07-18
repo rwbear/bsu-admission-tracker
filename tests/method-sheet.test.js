@@ -4,8 +4,9 @@ import { METHOD_SHEET } from '../js/ui/method-sheet.js';
 import { METHOD_PARAGRAPHS } from '../js/ui/method-copy.js';
 
 describe('method sheet', () => {
-  it('keeps stable ids and a leave budget past the CSS fade', () => {
+  it('keeps stable ids and shared leave budget', () => {
     assert.ok(METHOD_SHEET.closeMs >= 240, 'fallback must outlast backdrop opacity');
+    assert.equal(METHOD_SHEET.closeMs, 280);
     assert.equal(METHOD_SHEET.overlayId, 'method-overlay');
     assert.equal(METHOD_SHEET.rootId, 'method-overlay-root');
     assert.equal(METHOD_SHEET.triggerId, 'method-sheet-trigger');
