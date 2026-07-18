@@ -10,9 +10,9 @@ made by: **r.w.b. | production**
 
 Источник — официальный мониторинг БГУ (13 таблиц с хаба приёмной кампании), по умолчанию **3 сертификата · дневная платная** (`formk1?id=7`) и **Институт бизнеса БГУ**.
 
-**Как обновляется:** GitHub Actions roughly каждые **5 минут** скрейпит таблицы через HTTP-прокси и коммитит `data/*.json` в ветку GitHub Pages. Сайт тянет самый новый снимок (сначала SHA-pinned raw) и чаще опрашивает, если снимок устарел. Браузер **не** ходит на `abit.bsu.by` напрямую.
+**Как обновляется:** GitHub Actions roughly каждые **5 минут** скрейпит таблицы через **стабильный HTTP-прокси** (`SCRAPE_PROXY`) и коммитит `data/*.json` в ветку GitHub Pages. Сайт тянет самый новый снимок (сначала SHA-pinned raw) и чаще опрашивает, если снимок устарел. Браузер **не** ходит на `abit.bsu.by` напрямую — облачные IP до БГУ TLS не проходят, а CORS не пускает `fetch` из SPA.
 
-Опционально: Settings → Secrets → `SCRAPE_PROXY` (`http://user:pass@host:port`).
+**Обязательно:** Settings → Secrets → Actions → `SCRAPE_PROXY` (`http://user:pass@host:port`). Без секрета scrape на Actions падает намеренно. Публичные proxy-листы на CI отключены (ломают HTML). Локально без секрета по-прежнему можно опираться на discovery.
 
 ## Локально
 
@@ -29,7 +29,7 @@ python3 -m http.server 8080
 
 1. Settings → Pages → Deploy from a branch  
 2. Branch: `cursor/admission-tracker-rebuild-be86` (актуальная Pages-ветка), folder `/ (root)`  
-3. **Важно:** workflow `scrape.yml` должен быть на **default branch (`main`)**, иначе schedule не запустится. Actions → **Scrape admission tables** → Run workflow
+3. **Важно:** workflow `scrape.yml` и `scrape-watchdog.yml` должны быть на **default branch (`main`)**, иначе schedule не запустится. Actions → **Scrape admission tables** → Run workflow. Watchdog раз в ~15 минут будит scrape, если tip старше порога.
 
 Подробнее про каденс: `docs/scrape-cadence.md`.
 

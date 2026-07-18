@@ -36,8 +36,10 @@ describe('updates sheet', () => {
     assert.match(UPDATES_TITLE, /Как обновляются данные/);
     assert.match(UPDATES_LEDE, /Этот сервис не подключен к БГУ напрямую/);
     assert.match(UPDATES_LEDE, /abit\.bsu\.by/);
+    assert.match(UPDATES_LEDE, /стабильный прокси-канал/);
     assert.match(UPDATES_LEDE, /каждые 4–5 минут/);
     assert.match(UPDATES_FOOT, /Сайт всегда старается показать самый актуальный снимок/);
+    assert.match(UPDATES_FOOT, /прокси-канал не сработал/);
     assert.match(UPDATES_FOOT, /помечает это в баннере/);
     assert.equal(UPDATES_FACTS.length, 3);
     assert.equal(UPDATES_FACTS[0].term, 'Данные HH:MM');
