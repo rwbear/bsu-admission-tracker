@@ -38,15 +38,26 @@ async function main() {
   // Wait until header shows data loaded (not "Загрузка")
   await page.waitForFunction(
     () => {
-      const el = document.getElementById('command-time');
-      return el && el.textContent && el.textContent.startsWith('Обновлено');
+      const el = document.getElementById('command-age-value');
+      const verb = document.getElementById('command-age-verb');
+      return (
+        el &&
+        verb &&
+        !verb.hidden &&
+        el.textContent &&
+        el.textContent !== 'Загрузка'
+      );
     },
     { timeout: 30_000 },
   );
 
   const afterLoad = await page.evaluate(() => ({
-    command: document.getElementById('command-time')?.textContent || '',
-    next: document.getElementById('next-update')?.textContent || '',
+    age: document.getElementById('command-age-value')?.textContent || '',
+    suffix: document.getElementById('command-suffix')?.textContent || '',
+    liveState:
+      document.getElementById('update-status')?.dataset.liveState || '',
+    isButton:
+      document.getElementById('update-status')?.tagName === 'BUTTON',
   }));
 
   const jsonFetchesAfterLoad = fetches.filter((f) =>
@@ -55,11 +66,18 @@ async function main() {
   if (jsonFetchesAfterLoad < 1) {
     throw new Error('Expected at least one sb-bsu.json fetch on load');
   }
-  if (!afterLoad.command.startsWith('Обновлено')) {
-    throw new Error(`Load stamp missing: ${afterLoad.command}`);
+  if (!afterLoad.age || afterLoad.age === 'Загрузка') {
+    throw new Error(`Load stamp missing: ${afterLoad.age}`);
   }
-  if (!/следующее через/.test(afterLoad.next)) {
-    throw new Error(`Countdown missing after load: ${afterLoad.next}`);
+  if (!afterLoad.isButton) {
+    throw new Error('update-status must be a <button>');
+  }
+  if (
+    !/ещё/.test(afterLoad.suffix) &&
+    !/обновляю/.test(afterLoad.suffix) &&
+    !/ждём свежий сбор/.test(afterLoad.suffix)
+  ) {
+    throw new Error(`Suffix missing after load: ${afterLoad.suffix}`);
   }
 
   const fetchesBeforeWait = fetches.length;
@@ -69,10 +87,13 @@ async function main() {
 
   await page.waitForFunction(
     () => {
-      const el = document.getElementById('next-update');
-      const t = el?.textContent || '';
-      // After refresh, countdown should be near a full interval again (not stuck on 0:00)
-      return /следующее через [1-9]/.test(t) || /следующее через 0:[1-9]/.test(t) || /обновляю/.test(t);
+      const t = document.getElementById('command-suffix')?.textContent || '';
+      // After refresh, countdown near a full interval again (or mid-flight)
+      return (
+        /ещё [1-9]/.test(t) ||
+        /ещё 0:[1-9]/.test(t) ||
+        /обновляю/.test(t)
+      );
     },
     { timeout: 15_000 },
   );
@@ -81,8 +102,10 @@ async function main() {
   await new Promise((r) => setTimeout(r, 1500));
 
   const afterRefresh = await page.evaluate(() => ({
-    command: document.getElementById('command-time')?.textContent || '',
-    next: document.getElementById('next-update')?.textContent || '',
+    age: document.getElementById('command-age-value')?.textContent || '',
+    suffix: document.getElementById('command-suffix')?.textContent || '',
+    liveState:
+      document.getElementById('update-status')?.dataset.liveState || '',
   }));
 
   const newFetches = fetches.length - fetchesBeforeWait;
@@ -95,11 +118,24 @@ async function main() {
       `Expected a second sb-bsu.json fetch after ${POLL_MS}ms; got ${newJson} (total delta ${newFetches})`,
     );
   }
-  if (!afterRefresh.command.startsWith('Обновлено')) {
-    throw new Error(`Stamp lost after refresh: ${afterRefresh.command}`);
+  if (!afterRefresh.age || afterRefresh.age === 'Загрузка') {
+    throw new Error(`Stamp lost after refresh: ${afterRefresh.age}`);
   }
-  if (!/следующее через/.test(afterRefresh.next)) {
-    throw new Error(`Countdown missing after refresh: ${afterRefresh.next}`);
+  if (!/ещё/.test(afterRefresh.suffix) && !/обновляю/.test(afterRefresh.suffix)) {
+    throw new Error(`Countdown missing after refresh: ${afterRefresh.suffix}`);
+  }
+
+  // Overlay opens from the timer button
+  await page.click('#update-status');
+  await page.waitForFunction(
+    () => document.getElementById('updates-overlay'),
+    { timeout: 5_000 },
+  );
+  const overlayTitle = await page.evaluate(
+    () => document.getElementById('updates-overlay-title')?.textContent || '',
+  );
+  if (overlayTitle !== 'Как обновляются данные') {
+    throw new Error(`Overlay title wrong: ${overlayTitle}`);
   }
 
   console.log(
@@ -109,6 +145,7 @@ async function main() {
         pollMs: POLL_MS,
         afterLoad,
         afterRefresh,
+        overlayTitle,
         jsonFetchesOnLoad: jsonFetchesAfterLoad,
         jsonFetchesOnRefresh: newJson,
       },

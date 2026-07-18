@@ -17,6 +17,11 @@ describe('refresh schedule', () => {
     assert.equal(formatCountdown(59), '0:59');
     assert.equal(formatCountdown(0), '0:00');
     assert.equal(formatCountdown(-3), '0:00');
+    // Sub-second remainders floor down — never rounds up to next minute.
+    assert.equal(formatCountdown(59.9), '0:59');
+    assert.equal(formatCountdown(60.999), '1:00');
+    // Long ranges keep mm:ss (no h:mm collapse) — countdown never exceeds pollMs.
+    assert.equal(formatCountdown(3600), '60:00');
   });
 
   it('defaults poll to 3 minutes and allows shorter ?pollMs= for tests', () => {
@@ -39,7 +44,7 @@ describe('refresh schedule', () => {
     assert.equal(shouldRefreshNow(100, 0, false, true), false);
   });
 
-  it('chases Pages every minute when the snapshot is stale', () => {
+  it('chases Pages every 30s when the snapshot is stale', () => {
     const three = 3 * 60_000;
     const now = Date.parse('2026-07-14T13:30:00.000Z');
     const fresh = '2026-07-14T13:28:00.000Z';
@@ -51,5 +56,33 @@ describe('refresh schedule', () => {
     assert.equal(isSnapshotStale(fresh, now), false);
     assert.ok(STALE_AFTER_MS > three);
     assert.ok(STALE_POLL_MS < STALE_AFTER_MS);
+  });
+
+  it('resolveEffectivePollMs guards malformed updatedAt (chase, not idle)', () => {
+    const three = 3 * 60_000;
+    const now = Date.parse('2026-07-14T13:30:00.000Z');
+    assert.equal(resolveEffectivePollMs(three, 'garbage', now), STALE_POLL_MS);
+    assert.equal(resolveEffectivePollMs(three, '', now), STALE_POLL_MS);
+    assert.equal(resolveEffectivePollMs(three, undefined, now), STALE_POLL_MS);
+  });
+
+  it('resolveEffectivePollMs never exceeds defaultMs (test-mode ?pollMs=1s)', () => {
+    // In local test mode with a very short defaultMs, chase must not slow
+    // the poll down to 30s — the developer's override wins.
+    const short = 1_000;
+    const now = Date.parse('2026-07-14T13:30:00.000Z');
+    const stale = '2026-07-14T13:20:00.000Z';
+    assert.equal(resolveEffectivePollMs(short, stale, now), short);
+    assert.equal(resolveEffectivePollMs(short, null, now), short);
+    assert.equal(resolveEffectivePollMs(short, 'garbage', now), short);
+  });
+
+  it('shouldRefreshNow guards all four inhibitors independently', () => {
+    // Even at the boundary, nextRefreshAt=0 (unarmed) prevents fetch.
+    assert.equal(shouldRefreshNow(999_999_999, 0, false, true), false);
+    // Hidden tab never fetches even when overdue.
+    assert.equal(shouldRefreshNow(999_999_999, 1000, false, false), false);
+    // In-flight refresh is never re-triggered.
+    assert.equal(shouldRefreshNow(999_999_999, 1000, true, true), false);
   });
 });

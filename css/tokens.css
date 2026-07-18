@@ -15,6 +15,7 @@
   /* Distinct from --soft so hover → selected can ease (was nearly identical). */
   --select: #e7e7e2;
   --select-line: #1a1a1a;
+  --warn: #c98a1b;
 
   /*
    * Daylight cast ladder — soft TL → BR. Accent stays ink (not sun-glow).
