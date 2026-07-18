@@ -7,6 +7,7 @@ import { scrapeBntu } from './adapters/bntu.mjs';
 import { scrapeGrsu } from './adapters/grsu.mjs';
 import { dedupeSpecs } from './normalize.mjs';
 import { retentionStateChanged } from './retention.mjs';
+import { assertCiProxyConfigured } from './proxy.mjs';
 import { sortFaculties } from '../../js/faculties.js';
 import {
   listCatalogTables,
@@ -65,6 +66,7 @@ function stablePayload(payload) {
 
 async function main() {
   const args = parseArgs(process.argv);
+  assertCiProxyConfigured();
   const universities = JSON.parse(readFileSync(sourcesPath, 'utf8'));
   mkdirSync(dataDir, { recursive: true });
 

@@ -14,21 +14,60 @@ const UA =
 let cachedProxy = null;
 
 /**
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+export function isCiEnvironment(env = process.env) {
+  return env.GITHUB_ACTIONS === 'true' || env.CI === 'true';
+}
+
+/**
  * Env override: SCRAPE_PROXY / HTTPS_PROXY / HTTP_PROXY.
+ * @param {NodeJS.ProcessEnv} [env]
  * @returns {string[]}
  */
-export function configuredProxies() {
+export function configuredProxies(env = process.env) {
   const raw = [
-    process.env.SCRAPE_PROXY,
-    process.env.HTTPS_PROXY,
-    process.env.HTTP_PROXY,
-    process.env.https_proxy,
-    process.env.http_proxy,
+    env.SCRAPE_PROXY,
+    env.HTTPS_PROXY,
+    env.HTTP_PROXY,
+    env.https_proxy,
+    env.http_proxy,
   ]
     .filter(Boolean)
     .map((s) => String(s).trim())
     .filter(Boolean);
   return [...new Set(raw)];
+}
+
+/**
+ * Public ProxyScrape lists are a last resort for local/dev only.
+ * When a trusted SCRAPE_PROXY (or other configured proxy) is set, stay on
+ * that channel — junk public proxies were wiping tables with truncated HTML.
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+export function allowPublicProxyDiscovery(env = process.env) {
+  const flag = String(env.SCRAPE_ALLOW_PUBLIC_PROXIES || '').trim();
+  if (flag === '1' || flag.toLowerCase() === 'true') return true;
+  if (flag === '0' || flag.toLowerCase() === 'false') return false;
+  if (configuredProxies(env).length > 0) return false;
+  if (isCiEnvironment(env)) return false;
+  return true;
+}
+
+/**
+ * GitHub Actions cannot TLS to abit.bsu.by — a stable SCRAPE_PROXY secret
+ * is mandatory there. Local scrapes may still use public discovery.
+ * @param {NodeJS.ProcessEnv} [env]
+ */
+export function assertCiProxyConfigured(env = process.env) {
+  if (!isCiEnvironment(env)) return;
+  const trusted = String(env.SCRAPE_PROXY || '').trim();
+  if (trusted) return;
+  throw new Error(
+    'SCRAPE_PROXY is required in CI. Set a repository secret ' +
+      'SCRAPE_PROXY=http://user:pass@host:port (stable BY/RU/EU proxy). ' +
+      'Public proxy lists are not used on Actions — they truncate HTML and wipe tables.',
+  );
 }
 
 /**
@@ -152,30 +191,64 @@ export function looksLikeFormk1(text) {
 }
 
 /**
- * Direct → env proxies → discovered regional proxies.
+ * Build proxy candidates for one fetch.
+ * Order: cached → configured (SCRAPE_PROXY…) → direct → optional public list.
+ * @param {{
+ *   cached?: string | null,
+ *   configured?: string[],
+ *   discovered?: string[],
+ *   allowPublic?: boolean,
+ *   maxAttempts?: number,
+ * }} [opts]
+ * @returns {(string | null)[]}
+ */
+export function buildProxyCandidates(opts = {}) {
+  const maxAttempts = opts.maxAttempts ?? 64;
+  /** @type {(string | null)[]} */
+  const candidates = [];
+  if (opts.cached) candidates.push(opts.cached);
+  for (const p of opts.configured || []) {
+    if (!candidates.includes(p)) candidates.push(p);
+  }
+  // Direct last among trusted routes — usually fails from cloud, fine locally.
+  if (!candidates.includes(null)) candidates.push(null);
+  if (opts.allowPublic) {
+    for (const p of opts.discovered || []) {
+      if (!candidates.includes(p)) candidates.push(p);
+    }
+  }
+  return candidates.slice(0, Math.max(1, maxAttempts));
+}
+
+/**
+ * Trusted/configured proxies first. Public discovery only when allowed.
  * @param {string} url
  * @param {{ timeoutMs?: number, requireFormk1?: boolean, minBytes?: number, maxAttempts?: number }} [opts]
  */
 export async function fetchTextResilient(url, opts = {}) {
+  assertCiProxyConfigured();
+
   const timeoutSec = Math.ceil((opts.timeoutMs ?? 25000) / 1000);
   const requireFormk1 = opts.requireFormk1 !== false;
   const minBytes = opts.minBytes ?? (requireFormk1 ? 2000 : 500);
   const maxAttempts = opts.maxAttempts ?? 64;
+  const allowPublic = allowPublicProxyDiscovery();
+  const configured = configuredProxies();
 
-  /** @type {(string | null)[]} */
-  const candidates = [];
-  if (cachedProxy) candidates.push(cachedProxy);
-  for (const p of configuredProxies()) {
-    if (!candidates.includes(p)) candidates.push(p);
-  }
-  candidates.push(null);
-
-  const discovered = await discoverHttpProxies();
-  for (const p of discovered) {
-    if (!candidates.includes(p)) candidates.push(p);
+  const discovered = allowPublic ? await discoverHttpProxies() : [];
+  if (!allowPublic && configured.length) {
+    console.log(
+      `[fetch] trusted proxy only (${configured.length} configured) — public discovery off`,
+    );
   }
 
-  const limited = candidates.slice(0, Math.max(1, maxAttempts));
+  const limited = buildProxyCandidates({
+    cached: cachedProxy,
+    configured,
+    discovered,
+    allowPublic,
+    maxAttempts,
+  });
 
   let last = {
     ok: false,
@@ -200,11 +273,15 @@ export async function fetchTextResilient(url, opts = {}) {
       );
       return { ...res, error: undefined };
     }
+    // Trusted proxy returned junk/truncated — do not keep it cached.
+    if (proxy && proxy === cachedProxy) cachedProxy = null;
     await sleep(80);
   }
 
   console.warn(
-    `[fetch] fail ${url}: ${last.error || 'unknown'} (tried ${limited.length} routes)`,
+    `[fetch] fail ${url}: ${last.error || 'unknown'} (tried ${limited.length} routes` +
+      (allowPublic ? '' : ', public discovery off') +
+      ')',
   );
   return {
     ok: false,

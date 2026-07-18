@@ -2,12 +2,15 @@ name: Scrape admission tables
 
 # Schedules only run from the default branch (main). GitHub cron is unreliable
 # here (can skip for 30+ minutes). Cadence is a self-arming chain:
-# each run waits ~4.5 min, then `workflow_dispatch`s the next run.
+# each run waits ~3 min, then `workflow_dispatch`s the next run.
 #
 # IMPORTANT: pushes with GITHUB_TOKEN do NOT start new workflow runs.
 # `workflow_dispatch` (and `repository_dispatch`) ALWAYS do — even when
 # invoked with GITHUB_TOKEN. See:
 # https://docs.github.com/en/actions/using-workflows/triggering-a-workflow
+#
+# REQUIRED secret: SCRAPE_PROXY — stable HTTP proxy (cloud IPs cannot TLS
+# to abit.bsu.by). Public proxy lists are disabled on Actions.
 on:
   schedule:
     - cron: "*/5 * * * *"
@@ -31,7 +34,7 @@ permissions:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    # Must cover scrape (~1 min) + arm sleep (4.5 min).
+    # Must cover scrape (~1–2 min) + arm sleep (180s).
     timeout-minutes: 45
     concurrency:
       group: scrape-admission-data
@@ -48,6 +51,16 @@ jobs:
           fi
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
           echo "Scraping Pages branch: $BRANCH"
+
+      - name: Require SCRAPE_PROXY secret
+        env:
+          SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+        run: |
+          if [ -z "${SCRAPE_PROXY}" ]; then
+            echo "::error::SCRAPE_PROXY secret is required. Add a stable HTTP proxy under Settings → Secrets → Actions (http://user:pass@host:port). Cloud runners cannot TLS to abit.bsu.by; public proxy lists are not used on Actions."
+            exit 1
+          fi
+          echo "SCRAPE_PROXY is set (value hidden)."
 
       - name: Checkout Pages branch
         uses: actions/checkout@v4
@@ -71,6 +84,7 @@ jobs:
         id: scrape
         env:
           SCRAPE_PROXY: ${{ secrets.SCRAPE_PROXY }}
+          SCRAPE_ALLOW_PUBLIC_PROXIES: "0"
           GITHUB_REPOSITORY: ${{ github.repository }}
           PROHOD_DATA_BRANCH: ${{ steps.target.outputs.branch }}
         run: npm run scrape
