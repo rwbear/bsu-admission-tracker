@@ -144,7 +144,10 @@ jobs:
       - name: Commit updated data
         if: success() && steps.changes.outputs.changed == 'true'
         id: commit
+        env:
+          BRANCH: ${{ steps.target.outputs.branch }}
         run: |
+          set -euo pipefail
           git config user.name "prohod-bot"
           git config user.email "prohod-bot@users.noreply.github.com"
           git add data/*.json
@@ -154,15 +157,28 @@ jobs:
             exit 0
           fi
           git commit -m "data: refresh admission snapshots"
-          git push origin "HEAD:${{ steps.target.outputs.branch }}"
-          echo "pushed=true" >> "$GITHUB_OUTPUT"
-          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+          # Tip can move (manual push / tip-sha / overlapping arm). Rebase + retry.
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:${BRANCH}"; then
+              echo "pushed=true" >> "$GITHUB_OUTPUT"
+              echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Push rejected (attempt ${attempt}) — rebase onto origin/${BRANCH}"
+            git fetch origin "${BRANCH}"
+            git pull --rebase -X ours origin "${BRANCH}"
+          done
+          echo "::error::Failed to push scrape data after 3 attempts"
+          exit 1
 
       - name: Publish tip SHA
         if: success() && steps.commit.outputs.pushed == 'true'
+        env:
+          TIP_SHA: ${{ steps.commit.outputs.sha }}
+          BRANCH: ${{ steps.target.outputs.branch }}
         run: |
-          SHA="${{ steps.commit.outputs.sha }}"
-          BRANCH="${{ steps.target.outputs.branch }}"
+          set -euo pipefail
           node --input-type=module <<EOF
           import { readFileSync, writeFileSync, existsSync } from 'node:fs';
           const tipPath = 'data/latest.json';
@@ -171,6 +187,10 @@ jobs:
             : { universities: [] };
           tip.commitSha = process.env.TIP_SHA;
           tip.publishedAt = new Date().toISOString();
+          tip.origin = {
+            repo: process.env.GITHUB_REPOSITORY || tip.origin?.repo,
+            branch: process.env.BRANCH || tip.origin?.branch,
+          };
           writeFileSync(tipPath, JSON.stringify(tip, null, 2) + '\n');
           EOF
           git add data/latest.json
@@ -179,9 +199,16 @@ jobs:
             exit 0
           fi
           git commit -m "data: publish tip sha"
-          git push origin "HEAD:${BRANCH}"
-        env:
-          TIP_SHA: ${{ steps.commit.outputs.sha }}
+          for attempt in 1 2 3; do
+            if git push origin "HEAD:${BRANCH}"; then
+              exit 0
+            fi
+            echo "Tip push rejected (attempt ${attempt}) — rebase"
+            git fetch origin "${BRANCH}"
+            git pull --rebase -X ours origin "${BRANCH}"
+          done
+          echo "::error::Failed to publish tip sha after 3 attempts"
+          exit 1
 
       # Keep ~5-minute cadence without trusting cron or push-tick recursion.
       # workflow_dispatch always starts a run, even with GITHUB_TOKEN.
