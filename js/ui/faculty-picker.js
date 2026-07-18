@@ -8,6 +8,11 @@ import {
   optionListMatches,
   patchOptionSelection,
 } from './selection-list.js';
+import { bindOptionActivate } from './option-activate.js';
+import {
+  followOverlayViewport,
+  pinOverlayShell,
+} from './overlay-viewport.js';
 import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
@@ -55,6 +60,26 @@ function clearCloseTimer(host) {
     closeTimer = null;
   }
   host._facultyClosing = false;
+}
+
+/**
+ * @param {HTMLElement} host
+ */
+function disposeFacultyViewport(host) {
+  host._facultyViewport?.dispose?.();
+  host._facultyViewport = null;
+}
+
+/**
+ * Blur search before leave so the keyboard starts dismissing with the fade,
+ * not after unlock (which reads as a second layout jump on mobile).
+ * @param {ParentNode | null} root
+ */
+function blurFacultySearch(root) {
+  const search = root?.querySelector?.('#faculty-search-input');
+  if (search instanceof HTMLElement && document.activeElement === search) {
+    search.blur();
+  }
 }
 
 /**
@@ -140,12 +165,15 @@ function paintFacultyList(list, model) {
         text: String(fac.specialtyCount ?? 0),
       }),
     );
-    option.addEventListener('click', (e) => {
-      e.stopPropagation();
-      // Optimistic highlight on this frame so the color can ease before close.
-      patchOptionSelection(list, '.faculty-option', fac.id, 'is-active');
-      model.onSelect(fac.id);
-    });
+    bindOptionActivate(
+      option,
+      () => {
+        // Optimistic highlight on this frame so the color can ease before close.
+        patchOptionSelection(list, '.faculty-option', fac.id, 'is-active');
+        model.onSelect(fac.id);
+      },
+      { scrollParent: list },
+    );
     list.append(option);
   }
 }
@@ -313,6 +341,27 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
   shell.append(backdrop, dialog);
   host.append(shell);
   host._facultyOpts = opts;
+  disposeFacultyViewport(host);
+  host._facultyViewport = pinOverlayShell(shell);
+
+  // visualViewport events lag the keyboard on iOS — sync on focus/blur too.
+  search.addEventListener('focus', () => {
+    host._facultyViewport?.sync?.();
+    followOverlayViewport(
+      host._facultyViewport,
+      () =>
+        host.contains(shell) &&
+        document.activeElement === search &&
+        !host._facultyClosing,
+    );
+  });
+  search.addEventListener('blur', () => {
+    host._facultyViewport?.sync?.();
+    followOverlayViewport(
+      host._facultyViewport,
+      () => host.contains(shell) && !host._facultyClosing,
+    );
+  });
 
   if (prefersReducedMotion()) {
     shell.classList.add('is-open');
@@ -342,6 +391,8 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
  */
 function teardownFacultyOverlay(host, shell, restoreFocus) {
   clearCloseTimer(host);
+  blurFacultySearch(shell);
+  disposeFacultyViewport(host);
 
   // Focus BEFORE remove so tearing down the dialog never drops focus to <body>.
   if (restoreFocus) {
@@ -377,6 +428,8 @@ function beginCloseOverlay(host, opts = {}) {
 
   host._facultyClosing = true;
   shell.style.pointerEvents = 'none';
+  // Dismiss keyboard with the leave motion — not after unlock.
+  blurFacultySearch(shell);
   const dialog = shell.querySelector(`#${DIALOG_ID}`);
   if (dialog instanceof HTMLElement) focusNoScroll(dialog);
 
@@ -450,6 +503,7 @@ export function renderFacultyPicker(mount, opts) {
   // Still animating out — cancel leave and treat as a fresh open.
   if (existing?.classList.contains('is-leaving')) {
     clearCloseTimer(host);
+    disposeFacultyViewport(host);
     existing.remove();
   }
 

@@ -8,6 +8,11 @@ import {
   tableById,
 } from '../tables.js';
 import { patchOptionSelection } from './selection-list.js';
+import { bindOptionActivate } from './option-activate.js';
+import {
+  followOverlayViewport,
+  pinOverlayShell,
+} from './overlay-viewport.js';
 import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
@@ -55,6 +60,25 @@ function clearCloseTimer(host) {
   }
   host._tableClosing = false;
 }
+
+/**
+ * @param {HTMLElement} host
+ */
+function disposeTableViewport(host) {
+  host._tableViewport?.dispose?.();
+  host._tableViewport = null;
+}
+
+/**
+ * @param {ParentNode | null} root
+ */
+function blurTableSearch(root) {
+  const search = root?.querySelector?.('#table-search-input');
+  if (search instanceof HTMLElement && document.activeElement === search) {
+    search.blur();
+  }
+}
+
 
 /**
  * Rebuild only the option list — never the dialog shell or search field.
@@ -145,12 +169,15 @@ function paintTableList(list, model) {
           text: String(table.specialtyCount ?? 0),
         }),
       );
-      option.addEventListener('click', (e) => {
-        e.stopPropagation();
-        patchOptionSelection(list, '.faculty-option', table.id, 'is-active');
-        const current = overlayHost()._tableOpts;
-        if (current?.onSelect) current.onSelect(table.id);
-      });
+      bindOptionActivate(
+        option,
+        () => {
+          patchOptionSelection(list, '.faculty-option', table.id, 'is-active');
+          const current = overlayHost()._tableOpts;
+          if (current?.onSelect) current.onSelect(table.id);
+        },
+        { scrollParent: list },
+      );
       list.append(option);
     }
   }
@@ -307,6 +334,26 @@ function mountOverlay(host, opts, tables, groups, query, selectedId) {
   shell.append(backdrop, dialog);
   host.append(shell);
   host._tableOpts = opts;
+  disposeTableViewport(host);
+  host._tableViewport = pinOverlayShell(shell);
+
+  search.addEventListener('focus', () => {
+    host._tableViewport?.sync?.();
+    followOverlayViewport(
+      host._tableViewport,
+      () =>
+        host.contains(shell) &&
+        document.activeElement === search &&
+        !host._tableClosing,
+    );
+  });
+  search.addEventListener('blur', () => {
+    host._tableViewport?.sync?.();
+    followOverlayViewport(
+      host._tableViewport,
+      () => host.contains(shell) && !host._tableClosing,
+    );
+  });
 
   if (prefersReducedMotion()) {
     shell.classList.add('is-open');
@@ -333,6 +380,8 @@ function mountOverlay(host, opts, tables, groups, query, selectedId) {
  */
 function teardownTableOverlay(host, shell, restoreFocus) {
   clearCloseTimer(host);
+  blurTableSearch(shell);
+  disposeTableViewport(host);
 
   if (restoreFocus) {
     const trigger = document.getElementById(TRIGGER_ID);
@@ -366,6 +415,7 @@ function beginCloseOverlay(host, opts = {}) {
 
   host._tableClosing = true;
   shell.style.pointerEvents = 'none';
+  blurTableSearch(shell);
   const dialog = shell.querySelector(`#${DIALOG_ID}`);
   if (dialog instanceof HTMLElement) focusNoScroll(dialog);
 
@@ -440,6 +490,7 @@ export function renderTablePicker(mount, opts) {
 
   if (existing?.classList.contains('is-leaving')) {
     clearCloseTimer(host);
+    disposeTableViewport(host);
     existing.remove();
   }
 
