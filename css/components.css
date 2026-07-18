@@ -19,6 +19,7 @@
   text-align: left;
   cursor: pointer;
   overflow: hidden;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--select-ms) var(--select-ease);
 }
@@ -57,6 +58,7 @@
 
 .overview-row:active {
   background-color: var(--select);
+  transition-duration: 0ms;
 }
 
 .overview-row:focus,
@@ -1167,6 +1169,12 @@
   text-align: left;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  transition: opacity var(--transition);
+}
+
+.detail-method-trigger:active {
+  opacity: 0.72;
+  transition-duration: 0ms;
 }
 
 .detail-method-trigger:focus-visible {

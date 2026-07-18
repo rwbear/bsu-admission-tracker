@@ -54,7 +54,11 @@ import {
   UPDATES_SHEET,
 } from './ui/updates-sheet.js';
 import { UPDATES_ARIA_LABELS } from './ui/updates-copy.js';
-import { focusNoScroll } from './ui/overlay-scroll-lock.js';
+import {
+  focusNoScroll,
+  afterOverlayPaint,
+} from './ui/overlay-scroll-lock.js';
+import { onPrimaryActivate } from './ui/pointer-activate.js';
 import {
   resolvePollMs,
   resolveEffectivePollMs,
@@ -102,6 +106,19 @@ let previousLiveState = null;
 /** True when the last completed fetch changed the snapshot. */
 let lastFetchChanged = false;
 let tableSearchQuery = '';
+/** Skip hero remount when only specialty / meta changed. */
+let lastHeroChromeKey = '';
+
+function heroChromeKey() {
+  return [
+    state.formId || '',
+    state.facultyId || '',
+    tableMenuOpen ? '1' : '0',
+    facultyMenuOpen ? '1' : '0',
+    tableSearchQuery,
+    facultySearchQuery,
+  ].join('\0');
+}
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -124,8 +141,6 @@ function syncTableSelection() {
   if (next !== state.formId) {
     state.formId = next;
     writeFormPref(next);
-  } else if (next) {
-    writeFormPref(next);
   }
 }
 
@@ -143,8 +158,6 @@ function syncFacultySelection() {
   const next = resolveFacultyId(facultyList(), state.facultyId);
   if (next !== state.facultyId) {
     state.facultyId = next;
-    writeFacultyPref(next);
-  } else if (next) {
     writeFacultyPref(next);
   }
 }
@@ -238,6 +251,7 @@ function renderTableChrome() {
     onClose: closeTableMenu,
     onQuery: onTableQuery,
   });
+  lastHeroChromeKey = heroChromeKey();
 }
 
 function closeFacultyMenu(opts = {}) {
@@ -331,6 +345,7 @@ function renderFacultyChrome() {
     onClose: closeFacultyMenu,
     onQuery: onFacultyQuery,
   });
+  lastHeroChromeKey = heroChromeKey();
 }
 
 function renderHeroChrome() {
@@ -339,10 +354,9 @@ function renderHeroChrome() {
 }
 
 function onSelectSpecialty(id) {
-  // Optimistic highlight — master-detail paint is queued/async; without this
-  // the selected row waits on the dissolve chain and the color pops late.
+  // Optimistic highlight — paint selection this frame, board work next.
   if (id) patchOptionSelection($overview, '.overview-row', id, 'selected');
-  setSelected(id);
+  afterOverlayPaint(() => setSelected(id));
 }
 
 /**
@@ -456,7 +470,9 @@ function renderBoard() {
   try {
     syncTableSelection();
     syncFacultySelection();
-    renderHeroChrome();
+    if (heroChromeKey() !== lastHeroChromeKey) {
+      renderHeroChrome();
+    }
     renderCommandMeta();
     $sourceLink.href = sourceUrlForTable(state.formId || DEFAULT_TABLE_ID);
 
@@ -786,7 +802,7 @@ function bindPickerChrome() {
     beforeOpen: () => closeAllOverlaysExcept('updates'),
   });
 
-  $updateStatus.addEventListener('click', () => {
+  onPrimaryActivate($updateStatus, () => {
     toggleUpdatesSheet();
     renderCommandMeta();
   });

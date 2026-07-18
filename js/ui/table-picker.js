@@ -13,9 +13,11 @@ import {
   releaseOverlayScrollLock,
   focusNoScroll,
   commitOverlayEnter,
+  afterOverlayPaint,
   scrollOverlayOptionIntoView,
   OVERLAY_LEAVE_MS,
 } from './overlay-scroll-lock.js';
+import { onPrimaryActivate } from './pointer-activate.js';
 
 const OVERLAY_ID = 'table-overlay-root';
 const LOCK_ID = 'table';
@@ -145,11 +147,14 @@ function paintTableList(list, model) {
           text: String(table.specialtyCount ?? 0),
         }),
       );
+      // click (not pointerdown): list is scrollable — press-to-scroll must not select.
       option.addEventListener('click', (e) => {
         e.stopPropagation();
         patchOptionSelection(list, '.faculty-option', table.id, 'is-active');
-        const current = overlayHost()._tableOpts;
-        if (current?.onSelect) current.onSelect(table.id);
+        afterOverlayPaint(() => {
+          const current = overlayHost()._tableOpts;
+          if (current?.onSelect) current.onSelect(table.id);
+        });
       });
       list.append(option);
     }
@@ -197,7 +202,7 @@ function paintTrigger(mount, label, open, onToggle) {
       text: '^',
     }),
   );
-  nextBtn.addEventListener('click', (e) => {
+  onPrimaryActivate(nextBtn, (e) => {
     e.stopPropagation();
     const host = overlayHost();
     const current = host._tableOpts;
@@ -308,8 +313,8 @@ function mountOverlay(host, opts, tables, groups, query, selectedId) {
   host.append(shell);
   host._tableOpts = opts;
 
-  const reveal = () => {
-    shell.classList.add('is-open');
+  const settle = () => {
+    if (!shell.isConnected) return;
     focusNoScroll(dialog);
     scrollOverlayOptionIntoView(
       list,
@@ -317,8 +322,14 @@ function mountOverlay(host, opts, tables, groups, query, selectedId) {
     );
   };
 
+  const reveal = () => {
+    shell.classList.add('is-open');
+    afterOverlayPaint(settle);
+  };
+
   if (prefersReducedMotion()) {
-    reveal();
+    shell.classList.add('is-open');
+    settle();
     return { dialog, search, list, shell };
   }
 

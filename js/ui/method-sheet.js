@@ -12,6 +12,7 @@ import {
   releaseOverlayScrollLock,
   focusNoScroll,
   commitOverlayEnter,
+  afterOverlayPaint,
   OVERLAY_LEAVE_MS,
 } from './overlay-scroll-lock.js';
 
@@ -153,13 +154,19 @@ export function openMethodSheet(opts = {}) {
   shell.append(backdrop, dialog);
   host.append(shell);
 
-  const reveal = () => {
-    shell.classList.add('is-open');
+  const settle = () => {
+    if (!shell.isConnected) return;
     focusNoScroll(dialog);
   };
 
+  const reveal = () => {
+    shell.classList.add('is-open');
+    afterOverlayPaint(settle);
+  };
+
   if (prefersReducedMotion()) {
-    reveal();
+    shell.classList.add('is-open');
+    settle();
     return;
   }
 
