@@ -266,7 +266,7 @@ function closeFacultyMenu(opts = {}) {
     if (facultyMenuOpen) return;
     const trigger = document.getElementById('faculty-trigger');
     if (trigger instanceof HTMLElement) restoreFocus(trigger);
-  }, 280);
+  }, 200);
 }
 
 function openFacultyMenu() {
@@ -299,7 +299,7 @@ function closeFacultyMenuAfterSelect() {
     if (facultyMenuOpen) return;
     const trigger = document.getElementById('faculty-trigger');
     if (trigger instanceof HTMLElement) restoreFocus(trigger);
-  }, 280);
+  }, 200);
 }
 
 function onSelectFaculty(id) {
