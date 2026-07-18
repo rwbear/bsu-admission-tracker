@@ -143,6 +143,8 @@ function paintFacultyList(list, model) {
       }),
     );
     // click (not pointerdown): list is scrollable — press-to-scroll must not select.
+    // Focus rings are gated by data-input=pointer — do not preventDefault here
+    // (that can kill click on iOS).
     option.addEventListener('click', (e) => {
       e.stopPropagation();
       // Optimistic highlight this frame; board work yields so press can paint.

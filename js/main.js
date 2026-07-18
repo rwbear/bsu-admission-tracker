@@ -56,9 +56,11 @@ import {
 import { UPDATES_ARIA_LABELS } from './ui/updates-copy.js';
 import {
   focusNoScroll,
+  restoreFocus,
   afterOverlayPaint,
 } from './ui/overlay-scroll-lock.js';
 import { onPrimaryActivate } from './ui/pointer-activate.js';
+import { armInputModality } from './ui/input-modality.js';
 import {
   resolvePollMs,
   resolveEffectivePollMs,
@@ -177,7 +179,7 @@ function closeTableMenu(opts = {}) {
   renderTableChrome();
   if (opts.restoreFocus === false) return;
   const trigger = document.getElementById('table-trigger');
-  if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+  if (trigger instanceof HTMLElement) restoreFocus(trigger);
 }
 
 function openTableMenu() {
@@ -201,7 +203,7 @@ function onSelectTable(id) {
     tableMenuOpen = false;
     renderHeroChrome();
     const trigger = document.getElementById('table-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
     return;
   }
 
@@ -220,7 +222,7 @@ function onSelectTable(id) {
     tableMenuOpen = false;
     renderHeroChrome();
     const trigger = document.getElementById('table-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
   }, closeAfter);
 }
 
@@ -263,7 +265,7 @@ function closeFacultyMenu(opts = {}) {
   window.setTimeout(() => {
     if (facultyMenuOpen) return;
     const trigger = document.getElementById('faculty-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
   }, 280);
 }
 
@@ -296,7 +298,7 @@ function closeFacultyMenuAfterSelect() {
   window.setTimeout(() => {
     if (facultyMenuOpen) return;
     const trigger = document.getElementById('faculty-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
   }, 280);
 }
 
@@ -957,4 +959,6 @@ $('#retry-btn').addEventListener('click', () =>
 
 subscribe(() => renderBoard());
 
+// Before first paint interaction — hide pointer focus rings from frame 0.
+armInputModality();
 bootstrap();
