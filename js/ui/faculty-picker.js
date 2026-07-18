@@ -257,11 +257,11 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
     id: 'faculty-search-input',
     type: 'search',
     role: 'searchbox',
-    placeholder: 'Поиск по названию',
+    placeholder: 'Факультет, ФМО, специальность…',
     autocomplete: 'off',
     spellcheck: 'false',
     enterkeyhint: 'search',
-    'aria-label': 'Поиск факультета по названию',
+    'aria-label': 'Поиск факультета по названию, сокращению или специальности',
   });
   search.value = query;
   // Keep the input node alive across keystrokes — query updates patch the list only.
@@ -348,6 +348,7 @@ function beginCloseOverlay(host) {
  * @param {HTMLElement} mount
  * @param {{
  *   faculties: { id: string, name: string, specialtyCount?: number }[],
+ *   specialties?: { facultyId?: string, specName?: string }[],
  *   selectedId: string | null,
  *   open: boolean,
  *   query: string,
@@ -359,7 +360,11 @@ function beginCloseOverlay(host) {
  */
 export function renderFacultyPicker(mount, opts) {
   const faculties = opts.faculties || [];
-  const filtered = filterFacultiesByName(faculties, opts.query);
+  const filtered = filterFacultiesByName(
+    faculties,
+    opts.query,
+    opts.specialties || [],
+  );
   const selected = resolveSelected(faculties, opts.selectedId);
   const label = selected?.name || DEFAULT_FACULTY_NAME;
   const query = opts.query || '';
