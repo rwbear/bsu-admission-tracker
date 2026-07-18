@@ -56,7 +56,26 @@ export function fmtTime(iso) {
 }
 
 /**
- * Relative freshness for the live strip.
+ * Absolute clock for the header strip — «18:45».
+ * @param {string | number | Date | null | undefined} value
+ */
+export function fmtClock(value) {
+  if (value == null || value === '') return '—';
+  try {
+    const d = value instanceof Date ? value : new Date(value);
+    if (!Number.isFinite(d.getTime())) return '—';
+    return d.toLocaleTimeString('ru-RU', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+  } catch {
+    return '—';
+  }
+}
+
+/**
+ * Relative freshness for notes / banners.
  * @param {string | null | undefined} iso
  */
 export function fmtAge(iso) {

@@ -3,7 +3,7 @@
  */
 
 /** When the snapshot is older than this, chase raw/Pages for a newer scrape. */
-export const STALE_AFTER_MS = 6 * 60_000;
+export const STALE_AFTER_MS = 12 * 60_000;
 /** Poll cadence while chasing a stale/missing snapshot. */
 export const STALE_POLL_MS = 30_000;
 

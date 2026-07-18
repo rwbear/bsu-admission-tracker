@@ -6,6 +6,7 @@ import { scrapeBsuir } from './adapters/bsuir.mjs';
 import { scrapeBntu } from './adapters/bntu.mjs';
 import { scrapeGrsu } from './adapters/grsu.mjs';
 import { dedupeSpecs } from './normalize.mjs';
+import { retentionStateChanged } from './retention.mjs';
 import { sortFaculties } from '../../js/faculties.js';
 import {
   listCatalogTables,
@@ -191,14 +192,19 @@ async function main() {
       const contentChanged =
         !prev || stablePayload(prev) !== stablePayload(payload);
       const successfulLive = (result.meta?.okFormIds || []).length > 0 || liveSpecs.length > 0;
+      const retentionChanged = retentionStateChanged(payload, prev);
       // Always publish a successful scrape so updatedAt advances every run.
-      // Retained/failed scrapes only write when the file on disk must change.
-      if (successfulLive || contentChanged) {
+      // Also publish when retention flags flip so the client can show truth.
+      if (successfulLive || contentChanged || retentionChanged) {
         writeFileSync(outPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
         changed = true;
         console.log(
           `[write] ${outPath} (${payload.specialtyCount ?? payload.specialties.length} specialties, tables=${(payload.tables || []).length})` +
-            (successfulLive && !contentChanged ? ' [heartbeat]' : ''),
+            (successfulLive && !contentChanged && !retentionChanged
+              ? ' [heartbeat]'
+              : retentionChanged && !contentChanged
+                ? ' [retention]'
+                : ''),
         );
       } else {
         console.log(`[unchanged] ${uni.id}`);

@@ -9,7 +9,8 @@ import {
 describe('resolveLiveState', () => {
   const now = Date.parse('2026-07-18T16:00:00.000Z');
   const fresh = '2026-07-18T15:58:00.000Z';
-  const stale = '2026-07-18T15:50:00.000Z';
+  // 15 minutes old — past the 12-minute stale window
+  const stale = '2026-07-18T15:45:00.000Z';
 
   it('fetching wins over stale and idle', () => {
     assert.equal(

@@ -173,8 +173,8 @@ jobs:
           THIS_RUN: ${{ github.run_id }}
         run: |
           set -e
-          echo "Waiting 270s before arming the next scrape…"
-          sleep 270
+          echo "Waiting 180s before arming the next scrape…"
+          sleep 180
 
           # Avoid piling up if cron/manual already queued another run.
           QUEUED=$(gh run list --workflow="Scrape admission tables" --status queued --limit 5 --json databaseId --jq 'length')
@@ -184,5 +184,8 @@ jobs:
             exit 0
           fi
 
-          gh workflow run "Scrape admission tables" --ref main
-          echo "Dispatched next scrape via workflow_dispatch → main"
+          # Dispatch on the Pages/scrape branch (scripts + data live there).
+          # workflow_dispatch always starts a run, even with GITHUB_TOKEN.
+          BRANCH="${{ steps.target.outputs.branch }}"
+          gh workflow run "Scrape admission tables" --ref "${BRANCH}"
+          echo "Dispatched next scrape via workflow_dispatch → ${BRANCH}"

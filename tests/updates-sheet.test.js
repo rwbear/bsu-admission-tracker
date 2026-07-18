@@ -37,7 +37,7 @@ describe('updates sheet', () => {
     assert.ok(UPDATES_LEDE.length > 40);
     assert.match(UPDATES_LEDE, /abit\.bsu\.by/);
     assert.ok(UPDATES_FOOT.length > 40);
-    assert.equal(UPDATES_FACTS.length, 5);
+    assert.equal(UPDATES_FACTS.length, 3);
     for (const fact of UPDATES_FACTS) {
       assert.ok(fact.term);
       assert.ok(fact.def);
@@ -46,12 +46,12 @@ describe('updates sheet', () => {
     assert.ok(Object.isFrozen(UPDATES_FACTS[0]));
   });
 
-  it('builds state-aware aria labels', () => {
-    const idle = UPDATES_ARIA_LABELS.idle('5 мин назад', '2:15');
-    assert.match(idle, /5 мин назад/);
-    assert.match(idle, /2:15/);
-    assert.match(UPDATES_ARIA_LABELS.fetching('только что'), /Идёт проверка/);
-    assert.match(UPDATES_ARIA_LABELS.chase('10 мин назад'), /Ждём свежий сбор/);
+  it('builds state-aware aria labels with clocks', () => {
+    const idle = UPDATES_ARIA_LABELS.idle('18:45', '18:48');
+    assert.match(idle, /18:45/);
+    assert.match(idle, /18:48/);
+    assert.match(UPDATES_ARIA_LABELS.fetching('18:45', '18:48'), /Идёт проверка/);
+    assert.match(UPDATES_ARIA_LABELS.chase('18:45', '18:48'), /Ждём свежий сбор/);
     assert.match(UPDATES_ARIA_LABELS.loading, /Загрузка/);
   });
 });

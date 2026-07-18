@@ -27,7 +27,7 @@ import {
   resolveTableId,
   sourceUrlForTable,
 } from './tables.js';
-import { $, fmtTime, fmtAge } from './ui/dom.js';
+import { $, fmtClock } from './ui/dom.js';
 import {
   renderOverviewList,
   renderDetailPanel,
@@ -56,7 +56,6 @@ import {
 import { UPDATES_ARIA_LABELS } from './ui/updates-copy.js';
 import { focusNoScroll } from './ui/overlay-scroll-lock.js';
 import {
-  formatCountdown,
   resolvePollMs,
   resolveEffectivePollMs,
   isSnapshotStale,
@@ -67,7 +66,6 @@ import {
 
 const UNI_ID = CONFIG.universityId;
 const POLL_MS = resolvePollMs(CONFIG.pollMs, globalThis.location?.search || '');
-const POLL_MINUTES = Math.max(1, Math.round(POLL_MS / 60_000));
 
 const $scoreInput = /** @type {HTMLInputElement} */ ($('#score-input'));
 const $scoreForm = $('#score-form');
@@ -81,9 +79,8 @@ const $sourceLink = /** @type {HTMLAnchorElement} */ ($('#source-link'));
 const $overview = $('#overview-list');
 const $detail = $('#detail-panel');
 const $summary = $('#summary-strip');
-const $commandAgeValue = $('#command-age-value');
-const $commandAgeVerb = $('#command-age-verb');
-const $commandSuffix = $('#command-suffix');
+const $commandData = $('#command-data');
+const $commandNext = $('#command-next');
 const $updateStatus = /** @type {HTMLButtonElement} */ ($('#update-status'));
 const $updateLiveRegion = $('#update-live-region');
 const $tableMount = $('#table-picker-mount');
@@ -586,16 +583,13 @@ function maybeAnnounceStateEdge(liveState, dataChanged) {
 
 function renderCommandMeta(now = Date.now()) {
   const stamp = state.uniData?.updatedAt;
-  const ageText = stamp ? fmtAge(stamp) : null;
   const liveState = resolveLiveState({
     refreshing,
     updatedAt: stamp,
     now,
   });
-  const secLeft = nextRefreshAt
-    ? Math.max(0, (nextRefreshAt - now) / 1000)
-    : 0;
-  const countdownText = formatCountdown(secLeft);
+  const dataClock = stamp ? fmtClock(stamp) : '—';
+  const nextClock = nextRefreshAt ? fmtClock(nextRefreshAt) : '—';
 
   $updateStatus.dataset.liveState = liveState;
   $updateStatus.setAttribute(
@@ -603,27 +597,8 @@ function renderCommandMeta(now = Date.now()) {
     String(isUpdatesSheetOpen()),
   );
 
-  if (stamp && ageText) {
-    $commandAgeVerb.hidden = false;
-    $commandAgeValue.textContent = ageText;
-  } else {
-    $commandAgeVerb.hidden = true;
-    $commandAgeValue.textContent = 'Загрузка';
-  }
-
-  if (liveState === 'fetching') {
-    $commandSuffix.textContent = '· обновляю…';
-  } else if (liveState === 'chase') {
-    $commandSuffix.textContent = '· ждём свежий сбор';
-  } else if (nextRefreshAt) {
-    $commandSuffix.textContent = `· ещё ${countdownText}`;
-  } else {
-    $commandSuffix.textContent = '';
-  }
-  $commandSuffix.setAttribute(
-    'aria-hidden',
-    $commandSuffix.textContent ? 'false' : 'true',
-  );
+  $commandData.textContent = `данные ${dataClock}`;
+  $commandNext.textContent = `след ${nextClock}`;
 
   if (!stamp) {
     $updateStatus.setAttribute('aria-label', UPDATES_ARIA_LABELS.loading);
@@ -632,21 +607,21 @@ function renderCommandMeta(now = Date.now()) {
   } else if (liveState === 'fetching') {
     $updateStatus.setAttribute(
       'aria-label',
-      UPDATES_ARIA_LABELS.fetching(ageText),
+      UPDATES_ARIA_LABELS.fetching(dataClock, nextClock),
     );
-    $updateStatus.title = `Данные от ${fmtTime(stamp)} · сейчас проверяем · нажми, чтобы узнать подробнее`;
+    $updateStatus.title = `Данные ${dataClock} · сейчас проверяем · след ${nextClock}`;
   } else if (liveState === 'chase') {
     $updateStatus.setAttribute(
       'aria-label',
-      UPDATES_ARIA_LABELS.chase(ageText),
+      UPDATES_ARIA_LABELS.chase(dataClock, nextClock),
     );
-    $updateStatus.title = `Данные от ${fmtTime(stamp)} · снимок старше обычного, опрашиваем чаще · нажми, чтобы узнать подробнее`;
+    $updateStatus.title = `Данные ${dataClock} · снимок старше обычного · след ${nextClock}`;
   } else {
     $updateStatus.setAttribute(
       'aria-label',
-      UPDATES_ARIA_LABELS.idle(ageText, countdownText),
+      UPDATES_ARIA_LABELS.idle(dataClock, nextClock),
     );
-    $updateStatus.title = `Данные от ${fmtTime(stamp)} · автообновление каждые ${POLL_MINUTES} мин · нажми, чтобы узнать подробнее`;
+    $updateStatus.title = `Данные ${dataClock} · след ${nextClock} · нажми, чтобы узнать подробнее`;
   }
 
   maybeAnnounceStateEdge(liveState, lastFetchChanged);
