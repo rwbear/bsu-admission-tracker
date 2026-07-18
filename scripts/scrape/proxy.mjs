@@ -13,6 +13,9 @@ const UA =
 /** @type {string | null} */
 let cachedProxy = null;
 
+/** @type {string[] | null} */
+let cachedDiscovery = null;
+
 /**
  * @param {NodeJS.ProcessEnv} [env]
  */
@@ -40,33 +43,35 @@ export function configuredProxies(env = process.env) {
 }
 
 /**
- * Public ProxyScrape lists are a last resort for local/dev only.
- * When a trusted SCRAPE_PROXY (or other configured proxy) is set, stay on
- * that channel — junk public proxies were wiping tables with truncated HTML.
+ * Public ProxyScrape lists are a fallback when no trusted SCRAPE_PROXY is set.
+ * When a trusted proxy IS set, stay on that channel only — junk public
+ * proxies can return truncated HTML. Content probes (minBytes + formk1)
+ * still reject empty shells either way.
  * @param {NodeJS.ProcessEnv} [env]
  */
 export function allowPublicProxyDiscovery(env = process.env) {
   const flag = String(env.SCRAPE_ALLOW_PUBLIC_PROXIES || '').trim();
   if (flag === '1' || flag.toLowerCase() === 'true') return true;
   if (flag === '0' || flag.toLowerCase() === 'false') return false;
+  // Trusted channel present → never mix in public lists.
   if (configuredProxies(env).length > 0) return false;
-  if (isCiEnvironment(env)) return false;
+  // CI without a secret must still scrape — direct TLS to abit.bsu.by resets.
   return true;
 }
 
 /**
- * GitHub Actions cannot TLS to abit.bsu.by — a stable SCRAPE_PROXY secret
- * is mandatory there. Local scrapes may still use public discovery.
+ * Prefer SCRAPE_PROXY in CI. Missing secret is a warning, not a hard stop —
+ * public discovery (with formk1/minBytes gates) keeps the pipeline alive.
  * @param {NodeJS.ProcessEnv} [env]
  */
 export function assertCiProxyConfigured(env = process.env) {
   if (!isCiEnvironment(env)) return;
   const trusted = String(env.SCRAPE_PROXY || '').trim();
   if (trusted) return;
-  throw new Error(
-    'SCRAPE_PROXY is required in CI. Set a repository secret ' +
-      'SCRAPE_PROXY=http://user:pass@host:port (stable BY/RU/EU proxy). ' +
-      'Public proxy lists are not used on Actions — they truncate HTML and wipe tables.',
+  console.warn(
+    '[proxy] SCRAPE_PROXY secret is not set — using public proxy discovery ' +
+      'with strict formk1/minBytes checks. Set SCRAPE_PROXY=http://user:pass@host:port ' +
+      'for a stable channel.',
   );
 }
 
@@ -75,6 +80,7 @@ export function assertCiProxyConfigured(env = process.env) {
  * @returns {Promise<string[]>}
  */
 export async function discoverHttpProxies() {
+  if (cachedDiscovery) return cachedDiscovery;
   const endpoint =
     'https://api.proxyscrape.com/v2/?request=displayproxies&protocol=http&timeout=7000&country=by,ru,ua,pl,lt,lv,de,kz&ssl=all&anonymity=all';
   try {
@@ -82,16 +88,21 @@ export async function discoverHttpProxies() {
       headers: { 'User-Agent': UA, Accept: 'text/plain' },
       signal: AbortSignal.timeout(20000),
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      cachedDiscovery = [];
+      return cachedDiscovery;
+    }
     const text = await res.text();
-    return text
+    cachedDiscovery = text
       .split(/\r?\n/)
       .map((l) => l.trim())
       .filter((l) => /^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(l))
       .slice(0, 60)
       .map((host) => `http://${host}`);
+    return cachedDiscovery;
   } catch {
-    return [];
+    cachedDiscovery = [];
+    return cachedDiscovery;
   }
 }
 
@@ -192,31 +203,34 @@ export function looksLikeFormk1(text) {
 
 /**
  * Build proxy candidates for one fetch.
- * Order: cached → configured (SCRAPE_PROXY…) → direct → optional public list.
+ * Order: cached → configured (SCRAPE_PROXY…) → optional public → optional direct.
+ * Direct is last and off in CI — GitHub IPs always TLS-reset to abit.bsu.by.
  * @param {{
  *   cached?: string | null,
  *   configured?: string[],
  *   discovered?: string[],
  *   allowPublic?: boolean,
+ *   allowDirect?: boolean,
  *   maxAttempts?: number,
  * }} [opts]
  * @returns {(string | null)[]}
  */
 export function buildProxyCandidates(opts = {}) {
   const maxAttempts = opts.maxAttempts ?? 64;
+  const allowDirect = opts.allowDirect !== false;
   /** @type {(string | null)[]} */
   const candidates = [];
   if (opts.cached) candidates.push(opts.cached);
   for (const p of opts.configured || []) {
     if (!candidates.includes(p)) candidates.push(p);
   }
-  // Direct last among trusted routes — usually fails from cloud, fine locally.
-  if (!candidates.includes(null)) candidates.push(null);
   if (opts.allowPublic) {
     for (const p of opts.discovered || []) {
       if (!candidates.includes(p)) candidates.push(p);
     }
   }
+  // Direct only when useful (local). Never burn CI timeouts on a known wall.
+  if (allowDirect && !candidates.includes(null)) candidates.push(null);
   return candidates.slice(0, Math.max(1, maxAttempts));
 }
 
@@ -234,11 +248,17 @@ export async function fetchTextResilient(url, opts = {}) {
   const maxAttempts = opts.maxAttempts ?? 64;
   const allowPublic = allowPublicProxyDiscovery();
   const configured = configuredProxies();
+  // Cloud runners cannot TLS to abit.bsu.by — skip direct there.
+  const allowDirect = !isCiEnvironment();
 
   const discovered = allowPublic ? await discoverHttpProxies() : [];
   if (!allowPublic && configured.length) {
     console.log(
       `[fetch] trusted proxy only (${configured.length} configured) — public discovery off`,
+    );
+  } else if (allowPublic && !configured.length) {
+    console.log(
+      `[fetch] public proxy discovery on (${discovered.length} candidates) — set SCRAPE_PROXY for a stable channel`,
     );
   }
 
@@ -247,6 +267,7 @@ export async function fetchTextResilient(url, opts = {}) {
     configured,
     discovered,
     allowPublic,
+    allowDirect,
     maxAttempts,
   });
 

@@ -37,19 +37,21 @@ Permissions required on the job: `actions: write` (for dispatch) and
 
 No personal access token secret is required for the chain.
 
-## Stable proxy (required on Actions)
+## Proxy channel (Actions)
 
 Cloud / GitHub runner IPs cannot TLS to `abit.bsu.by` (connection reset).
-Set repository secret **`SCRAPE_PROXY`** (`http://user:pass@host:port`).
 
-On Actions:
+**Preferred:** repository secret **`SCRAPE_PROXY`** (`http://user:pass@host:port`).
+When set, Actions pin to that channel and turn public lists off.
 
-- scrape **fails closed** if `SCRAPE_PROXY` is missing
-- public ProxyScrape lists are **off** (`SCRAPE_ALLOW_PUBLIC_PROXIES=0`)
-- truncated public proxies previously wiped tables with empty shells
+**Fallback:** if the secret is missing, Actions use public proxy discovery.
+Every response still passes `minBytes` + `looksLikeFormk1` (and empty shells
+are form failures with row retention) so junk HTML cannot wipe tables.
 
-Locally, without `SCRAPE_PROXY`, discovery may still run for development.
-Override with `SCRAPE_ALLOW_PUBLIC_PROXIES=0|1`.
+Hard-requiring the secret without setting it froze the live pipeline — do not
+reintroduce a fail-closed gate unless the secret is actually configured.
+
+Override discovery with `SCRAPE_ALLOW_PUBLIC_PROXIES=0|1`.
 
 Client stale window is **12 minutes** (above normal scrape cadence) so a
 healthy pipeline does not look broken. Chase poll is 30s when past that.
