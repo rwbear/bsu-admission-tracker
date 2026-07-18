@@ -100,8 +100,14 @@ export function openMethodSheet(opts = {}) {
     className: 'faculty-overlay-backdrop',
     type: 'button',
     'aria-label': 'Закрыть',
+    tabindex: '-1',
   });
-  backdrop.addEventListener('click', () => closeMethodSheet());
+  // pointerdown + preventDefault: don't move focus onto the backdrop.
+  // Focus→trigger with smooth scroll was the page blink on outside-tap close.
+  backdrop.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    closeMethodSheet();
+  });
 
   const dialog = el('div', {
     className: 'faculty-overlay method-overlay',
@@ -150,9 +156,20 @@ export function openMethodSheet(opts = {}) {
     requestAnimationFrame(() => {
       if (!host.contains(shell)) return;
       shell.classList.add('is-open');
-      dialog.focus();
+      dialog.focus({ preventScroll: true });
     });
   });
+}
+
+/**
+ * @param {HTMLElement} el
+ */
+function focusNoScroll(el) {
+  try {
+    el.focus({ preventScroll: true });
+  } catch {
+    el.focus();
+  }
 }
 
 /**
@@ -165,18 +182,20 @@ export function closeMethodSheet(opts = {}) {
 
   if (!open && !shell) return;
 
+  const focusId = returnFocusId;
+
   const finish = () => {
     clearCloseTimer(host);
     open = false;
     document.documentElement.classList.remove('method-overlay-open');
     if (shell && host.contains(shell)) shell.remove();
     if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
-
-    if (restoreFocus && returnFocusId) {
-      const trigger = document.getElementById(returnFocusId);
-      if (trigger instanceof HTMLElement) trigger.focus();
-    }
     returnFocusId = null;
+
+    if (restoreFocus && focusId) {
+      const trigger = document.getElementById(focusId);
+      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    }
   };
 
   if (instant || !shell) {
@@ -186,6 +205,9 @@ export function closeMethodSheet(opts = {}) {
 
   if (host._methodClosing) return;
   host._methodClosing = true;
+  // Park focus on the dialog (not the backdrop) so teardown doesn't scroll.
+  const dialog = host.querySelector(`#${DIALOG_ID}`);
+  if (dialog instanceof HTMLElement) focusNoScroll(dialog);
   shell.classList.remove('is-open');
   shell.classList.add('is-leaving');
   closeTimer = setTimeout(finish, closeDelayMs());

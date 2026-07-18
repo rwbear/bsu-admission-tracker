@@ -6,6 +6,8 @@
 
 html {
   scroll-behavior: smooth;
+  /* Keep gutter when overlays set overflow:hidden — no horizontal jump. */
+  scrollbar-gutter: stable;
 }
 
 body {
