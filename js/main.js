@@ -45,6 +45,15 @@ import {
   isMethodSheetOpen,
   METHOD_SHEET,
 } from './ui/method-sheet.js';
+import {
+  armUpdatesSheetChrome,
+  closeUpdatesSheet,
+  isUpdatesSheetOpen,
+  openUpdatesSheet,
+  toggleUpdatesSheet,
+  UPDATES_SHEET,
+} from './ui/updates-sheet.js';
+import { UPDATES_ARIA_LABELS } from './ui/updates-copy.js';
 import { focusNoScroll } from './ui/overlay-scroll-lock.js';
 import {
   formatCountdown,
@@ -53,8 +62,8 @@ import {
   isSnapshotStale,
   nextDueAt,
   shouldRefreshNow,
+  resolveLiveState,
 } from './refresh-schedule.js';
-import { metaRotatorPhase, metaFadeMs } from './command-meta.js';
 
 const UNI_ID = CONFIG.universityId;
 const POLL_MS = resolvePollMs(CONFIG.pollMs, globalThis.location?.search || '');
@@ -72,24 +81,17 @@ const $sourceLink = /** @type {HTMLAnchorElement} */ ($('#source-link'));
 const $overview = $('#overview-list');
 const $detail = $('#detail-panel');
 const $summary = $('#summary-strip');
-const $commandTime = $('#command-time');
-const $nextUpdate = $('#next-update');
-const $updateStatus = $('#update-status');
+const $commandAgeValue = $('#command-age-value');
+const $commandAgeVerb = $('#command-age-verb');
+const $commandSuffix = $('#command-suffix');
+const $updateStatus = /** @type {HTMLButtonElement} */ ($('#update-status'));
+const $updateLiveRegion = $('#update-live-region');
 const $tableMount = $('#table-picker-mount');
 const $facultyMount = $('#faculty-picker-mount');
 
 let tickTimer = null;
 let nextRefreshAt = 0;
 let refreshing = false;
-/** Epoch for age ↔ countdown fade in the shared header slot. */
-let metaRotateEpoch = Date.now();
-/** Currently fully-shown (or mid-transition target) meta line. */
-let metaShownPhase = 'age';
-/** True while hiding the old line before revealing the new one. */
-let metaSwapBusy = false;
-/** Latest desired phase if a swap was requested mid-transition. */
-let metaSwapPending = null;
-let metaSwapTimer = 0;
 /** Serialize refreshes so overlapping polls queue cleanly. */
 let fetchChain = Promise.resolve();
 let visibilityBound = false;
@@ -98,6 +100,10 @@ let facultyMenuOpen = false;
 let facultySearchQuery = '';
 let facultyOutsideBound = false;
 let tableMenuOpen = false;
+/** @type {'idle' | 'fetching' | 'chase' | null} */
+let previousLiveState = null;
+/** True when the last completed fetch changed the snapshot. */
+let lastFetchChanged = false;
 let tableSearchQuery = '';
 
 function showOnly(which) {
@@ -164,6 +170,7 @@ function closeTableMenu() {
 }
 
 function openTableMenu() {
+  closeUpdatesSheet({ instant: true, restoreFocus: false });
   closeMethodSheet({ restoreFocus: false });
   closeFacultyMenu();
   tableMenuOpen = true;
@@ -251,6 +258,7 @@ function closeFacultyMenu() {
 }
 
 function openFacultyMenu() {
+  closeUpdatesSheet({ instant: true, restoreFocus: false });
   closeMethodSheet({ restoreFocus: false });
   closeTableMenu();
   facultyMenuOpen = true;
@@ -549,86 +557,99 @@ function snapshotChanged(next, prev) {
   return sig(next) !== sig(prev);
 }
 
-function applyMetaClasses(phase) {
-  const showAge = phase === 'age';
-  $commandTime.classList.toggle('is-active', showAge);
-  $nextUpdate.classList.toggle('is-active', !showAge);
-  $commandTime.setAttribute('aria-hidden', showAge ? 'false' : 'true');
-  $nextUpdate.setAttribute('aria-hidden', showAge ? 'true' : 'false');
-}
-
 /**
- * Sequential swap: previous fades out fully, then the next fades in.
- * Never crossfades (no overlay of both texts).
- * @param {'age' | 'countdown'} phase
+ * Edge-only SR announcements — never the countdown ticks.
+ * @param {'idle' | 'fetching' | 'chase'} liveState
+ * @param {boolean} dataChanged
  */
-function setMetaActive(phase) {
-  if (metaSwapBusy) {
-    metaSwapPending = phase;
+function maybeAnnounceStateEdge(liveState, dataChanged) {
+  if (!$updateLiveRegion) return;
+  if (previousLiveState === liveState && !(dataChanged && liveState === 'idle')) {
+    previousLiveState = liveState;
+    lastFetchChanged = false;
     return;
   }
 
-  if (phase === metaShownPhase) {
-    applyMetaClasses(phase);
-    return;
+  let phrase = '';
+  if (dataChanged && liveState !== 'fetching') {
+    phrase = 'Данные обновлены';
+  } else if (liveState === 'fetching' && previousLiveState !== 'fetching') {
+    phrase = 'Проверяю';
+  } else if (liveState === 'chase' && previousLiveState !== 'chase') {
+    phrase = 'Ждём свежий сбор';
   }
 
-  metaSwapBusy = true;
-  metaSwapPending = null;
-
-  // 1) Hide whatever is showing — slot goes empty.
-  $commandTime.classList.remove('is-active');
-  $nextUpdate.classList.remove('is-active');
-  $commandTime.setAttribute('aria-hidden', 'true');
-  $nextUpdate.setAttribute('aria-hidden', 'true');
-
-  const delay = metaFadeMs(prefersReducedMotion());
-  if (metaSwapTimer) clearTimeout(metaSwapTimer);
-  metaSwapTimer = globalThis.setTimeout(() => {
-    metaSwapTimer = 0;
-    metaShownPhase = phase;
-    // 2) After hide completes, reveal the new line alone.
-    applyMetaClasses(phase);
-    metaSwapBusy = false;
-    if (metaSwapPending && metaSwapPending !== metaShownPhase) {
-      const next = metaSwapPending;
-      metaSwapPending = null;
-      setMetaActive(next);
-    } else {
-      metaSwapPending = null;
-    }
-  }, delay);
+  previousLiveState = liveState;
+  lastFetchChanged = false;
+  if (phrase) $updateLiveRegion.textContent = phrase;
 }
 
 function renderCommandMeta(now = Date.now()) {
   const stamp = state.uniData?.updatedAt;
-  $commandTime.textContent = stamp
-    ? `Обновлено ${fmtAge(stamp)}`
-    : 'Загрузка';
+  const ageText = stamp ? fmtAge(stamp) : null;
+  const liveState = resolveLiveState({
+    refreshing,
+    updatedAt: stamp,
+    now,
+  });
+  const secLeft = nextRefreshAt
+    ? Math.max(0, (nextRefreshAt - now) / 1000)
+    : 0;
+  const countdownText = formatCountdown(secLeft);
 
-  const baseTitle = `Автообновление каждые ${POLL_MINUTES} мин`;
-  $updateStatus.title = stamp
-    ? `Данные от ${fmtTime(stamp)} · ${baseTitle}`
-    : baseTitle;
+  $updateStatus.dataset.liveState = liveState;
+  $updateStatus.setAttribute(
+    'aria-expanded',
+    String(isUpdatesSheetOpen()),
+  );
 
-  let hasCountdown = false;
-  if (refreshing) {
-    $nextUpdate.textContent = 'обновляю…';
-    hasCountdown = true;
-  } else if (nextRefreshAt) {
-    const leftMs = Math.max(0, nextRefreshAt - now);
-    $nextUpdate.textContent = `следующее через ${formatCountdown(leftMs / 1000)}`;
-    hasCountdown = true;
+  if (stamp && ageText) {
+    $commandAgeVerb.hidden = false;
+    $commandAgeValue.textContent = ageText;
   } else {
-    $nextUpdate.textContent = '';
+    $commandAgeVerb.hidden = true;
+    $commandAgeValue.textContent = 'Загрузка';
   }
 
-  setMetaActive(
-    metaRotatorPhase(now - metaRotateEpoch, {
-      hasCountdown,
-      refreshing,
-    }),
+  if (liveState === 'fetching') {
+    $commandSuffix.textContent = '· обновляю…';
+  } else if (liveState === 'chase') {
+    $commandSuffix.textContent = '· ждём свежий сбор';
+  } else if (nextRefreshAt) {
+    $commandSuffix.textContent = `· ещё ${countdownText}`;
+  } else {
+    $commandSuffix.textContent = '';
+  }
+  $commandSuffix.setAttribute(
+    'aria-hidden',
+    $commandSuffix.textContent ? 'false' : 'true',
   );
+
+  if (!stamp) {
+    $updateStatus.setAttribute('aria-label', UPDATES_ARIA_LABELS.loading);
+    $updateStatus.title =
+      'Загружаем данные · нажми, чтобы узнать подробнее';
+  } else if (liveState === 'fetching') {
+    $updateStatus.setAttribute(
+      'aria-label',
+      UPDATES_ARIA_LABELS.fetching(ageText),
+    );
+    $updateStatus.title = `Данные от ${fmtTime(stamp)} · сейчас проверяем · нажми, чтобы узнать подробнее`;
+  } else if (liveState === 'chase') {
+    $updateStatus.setAttribute(
+      'aria-label',
+      UPDATES_ARIA_LABELS.chase(ageText),
+    );
+    $updateStatus.title = `Данные от ${fmtTime(stamp)} · снимок старше обычного, опрашиваем чаще · нажми, чтобы узнать подробнее`;
+  } else {
+    $updateStatus.setAttribute(
+      'aria-label',
+      UPDATES_ARIA_LABELS.idle(ageText, countdownText),
+    );
+    $updateStatus.title = `Данные от ${fmtTime(stamp)} · автообновление каждые ${POLL_MINUTES} мин · нажми, чтобы узнать подробнее`;
+  }
+
+  maybeAnnounceStateEdge(liveState, lastFetchChanged);
 }
 
 function armNextRefresh(fromMs = Date.now()) {
@@ -638,7 +659,6 @@ function armNextRefresh(fromMs = Date.now()) {
     fromMs,
   );
   nextRefreshAt = nextDueAt(fromMs, pollMs);
-  metaRotateEpoch = fromMs;
   if (state.uniData) applyBanner(state.uniData);
   renderCommandMeta(fromMs);
 }
@@ -701,6 +721,7 @@ function fetchData(opts = {}) {
     } finally {
       state.loading = false;
       refreshing = false;
+      lastFetchChanged = Boolean(changed);
       if (armSchedule) armNextRefresh();
       else renderCommandMeta();
       // Avoid a second full board paint (was replaying detail awaken on load).
@@ -721,7 +742,6 @@ function fetchData(opts = {}) {
 async function runScheduledRefresh() {
   if (refreshing) return;
   if (document.visibilityState === 'hidden') return;
-  armNextRefresh();
   await fetchData({ silent: true, armSchedule: true });
 }
 
@@ -768,27 +788,48 @@ function startAutoRefresh() {
   }
 }
 
+function closeAllOverlaysExcept(keep) {
+  if (keep !== 'updates' && isUpdatesSheetOpen()) {
+    closeUpdatesSheet({ instant: true, restoreFocus: false });
+  }
+  if (keep !== 'method' && isMethodSheetOpen()) {
+    closeMethodSheet({ instant: true, restoreFocus: false });
+  }
+  if (keep !== 'table' && tableMenuOpen) {
+    tableMenuOpen = false;
+    tableSearchQuery = '';
+    renderTableChrome();
+  }
+  if (keep !== 'faculty' && facultyMenuOpen) {
+    facultyMenuOpen = false;
+    facultySearchQuery = '';
+    renderFacultyChrome();
+  }
+}
+
 function bindPickerChrome() {
   if (facultyOutsideBound) return;
   facultyOutsideBound = true;
 
   armMethodSheetChrome({
-    beforeOpen: () => {
-      // Silent — don't steal focus back to faculty/table triggers.
-      if (tableMenuOpen) {
-        tableMenuOpen = false;
-        tableSearchQuery = '';
-        renderTableChrome();
-      }
-      if (facultyMenuOpen) {
-        facultyMenuOpen = false;
-        facultySearchQuery = '';
-        renderFacultyChrome();
-      }
-    },
+    beforeOpen: () => closeAllOverlaysExcept('method'),
+  });
+  armUpdatesSheetChrome({
+    beforeOpen: () => closeAllOverlaysExcept('updates'),
+  });
+
+  $updateStatus.addEventListener('click', () => {
+    toggleUpdatesSheet();
+    renderCommandMeta();
   });
 
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isUpdatesSheetOpen()) {
+      e.preventDefault();
+      closeUpdatesSheet();
+      renderCommandMeta();
+      return;
+    }
     if (e.key === 'Escape' && isMethodSheetOpen()) {
       e.preventDefault();
       closeMethodSheet();
@@ -805,13 +846,15 @@ function bindPickerChrome() {
       return;
     }
 
-    const overlayId = isMethodSheetOpen()
-      ? METHOD_SHEET.overlayId
-      : facultyMenuOpen
-        ? 'faculty-overlay'
-        : tableMenuOpen
-          ? 'table-overlay'
-          : null;
+    const overlayId = isUpdatesSheetOpen()
+      ? UPDATES_SHEET.overlayId
+      : isMethodSheetOpen()
+        ? METHOD_SHEET.overlayId
+        : facultyMenuOpen
+          ? 'faculty-overlay'
+          : tableMenuOpen
+            ? 'table-overlay'
+            : null;
     if (!overlayId) return;
 
     // Soft Tab trap inside the open dialog (search + options + close).

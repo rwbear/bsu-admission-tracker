@@ -33,8 +33,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./css/tokens.css?v=20260718ol" />
-  <link rel="stylesheet" href="./css/layout.css?v=20260718ol" />
+  <link rel="stylesheet" href="./css/tokens.css?v=20260718lu" />
+  <link rel="stylesheet" href="./css/layout.css?v=20260718lu" />
   <link rel="stylesheet" href="./css/components.css?v=20260718ol" />
 </head>
 <body>
@@ -42,13 +42,23 @@
     <header class="command" id="command">
       <div class="wrap command-inner">
         <a class="command-brand" href="#top">r.w.b.&nbsp;|&nbsp;production</a>
-        <div class="command-meta" id="update-status" title="Автообновление каждые несколько минут">
+        <button
+          type="button"
+          class="command-meta"
+          id="update-status"
+          aria-haspopup="dialog"
+          aria-controls="updates-overlay"
+          aria-expanded="false"
+          title="Загружаем данные · нажми, чтобы узнать подробнее"
+        >
           <span class="live-dot" aria-hidden="true"></span>
-          <span class="command-meta-rotator" aria-live="polite">
-            <span id="command-time" class="command-meta-line is-active">Загрузка</span>
-            <span id="next-update" class="command-meta-line" aria-hidden="true"></span>
+          <span class="command-meta-age" id="command-time">
+            <span class="command-meta-age-verb" id="command-age-verb" hidden>Обновлено </span>
+            <span id="command-age-value">Загрузка</span>
           </span>
-        </div>
+          <span class="command-meta-suffix" id="command-suffix" aria-hidden="true"></span>
+        </button>
+        <span class="sr-only" id="update-live-region" aria-live="polite"></span>
       </div>
     </header>
 
@@ -120,6 +130,6 @@
     </footer>
   </div>
 
-  <script type="module" src="./js/main.js?v=20260718ol"></script>
+  <script type="module" src="./js/main.js?v=20260718lu"></script>
 </body>
 </html>

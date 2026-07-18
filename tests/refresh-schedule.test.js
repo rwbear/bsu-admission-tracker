@@ -39,7 +39,7 @@ describe('refresh schedule', () => {
     assert.equal(shouldRefreshNow(100, 0, false, true), false);
   });
 
-  it('chases Pages every minute when the snapshot is stale', () => {
+  it('chases Pages every 30s when the snapshot is stale', () => {
     const three = 3 * 60_000;
     const now = Date.parse('2026-07-14T13:30:00.000Z');
     const fresh = '2026-07-14T13:28:00.000Z';

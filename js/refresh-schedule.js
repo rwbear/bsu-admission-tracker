@@ -94,3 +94,27 @@ export function shouldRefreshNow(now, nextRefreshAt, refreshing, pageVisible) {
   if (!nextRefreshAt) return false;
   return now >= nextRefreshAt;
 }
+
+/**
+ * Header live-state for the update timer / live-dot.
+ * Priority: fetching > chase > idle.
+ * @param {{
+ *   refreshing: boolean,
+ *   updatedAt?: string | null,
+ *   now?: number,
+ *   staleAfterMs?: number,
+ * }} opts
+ * @returns {'idle' | 'fetching' | 'chase'}
+ */
+export function resolveLiveState(opts) {
+  const {
+    refreshing,
+    updatedAt = null,
+    now = Date.now(),
+    staleAfterMs = STALE_AFTER_MS,
+  } = opts;
+  if (refreshing) return 'fetching';
+  if (!updatedAt) return 'chase';
+  if (isSnapshotStale(updatedAt, now, staleAfterMs)) return 'chase';
+  return 'idle';
+}
