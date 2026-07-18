@@ -54,8 +54,10 @@ describe('proxy policy', () => {
     );
   });
 
-  it('disables public discovery in CI even without SCRAPE_PROXY', () => {
-    assert.equal(allowPublicProxyDiscovery({ GITHUB_ACTIONS: 'true' }), false);
+  it('allows public discovery in CI when SCRAPE_PROXY is missing', () => {
+    // Fail-open for the scrape channel — secret was never set in prod and
+    // hard-require froze the pipeline. Content gates still protect tables.
+    assert.equal(allowPublicProxyDiscovery({ GITHUB_ACTIONS: 'true' }), true);
   });
 
   it('allows public discovery locally without trusted proxy', () => {
@@ -76,10 +78,9 @@ describe('proxy policy', () => {
     );
   });
 
-  it('assertCiProxyConfigured fails closed in CI without SCRAPE_PROXY', () => {
-    assert.throws(
-      () => assertCiProxyConfigured({ GITHUB_ACTIONS: 'true' }),
-      /SCRAPE_PROXY is required in CI/,
+  it('assertCiProxyConfigured warns but does not throw without SCRAPE_PROXY', () => {
+    assert.doesNotThrow(() =>
+      assertCiProxyConfigured({ GITHUB_ACTIONS: 'true' }),
     );
     assert.doesNotThrow(() =>
       assertCiProxyConfigured({
@@ -90,12 +91,13 @@ describe('proxy policy', () => {
     assert.doesNotThrow(() => assertCiProxyConfigured({}));
   });
 
-  it('buildProxyCandidates: trusted first, public only when allowed', () => {
+  it('buildProxyCandidates: trusted → public → optional direct', () => {
     const trusted = buildProxyCandidates({
       cached: 'http://cache:1',
       configured: ['http://trust:2'],
       discovered: ['http://public:3'],
       allowPublic: false,
+      allowDirect: true,
     });
     assert.deepEqual(trusted, ['http://cache:1', 'http://trust:2', null]);
 
@@ -103,7 +105,20 @@ describe('proxy policy', () => {
       configured: ['http://trust:2'],
       discovered: ['http://public:3'],
       allowPublic: true,
+      allowDirect: true,
     });
-    assert.deepEqual(withPublic, ['http://trust:2', null, 'http://public:3']);
+    assert.deepEqual(withPublic, [
+      'http://trust:2',
+      'http://public:3',
+      null,
+    ]);
+
+    const ciPublic = buildProxyCandidates({
+      configured: [],
+      discovered: ['http://public:3'],
+      allowPublic: true,
+      allowDirect: false,
+    });
+    assert.deepEqual(ciPublic, ['http://public:3']);
   });
 });
