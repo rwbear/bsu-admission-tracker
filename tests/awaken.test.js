@@ -6,9 +6,11 @@ import {
   allAwake,
   allAsleep,
   disposeScrollAwaken,
+  shouldDeferSleep,
   AWAKEN_WAKE_RATIO,
   AWAKEN_SLEEP_RATIO,
   AWAKEN_SLEEP_MS,
+  AWAKEN_SLEEP_GRACE_MS,
 } from '../js/ui/awaken.js';
 
 function fakeEl(awake = false) {
@@ -116,5 +118,16 @@ describe('awaken foundation', () => {
 
   it('disposeScrollAwaken is safe on unknown scopes', () => {
     disposeScrollAwaken(/** @type {any} */ (fakeEl()));
+  });
+
+  it('defers sleep right after awaken (IO flicker grace)', () => {
+    assert.ok(AWAKEN_SLEEP_GRACE_MS > AWAKEN_SLEEP_MS);
+    const el = fakeEl();
+    awakenEl(/** @type {any} */ (el));
+    assert.equal(shouldDeferSleep(/** @type {any} */ (el)), true);
+    assert.equal(
+      shouldDeferSleep(/** @type {any} */ (el), performance.now() + AWAKEN_SLEEP_GRACE_MS + 1),
+      false,
+    );
   });
 });
