@@ -91,8 +91,11 @@ let onlineBound = false;
 let facultyMenuOpen = false;
 let facultySearchQuery = '';
 let facultyOutsideBound = false;
+/** Passed into picker close — false when another overlay is taking over. */
+let facultyRestoreFocus = true;
 let tableMenuOpen = false;
 let tableSearchQuery = '';
+let tableRestoreFocus = true;
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -149,18 +152,21 @@ function currentSpecialties() {
   return inTable.filter((s) => s.facultyId === state.facultyId);
 }
 
-function closeTableMenu() {
+/**
+ * @param {{ restoreFocus?: boolean }} [opts]
+ */
+function closeTableMenu(opts = {}) {
   if (!tableMenuOpen) return;
   tableMenuOpen = false;
   tableSearchQuery = '';
+  tableRestoreFocus = opts.restoreFocus !== false;
   renderTableChrome();
-  const trigger = document.getElementById('table-trigger');
-  if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+  tableRestoreFocus = true;
 }
 
 function openTableMenu() {
   closeMethodSheet({ restoreFocus: false });
-  closeFacultyMenu();
+  closeFacultyMenu({ restoreFocus: false });
   tableMenuOpen = true;
   tableSearchQuery = '';
   renderTableChrome();
@@ -178,10 +184,7 @@ function toggleTableMenu() {
 function onSelectTable(id) {
   tableSearchQuery = '';
   if (id === state.formId) {
-    tableMenuOpen = false;
-    renderHeroChrome();
-    const trigger = document.getElementById('table-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    closeTableMenu();
     return;
   }
 
@@ -195,12 +198,11 @@ function onSelectTable(id) {
 
   // Cover the board dissolve briefly, then leave — short enough to feel
   // instant, long enough that empty chrome doesn't flash through the dialog.
+  // Focus returns inside table-picker teardown (same turn as unlock).
   const closeAfter = prefersReducedMotion() ? 0 : 180;
   window.setTimeout(() => {
-    tableMenuOpen = false;
-    renderHeroChrome();
-    const trigger = document.getElementById('table-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    if (state.formId !== id) return;
+    closeTableMenu();
   }, closeAfter);
 }
 
@@ -226,37 +228,54 @@ function renderTableChrome() {
     selectedId: state.formId,
     open: tableMenuOpen,
     query: tableSearchQuery,
+    restoreFocus: tableRestoreFocus,
     onToggle: toggleTableMenu,
     onSelect: onSelectTable,
-    onClose: closeTableMenu,
+    onClose: () => closeTableMenu(),
     onQuery: onTableQuery,
   });
 }
 
-function closeFacultyMenu() {
+/**
+ * @param {{ restoreFocus?: boolean }} [opts]
+ */
+function closeFacultyMenu(opts = {}) {
   if (!facultyMenuOpen) return;
   facultyMenuOpen = false;
   facultySearchQuery = '';
+  facultyRestoreFocus = opts.restoreFocus !== false;
   renderFacultyChrome();
-  window.setTimeout(() => {
-    if (facultyMenuOpen) return;
-    const trigger = document.getElementById('faculty-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
-  }, 280);
+  facultyRestoreFocus = true;
+}
+
+/**
+ * Scroll an option inside the overlay list without touching window scroll
+ * (scrollIntoView can nudge the page even under a body lock).
+ * @param {HTMLElement} list
+ * @param {HTMLElement} option
+ */
+function scrollOptionIntoList(list, option) {
+  const oTop = option.offsetTop;
+  const oBottom = oTop + option.offsetHeight;
+  const viewTop = list.scrollTop;
+  const viewBottom = viewTop + list.clientHeight;
+  if (oTop < viewTop) list.scrollTop = oTop;
+  else if (oBottom > viewBottom) list.scrollTop = oBottom - list.clientHeight;
 }
 
 function openFacultyMenu() {
   closeMethodSheet({ restoreFocus: false });
-  closeTableMenu();
+  closeTableMenu({ restoreFocus: false });
   facultyMenuOpen = true;
   facultySearchQuery = '';
   renderFacultyChrome();
   queueMicrotask(() => {
     const dialog = document.getElementById('faculty-overlay');
     if (dialog instanceof HTMLElement) focusNoScroll(dialog);
+    const list = dialog?.querySelector('.faculty-overlay-list');
     const active = dialog?.querySelector('.faculty-option.is-active');
-    if (active instanceof HTMLElement) {
-      active.scrollIntoView({ block: 'nearest' });
+    if (list instanceof HTMLElement && active instanceof HTMLElement) {
+      scrollOptionIntoList(list, active);
     }
   });
 }
@@ -269,13 +288,7 @@ function toggleFacultyMenu() {
 function onSelectFaculty(id) {
   facultySearchQuery = '';
   if (id === state.facultyId) {
-    facultyMenuOpen = false;
-    renderFacultyChrome();
-    window.setTimeout(() => {
-      if (facultyMenuOpen) return;
-      const trigger = document.getElementById('faculty-trigger');
-      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
-    }, 280);
+    closeFacultyMenu();
     return;
   }
 
@@ -285,16 +298,11 @@ function onSelectFaculty(id) {
 
   // Cover the board dissolve briefly, then leave — short enough to feel
   // instant, long enough that empty chrome doesn't flash through the dialog.
+  // Focus returns inside faculty-picker teardown (same turn as unlock).
   const closeAfter = prefersReducedMotion() ? 0 : 180;
   window.setTimeout(() => {
     if (state.facultyId !== id) return;
-    facultyMenuOpen = false;
-    renderFacultyChrome();
-    window.setTimeout(() => {
-      if (facultyMenuOpen) return;
-      const trigger = document.getElementById('faculty-trigger');
-      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
-    }, 280);
+    closeFacultyMenu();
   }, closeAfter);
 }
 
@@ -315,9 +323,10 @@ function renderFacultyChrome() {
     selectedId: state.facultyId,
     open: facultyMenuOpen,
     query: facultySearchQuery,
+    restoreFocus: facultyRestoreFocus,
     onToggle: toggleFacultyMenu,
     onSelect: onSelectFaculty,
-    onClose: closeFacultyMenu,
+    onClose: () => closeFacultyMenu(),
     onQuery: onFacultyQuery,
   });
 }
@@ -744,17 +753,9 @@ function bindPickerChrome() {
 
   armMethodSheetChrome({
     beforeOpen: () => {
-      // Silent — don't steal focus back to faculty/table triggers.
-      if (tableMenuOpen) {
-        tableMenuOpen = false;
-        tableSearchQuery = '';
-        renderTableChrome();
-      }
-      if (facultyMenuOpen) {
-        facultyMenuOpen = false;
-        facultySearchQuery = '';
-        renderFacultyChrome();
-      }
+      // Silent — method dialog takes focus; don't bounce to faculty/table.
+      if (tableMenuOpen) closeTableMenu({ restoreFocus: false });
+      if (facultyMenuOpen) closeFacultyMenu({ restoreFocus: false });
     },
   });
 

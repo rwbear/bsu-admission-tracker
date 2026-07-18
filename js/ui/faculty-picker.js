@@ -16,6 +16,8 @@ import {
 } from './overlay-scroll-lock.js';
 
 const OVERLAY_ID = 'faculty-overlay-root';
+const DIALOG_ID = 'faculty-overlay';
+const TRIGGER_ID = 'faculty-trigger';
 const LOCK_ID = 'faculty';
 
 function prefersReducedMotion() {
@@ -157,7 +159,7 @@ function paintFacultyList(list, model) {
 function paintTrigger(mount, label, open, onToggle) {
   const root = mount.querySelector('.faculty-picker');
   const labelEl = mount.querySelector('.faculty-trigger-label');
-  const btn = mount.querySelector('#faculty-trigger');
+  const btn = mount.querySelector(`#${TRIGGER_ID}`);
   if (
     root instanceof HTMLElement &&
     labelEl instanceof HTMLElement &&
@@ -176,10 +178,10 @@ function paintTrigger(mount, label, open, onToggle) {
   const nextBtn = el('button', {
     className: 'faculty-trigger',
     type: 'button',
-    id: 'faculty-trigger',
+    id: TRIGGER_ID,
     'aria-haspopup': 'dialog',
     'aria-expanded': open ? 'true' : 'false',
-    'aria-controls': 'faculty-overlay',
+    'aria-controls': DIALOG_ID,
   });
   nextBtn.append(
     el('span', { className: 'faculty-trigger-label', text: label }),
@@ -233,7 +235,7 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
 
   const dialog = el('div', {
     className: 'faculty-overlay',
-    id: 'faculty-overlay',
+    id: DIALOG_ID,
     role: 'dialog',
     'aria-modal': 'true',
     'aria-labelledby': 'faculty-overlay-title',
@@ -331,22 +333,51 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
 }
 
 /**
+ * Restore trigger focus + unlock in one synchronous turn.
+ * A separate timer for focus (old main.js path) painted a frame with
+ * focus on <body> after dialog removal — same blink as the method sheet.
+ * @param {HTMLElement} host
+ * @param {HTMLElement | null} shell
+ * @param {boolean} restoreFocus
+ */
+function teardownFacultyOverlay(host, shell, restoreFocus) {
+  clearCloseTimer(host);
+
+  // Focus BEFORE remove so tearing down the dialog never drops focus to <body>.
+  if (restoreFocus) {
+    const trigger = document.getElementById(TRIGGER_ID);
+    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+  } else {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && shell?.contains(active)) active.blur();
+  }
+
+  document.documentElement.classList.remove('faculty-overlay-open');
+  if (shell && host.contains(shell)) shell.remove();
+  if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
+  releaseOverlayScrollLock(LOCK_ID);
+  host._facultyRestoreFocus = true;
+}
+
+/**
  * Play exit motion, then tear down after the backdrop fade settles.
  * @param {HTMLElement} host
+ * @param {{ restoreFocus?: boolean }} [opts]
  */
-function beginCloseOverlay(host) {
+function beginCloseOverlay(host, opts = {}) {
+  const restoreFocus = opts.restoreFocus !== false;
+  host._facultyRestoreFocus = restoreFocus;
+
   const shell = host.querySelector('.faculty-overlay-shell');
   if (!shell) {
-    document.documentElement.classList.remove('faculty-overlay-open');
-    releaseOverlayScrollLock(LOCK_ID);
-    host.innerHTML = '';
+    teardownFacultyOverlay(host, null, restoreFocus);
     return;
   }
   if (host._facultyClosing) return;
 
   host._facultyClosing = true;
   shell.style.pointerEvents = 'none';
-  const dialog = shell.querySelector('#faculty-overlay');
+  const dialog = shell.querySelector(`#${DIALOG_ID}`);
   if (dialog instanceof HTMLElement) focusNoScroll(dialog);
 
   shell.classList.remove('is-open');
@@ -358,11 +389,7 @@ function beginCloseOverlay(host) {
     if (settled) return;
     settled = true;
     if (backdrop) backdrop.removeEventListener('transitionend', onEnd);
-    clearCloseTimer(host);
-    document.documentElement.classList.remove('faculty-overlay-open');
-    if (host.contains(shell)) shell.remove();
-    if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
-    releaseOverlayScrollLock(LOCK_ID);
+    teardownFacultyOverlay(host, shell, host._facultyRestoreFocus !== false);
   };
 
   const onEnd = (ev) => {
@@ -396,6 +423,7 @@ function beginCloseOverlay(host) {
  *   onSelect: (id: string) => void,
  *   onClose: () => void,
  *   onQuery: (q: string) => void,
+ *   restoreFocus?: boolean,
  * }} opts
  */
 export function renderFacultyPicker(mount, opts) {
@@ -415,7 +443,7 @@ export function renderFacultyPicker(mount, opts) {
   const existing = host.querySelector('.faculty-overlay-shell');
 
   if (!opts.open) {
-    beginCloseOverlay(host);
+    beginCloseOverlay(host, { restoreFocus: opts.restoreFocus !== false });
     return { button: btn, menu: null, search: null };
   }
 
