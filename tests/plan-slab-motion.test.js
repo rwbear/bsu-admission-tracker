@@ -19,33 +19,35 @@ function keyframes(css, name) {
 }
 
 describe('plan-slab motion contract', () => {
-  it('track stays empty until fill clip opens — no seg opacity ghosts', () => {
+  it('hard-locks a blank track when not awake', () => {
     const css = readCss();
+
+    const dormantLock = css.match(
+      /\.plan-slab-wrap:not\(\.is-awake\)\s+\.plan-slab-fill\s*\{([^}]*)\}/,
+    );
+    assert.ok(dormantLock, 'dormant empty lock exists');
+    assert.match(dormantLock[1], /translateX\(\s*-100%\s*\)/);
+    assert.match(dormantLock[1], /opacity:\s*0/);
+    assert.match(dormantLock[1], /animation:\s*none/);
+
+    const captionLock = css.match(
+      /\.plan-slab-wrap:not\(\.is-awake\)\s+\.plan-slab-caption\s*\{([^}]*)\}/,
+    );
+    assert.ok(captionLock);
+    assert.match(captionLock[1], /opacity:\s*0/);
+
     const fillBase = css.match(/(?:^|\n)\.plan-slab-fill\s*\{([^}]*)\}/);
-    assert.ok(fillBase, 'plan-slab-fill layer exists');
-    assert.match(fillBase[1], /clip-path:\s*inset\(0\s+100%\s+0\s+0\)/);
+    assert.ok(fillBase);
+    assert.match(fillBase[1], /translateX\(\s*-100%\s*\)/);
 
     const enter = keyframes(css, 'plan-slab-fill-in');
     const sleep = keyframes(css, 'plan-slab-fill-sleep');
-    assert.match(enter, /inset\(0\s+100%\s+0\s+0\)/);
-    assert.match(enter, /inset\(0\s+0%\s+0\s+0\)/);
-    assert.match(sleep, /inset\(0\s+100%\s+0\s+0\)/);
-    // scaleX squashes labels mid-wipe — clip-path only.
-    assert.equal(/\bscaleX\b/.test(enter), false);
-    assert.equal(/\bscaleX\b/.test(sleep), false);
-
-    assert.equal(
-      /\.plan-slab-seg:nth-child\([^)]+\)\s*\{[^}]*animation-delay/s.test(css),
-      false,
-    );
-
-    const seg = css.match(/(?:^|\n)\.plan-slab-seg\s*\{([^}]*)\}/);
-    assert.ok(seg);
-    assert.equal(/opacity:\s*0/.test(seg[1]), false);
-
-    const caption = css.match(/(?:^|\n)\.plan-slab-caption\s*\{([^}]*)\}/);
-    assert.ok(caption);
-    assert.match(caption[1], /opacity:\s*0/);
+    assert.match(enter, /translateX\(\s*-100%\s*\)/);
+    assert.match(enter, /translateX\(\s*0\s*\)/);
+    assert.match(sleep, /translateX\(\s*-100%\s*\)/);
+    // clip-path failed to interpolate / close on sleep in practice.
+    assert.equal(/\bclip-path\b/.test(enter), false);
+    assert.equal(/\bclip-path\b/.test(sleep), false);
   });
 
   it('builds a fill layer and wakes after reveal (not instant on intro)', () => {

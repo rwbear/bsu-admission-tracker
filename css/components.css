@@ -262,7 +262,6 @@
   line-height: 1.45;
   color: var(--ink-dim);
   font-variant-numeric: tabular-nums;
-  /* Empty with the track — equation arrives as the bar paints. */
   opacity: 0;
 }
 
@@ -276,7 +275,7 @@
   height: 1.25rem;
   border-radius: var(--radius-sm);
   overflow: hidden;
-  /* Soft track is the only dormant paint — seats stay clipped away. */
+  /* Soft track only while asleep — fill is translated fully off-stage. */
   background: var(--soft);
 }
 
@@ -284,9 +283,9 @@
   display: flex;
   width: 100%;
   height: 100%;
-  transform-origin: left center;
-  /* Fully clipped = actually empty. clip-path (not scaleX) keeps labels crisp. */
-  clip-path: inset(0 100% 0 0);
+  will-change: transform;
+  /* Off-stage = actually empty. translateX interpolates; clip-path often didn't. */
+  transform: translateX(-100%);
 }
 
 .plan-slab-seg {
@@ -323,8 +322,25 @@
   text-overflow: clip;
 }
 
-/* One wipe in/out — composition paints as a unit from the left. */
+/*
+ * Hard empty lock — not awake means blank track, period.
+ * Sleep animation may still be mid-flight under .is-awake.is-sleeping;
+ * once settle drops .is-awake this rule wins and cannot leave a ghost.
+ */
+.plan-slab-wrap:not(.is-awake) .plan-slab-fill {
+  transform: translateX(-100%) !important;
+  opacity: 0 !important;
+  animation: none !important;
+}
+
+.plan-slab-wrap:not(.is-awake) .plan-slab-caption {
+  opacity: 0 !important;
+  animation: none !important;
+}
+
+/* One wipe in/out — composition slides on as a unit. */
 .plan-slab-wrap.is-awake:not(.is-sleeping) .plan-slab-fill {
+  opacity: 1;
   animation: plan-slab-fill-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
@@ -332,29 +348,30 @@
   animation: plan-slab-caption-in 320ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both;
 }
 
-.plan-slab-wrap.is-sleeping .plan-slab-fill {
-  animation: plan-slab-fill-sleep 280ms cubic-bezier(0.55, 0, 1, 1) both;
+.plan-slab-wrap.is-awake.is-sleeping .plan-slab-fill {
+  opacity: 1;
+  animation: plan-slab-fill-sleep 300ms cubic-bezier(0.55, 0, 1, 1) both;
 }
 
-.plan-slab-wrap.is-sleeping .plan-slab-caption {
+.plan-slab-wrap.is-awake.is-sleeping .plan-slab-caption {
   animation: plan-slab-caption-sleep 200ms cubic-bezier(0.55, 0, 1, 1) both;
 }
 
 @keyframes plan-slab-fill-in {
   from {
-    clip-path: inset(0 100% 0 0);
+    transform: translateX(-100%);
   }
   to {
-    clip-path: inset(0 0% 0 0);
+    transform: translateX(0);
   }
 }
 
 @keyframes plan-slab-fill-sleep {
   from {
-    clip-path: inset(0 0% 0 0);
+    transform: translateX(0);
   }
   to {
-    clip-path: inset(0 100% 0 0);
+    transform: translateX(-100%);
   }
 }
 
@@ -376,12 +393,13 @@
   }
 }
 
-.plan-slab-wrap.is-awake.is-instant .plan-slab-fill {
+.plan-slab-wrap.is-awake.is-instant:not(.is-sleeping) .plan-slab-fill {
   animation: none;
-  clip-path: inset(0 0% 0 0);
+  transform: translateX(0);
+  opacity: 1;
 }
 
-.plan-slab-wrap.is-awake.is-instant .plan-slab-caption {
+.plan-slab-wrap.is-awake.is-instant:not(.is-sleeping) .plan-slab-caption {
   animation: none;
   opacity: 1;
 }
@@ -408,12 +426,24 @@
     animation: none !important;
   }
 
+  .plan-slab-wrap.is-awake .plan-slab-fill,
   .plan-slab-fill {
-    clip-path: inset(0 0% 0 0) !important;
+    transform: translateX(0) !important;
+    opacity: 1 !important;
   }
 
   .plan-slab-caption {
     opacity: 1 !important;
+  }
+
+  /* Still honor true sleep/dormant when motion is reduced */
+  .plan-slab-wrap:not(.is-awake) .plan-slab-fill {
+    transform: translateX(-100%) !important;
+    opacity: 0 !important;
+  }
+
+  .plan-slab-wrap:not(.is-awake) .plan-slab-caption {
+    opacity: 0 !important;
   }
 }
 

@@ -8,7 +8,7 @@ import {
   formatQuotaNote,
   buildHistCaption,
   summarizeStatuses,
-} from './charts.js?v=20260718pf';
+} from './charts.js?v=20260718px';
 import { primeReveal, finalizeReveal } from './reveal.js';
 import { armScrollAwaken, disposeScrollAwaken } from './awaken.js';
 import { armPanelDisclosures, disposePanelDisclosures } from './panel-disclosure.js';

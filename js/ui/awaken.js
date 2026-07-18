@@ -306,8 +306,8 @@ export function sleepEl(el, opts = {}) {
   }
 
   el.classList.add("is-sleeping");
-  // Keep `.is-awake` until settle so base dormant styles don't flash
-  // under a half-finished sleep animation (ghost hatch / half fill).
+  // Keep `.is-awake` until settle so the sleep keyframes own the wipe;
+  // `:not(.is-awake)` hard-locks empty only after this timer.
 
   const timer = setTimeout(() => {
     if (!el.isConnected) {
@@ -318,8 +318,10 @@ export function sleepEl(el, opts = {}) {
       onSettled?.();
       return;
     }
-    // Drop both classes together → CSS dormant = empty shell.
-    el.classList.remove("is-awake", "is-sleeping");
+    // One atomic drop — never leave `.is-awake` without `.is-sleeping`
+    // (that would replay the enter wipe). CSS `:not(.is-awake)` then
+    // forces the blank track.
+    el.classList.remove("is-awake", "is-sleeping", "is-instant");
     el.dispatchEvent(new CustomEvent("sleep:done", { bubbles: true }));
     onSettled?.();
   }, settleMs);
