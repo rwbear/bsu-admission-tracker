@@ -48,7 +48,8 @@ describe('refresh schedule', () => {
     const three = 3 * 60_000;
     const now = Date.parse('2026-07-14T13:30:00.000Z');
     const fresh = '2026-07-14T13:28:00.000Z';
-    const stale = '2026-07-14T13:20:00.000Z';
+    // 15 minutes old — past the 12-minute stale window
+    const stale = '2026-07-14T13:15:00.000Z';
     assert.equal(resolveEffectivePollMs(three, fresh, now), three);
     assert.equal(resolveEffectivePollMs(three, stale, now), STALE_POLL_MS);
     assert.equal(resolveEffectivePollMs(three, null, now), STALE_POLL_MS);
@@ -56,6 +57,7 @@ describe('refresh schedule', () => {
     assert.equal(isSnapshotStale(fresh, now), false);
     assert.ok(STALE_AFTER_MS > three);
     assert.ok(STALE_POLL_MS < STALE_AFTER_MS);
+    assert.equal(STALE_AFTER_MS, 12 * 60_000);
   });
 
   it('resolveEffectivePollMs guards malformed updatedAt (chase, not idle)', () => {
@@ -71,7 +73,7 @@ describe('refresh schedule', () => {
     // the poll down to 30s — the developer's override wins.
     const short = 1_000;
     const now = Date.parse('2026-07-14T13:30:00.000Z');
-    const stale = '2026-07-14T13:20:00.000Z';
+    const stale = '2026-07-14T13:15:00.000Z';
     assert.equal(resolveEffectivePollMs(short, stale, now), short);
     assert.equal(resolveEffectivePollMs(short, null, now), short);
     assert.equal(resolveEffectivePollMs(short, 'garbage', now), short);

@@ -35,25 +35,17 @@ async function main() {
   const url = `${BASE}/index.html?pollMs=${POLL_MS}`;
   await page.goto(url, { waitUntil: 'networkidle0', timeout: 60_000 });
 
-  // Wait until header shows data loaded (not "Загрузка")
   await page.waitForFunction(
     () => {
-      const el = document.getElementById('command-age-value');
-      const verb = document.getElementById('command-age-verb');
-      return (
-        el &&
-        verb &&
-        !verb.hidden &&
-        el.textContent &&
-        el.textContent !== 'Загрузка'
-      );
+      const el = document.getElementById('command-data');
+      return el && /^данные \d{1,2}:\d{2}$/.test(el.textContent || '');
     },
     { timeout: 30_000 },
   );
 
   const afterLoad = await page.evaluate(() => ({
-    age: document.getElementById('command-age-value')?.textContent || '',
-    suffix: document.getElementById('command-suffix')?.textContent || '',
+    data: document.getElementById('command-data')?.textContent || '',
+    next: document.getElementById('command-next')?.textContent || '',
     liveState:
       document.getElementById('update-status')?.dataset.liveState || '',
     isButton:
@@ -66,44 +58,33 @@ async function main() {
   if (jsonFetchesAfterLoad < 1) {
     throw new Error('Expected at least one sb-bsu.json fetch on load');
   }
-  if (!afterLoad.age || afterLoad.age === 'Загрузка') {
-    throw new Error(`Load stamp missing: ${afterLoad.age}`);
+  if (!/^данные \d{1,2}:\d{2}$/.test(afterLoad.data)) {
+    throw new Error(`Load stamp missing: ${afterLoad.data}`);
   }
   if (!afterLoad.isButton) {
     throw new Error('update-status must be a <button>');
   }
-  if (
-    !/ещё/.test(afterLoad.suffix) &&
-    !/обновляю/.test(afterLoad.suffix) &&
-    !/ждём свежий сбор/.test(afterLoad.suffix)
-  ) {
-    throw new Error(`Suffix missing after load: ${afterLoad.suffix}`);
+  if (!/^след \d{1,2}:\d{2}$/.test(afterLoad.next)) {
+    throw new Error(`Next clock missing after load: ${afterLoad.next}`);
   }
 
   const fetchesBeforeWait = fetches.length;
 
-  // Wait past one poll window + buffer for network
   await new Promise((r) => setTimeout(r, POLL_MS + 2500));
 
   await page.waitForFunction(
     () => {
-      const t = document.getElementById('command-suffix')?.textContent || '';
-      // After refresh, countdown near a full interval again (or mid-flight)
-      return (
-        /ещё [1-9]/.test(t) ||
-        /ещё 0:[1-9]/.test(t) ||
-        /обновляю/.test(t)
-      );
+      const t = document.getElementById('command-next')?.textContent || '';
+      return /^след \d{1,2}:\d{2}$/.test(t);
     },
     { timeout: 15_000 },
   );
 
-  // Extra beat so a mid-flight refresh can finish
   await new Promise((r) => setTimeout(r, 1500));
 
   const afterRefresh = await page.evaluate(() => ({
-    age: document.getElementById('command-age-value')?.textContent || '',
-    suffix: document.getElementById('command-suffix')?.textContent || '',
+    data: document.getElementById('command-data')?.textContent || '',
+    next: document.getElementById('command-next')?.textContent || '',
     liveState:
       document.getElementById('update-status')?.dataset.liveState || '',
   }));
@@ -118,14 +99,13 @@ async function main() {
       `Expected a second sb-bsu.json fetch after ${POLL_MS}ms; got ${newJson} (total delta ${newFetches})`,
     );
   }
-  if (!afterRefresh.age || afterRefresh.age === 'Загрузка') {
-    throw new Error(`Stamp lost after refresh: ${afterRefresh.age}`);
+  if (!/^данные \d{1,2}:\d{2}$/.test(afterRefresh.data)) {
+    throw new Error(`Stamp lost after refresh: ${afterRefresh.data}`);
   }
-  if (!/ещё/.test(afterRefresh.suffix) && !/обновляю/.test(afterRefresh.suffix)) {
-    throw new Error(`Countdown missing after refresh: ${afterRefresh.suffix}`);
+  if (!/^след \d{1,2}:\d{2}$/.test(afterRefresh.next)) {
+    throw new Error(`Next clock missing after refresh: ${afterRefresh.next}`);
   }
 
-  // Overlay opens from the timer button
   await page.click('#update-status');
   await page.waitForFunction(
     () => document.getElementById('updates-overlay'),

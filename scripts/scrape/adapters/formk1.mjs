@@ -179,8 +179,8 @@ export async function scrapeFormk1(uni, opts = {}) {
     if (parseAll) {
       const sections = splitFacultySections(res.text);
       if (!sections.length) {
-        // Legitimate empty monitoring shell (e.g. no applicants yet).
-        okFormIds.push(String(fac.id));
+        // Empty shell — treat as fail so prior rows are retained (not wiped).
+        failedFormIds.push(String(fac.id));
         errors.push({
           facultyId: fac.id,
           formId: String(fac.id),
@@ -257,14 +257,15 @@ export async function scrapeFormk1(uni, opts = {}) {
       }
 
       if (!added) {
-        // Header-only sections (rare). Count as empty success, not hard fail.
-        okFormIds.push(String(fac.id));
+        // Header-only / unparseable — fail so prior rows are retained.
+        failedFormIds.push(String(fac.id));
         errors.push({
           facultyId: fac.id,
           formId: String(fac.id),
           url,
           message: 'faculty sections present but no parseable specialty rows',
           empty: true,
+          via: res.via,
         });
       } else {
         okFormIds.push(String(fac.id));

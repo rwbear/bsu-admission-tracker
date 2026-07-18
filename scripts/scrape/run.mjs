@@ -62,6 +62,21 @@ function stablePayload(payload) {
   return JSON.stringify(copy);
 }
 
+/**
+ * Retention flags must publish even when specialty rows are unchanged —
+ * otherwise the client never learns a form/table failed this run.
+ * @param {object | null | undefined} next
+ * @param {object | null | undefined} prev
+ */
+function retentionStateChanged(next, prev) {
+  const nextPrev = Boolean(next?.scrapeMeta?.retainedPrevious);
+  const prevPrev = Boolean(prev?.scrapeMeta?.retainedPrevious);
+  if (nextPrev !== prevPrev) return true;
+  const a = JSON.stringify([...(next?.scrapeMeta?.retainedFormIds || [])].map(String).sort());
+  const b = JSON.stringify([...(prev?.scrapeMeta?.retainedFormIds || [])].map(String).sort());
+  return a !== b;
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   const universities = JSON.parse(readFileSync(sourcesPath, 'utf8'));
@@ -191,14 +206,19 @@ async function main() {
       const contentChanged =
         !prev || stablePayload(prev) !== stablePayload(payload);
       const successfulLive = (result.meta?.okFormIds || []).length > 0 || liveSpecs.length > 0;
+      const retentionChanged = retentionStateChanged(payload, prev);
       // Always publish a successful scrape so updatedAt advances every run.
-      // Retained/failed scrapes only write when the file on disk must change.
-      if (successfulLive || contentChanged) {
+      // Also publish when retention flags flip so the client can show truth.
+      if (successfulLive || contentChanged || retentionChanged) {
         writeFileSync(outPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
         changed = true;
         console.log(
           `[write] ${outPath} (${payload.specialtyCount ?? payload.specialties.length} specialties, tables=${(payload.tables || []).length})` +
-            (successfulLive && !contentChanged ? ' [heartbeat]' : ''),
+            (successfulLive && !contentChanged && !retentionChanged
+              ? ' [heartbeat]'
+              : retentionChanged && !contentChanged
+                ? ' [retention]'
+                : ''),
         );
       } else {
         console.log(`[unchanged] ${uni.id}`);

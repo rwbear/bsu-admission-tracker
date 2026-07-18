@@ -24,14 +24,20 @@ recursion rule.
 
 After each scrape the workflow:
 
-1. Waits ~270s on the runner
+1. Waits ~180s on the runner
 2. Checks for an already-queued / other in-progress run (skip if so)
-3. Runs `gh workflow run "Scrape admission tables" --ref main`
+3. Runs `gh workflow run "Scrape admission tables" --ref <Pages branch>`
 
 Permissions required on the job: `actions: write` (for dispatch) and
 `contents: write` (for publishing snapshots).
 
 No personal access token secret is required for the chain.
+
+Client stale window is **12 minutes** (above normal scrape cadence) so a
+healthy pipeline does not look broken. Chase poll is 30s when past that.
+
+Empty monitoring shells are treated as **form failures** (prior rows retained)
+so a truncated proxy response cannot wipe a live table silently.
 
 ## Kill switch
 

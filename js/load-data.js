@@ -124,13 +124,14 @@ async function latestCommitSha(repo, branch, filePath) {
  * @returns {Promise<string | null>}
  */
 async function tipShaFromLatest(repo, branch) {
+  // Same-origin Pages tip first (fast, no CDN), then branch-tip raw.
   const urls = [
     `./data/latest.json`,
     `https://raw.githubusercontent.com/${repo}/${branch}/data/latest.json`,
   ];
   for (const url of urls) {
     try {
-      const tip = await getJson(url, { bust: true, timeoutMs: 4_000 });
+      const tip = await getJson(url, { bust: true, timeoutMs: 5_000 });
       const sha = tip?.commitSha || tip?.sha || null;
       if (sha && /^[0-9a-f]{7,40}$/i.test(String(sha))) return String(sha);
     } catch {
@@ -180,13 +181,13 @@ export async function loadIndex() {
 async function loadSnapshotCandidates(universityId, opts) {
   const file = `data/${universityId}.json`;
 
-  // Resolve SHA from tip file + API in parallel (tip is faster when present).
+  // Resolve SHA from tip file + API in parallel.
+  // Prefer tip (same-origin) when present — API is rate-limited for many clients.
   const [tipSha, apiSha] = await Promise.all([
-    withTimeout(tipShaFromLatest(opts.repo, opts.branch), 3_000, null),
-    withTimeout(latestCommitSha(opts.repo, opts.branch, file), 3_000, null),
+    withTimeout(tipShaFromLatest(opts.repo, opts.branch), 8_000, null),
+    withTimeout(latestCommitSha(opts.repo, opts.branch, file), 5_000, null),
   ]);
-  // Prefer API sha — tip file on branch-raw CDN can itself be stale.
-  const sha = apiSha || tipSha;
+  const sha = tipSha || apiSha;
 
   /** @type {Promise<object>[]} */
   const tasks = [];
