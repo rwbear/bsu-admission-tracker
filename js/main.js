@@ -304,8 +304,13 @@ function onFacultyQuery(q) {
 }
 
 function renderFacultyChrome() {
+  const formId = state.formId || DEFAULT_TABLE_ID;
+  const tableSpecs = (state.uniData?.specialties || []).filter(
+    (s) => String(s.form) === String(formId),
+  );
   renderFacultyPicker($facultyMount, {
     faculties: facultyList(),
+    specialties: tableSpecs,
     selectedId: state.facultyId,
     open: facultyMenuOpen,
     query: facultySearchQuery,
