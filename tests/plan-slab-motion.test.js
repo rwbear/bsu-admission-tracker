@@ -19,36 +19,47 @@ function keyframes(css, name) {
 }
 
 describe('plan-slab motion contract', () => {
-  it('stays empty until awake — no scaleX, no seg stagger', () => {
+  it('track stays empty until fill clip opens — no seg opacity ghosts', () => {
     const css = readCss();
-    const enter = keyframes(css, 'plan-slab-in');
-    const sleep = keyframes(css, 'plan-slab-sleep');
-    assert.match(enter, /opacity:\s*0/);
-    assert.match(enter, /opacity:\s*1/);
+    const fillBase = css.match(/(?:^|\n)\.plan-slab-fill\s*\{([^}]*)\}/);
+    assert.ok(fillBase, 'plan-slab-fill layer exists');
+    assert.match(fillBase[1], /clip-path:\s*inset\(0\s+100%\s+0\s+0\)/);
+
+    const enter = keyframes(css, 'plan-slab-fill-in');
+    const sleep = keyframes(css, 'plan-slab-fill-sleep');
+    assert.match(enter, /inset\(0\s+100%\s+0\s+0\)/);
+    assert.match(enter, /inset\(0\s+0%\s+0\s+0\)/);
+    assert.match(sleep, /inset\(0\s+100%\s+0\s+0\)/);
+    // scaleX squashes labels mid-wipe — clip-path only.
     assert.equal(/\bscaleX\b/.test(enter), false);
-    assert.match(sleep, /opacity:\s*0/);
     assert.equal(/\bscaleX\b/.test(sleep), false);
 
-    // Stagger made taken-hatch appear alone → looked like a broken sleep.
     assert.equal(
       /\.plan-slab-seg:nth-child\([^)]+\)\s*\{[^}]*animation-delay/s.test(css),
       false,
     );
 
-    const seg = css.match(/\.plan-slab-seg\s*\{([^}]*)\}/);
+    const seg = css.match(/(?:^|\n)\.plan-slab-seg\s*\{([^}]*)\}/);
     assert.ok(seg);
-    assert.match(seg[1], /opacity:\s*0/);
-    assert.equal(/\btransform\s*:/.test(seg[1]), false);
+    assert.equal(/opacity:\s*0/.test(seg[1]), false);
 
-    const caption = css.match(/\.plan-slab-caption\s*\{([^}]*)\}/);
+    const caption = css.match(/(?:^|\n)\.plan-slab-caption\s*\{([^}]*)\}/);
     assert.ok(caption);
     assert.match(caption[1], /opacity:\s*0/);
   });
 
-  it('intro path instant-awakes plan under the reveal veil', () => {
-    const src = readFileSync(join(root, 'js/ui/radar.js'), 'utf8');
-    assert.match(src, /data-awaken=["']plan["']/);
-    assert.match(src, /awakenEl\(node,\s*\{\s*instant:\s*true\s*\}/);
+  it('builds a fill layer and wakes after reveal (not instant on intro)', () => {
+    const charts = readFileSync(join(root, 'js/ui/charts.js'), 'utf8');
+    assert.match(charts, /plan-slab-fill/);
+
+    const radar = readFileSync(join(root, 'js/ui/radar.js'), 'utf8');
+    assert.match(radar, /armScrollAwaken\(container,\s*\{\s*immediate:\s*false/);
+    assert.equal(
+      /data-awaken=["']plan["'][\s\S]{0,200}awakenEl\([^)]*instant:\s*true/.test(
+        radar,
+      ),
+      false,
+    );
   });
 });
 
@@ -56,7 +67,6 @@ describe('awaken empty-shell contract', () => {
   it('chance + hist sleep/dormant end at true empty (no ghost opacity)', () => {
     const css = readCss();
 
-    // Base rules only (not nested `.is-awake … .chance-fill`).
     const fillBase = css.match(/(?:^|\n)\.chance-fill\s*\{([^}]*)\}/);
     assert.ok(fillBase);
     assert.match(fillBase[1], /opacity:\s*0\b/);

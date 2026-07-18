@@ -262,7 +262,7 @@
   line-height: 1.45;
   color: var(--ink-dim);
   font-variant-numeric: tabular-nums;
-  /* Dormant / asleep: empty shell only — caption arrives with the fill. */
+  /* Empty with the track — equation arrives as the bar paints. */
   opacity: 0;
 }
 
@@ -272,12 +272,21 @@
 }
 
 .plan-slab-bar {
-  display: flex;
   width: 100%;
   height: 1.25rem;
   border-radius: var(--radius-sm);
   overflow: hidden;
+  /* Soft track is the only dormant paint — seats stay clipped away. */
   background: var(--soft);
+}
+
+.plan-slab-fill {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transform-origin: left center;
+  /* Fully clipped = actually empty. clip-path (not scaleX) keeps labels crisp. */
+  clip-path: inset(0 100% 0 0);
 }
 
 .plan-slab-seg {
@@ -286,8 +295,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Empty until awake — no scaleX (staggered hatch read as a broken loader). */
-  opacity: 0;
 }
 
 /* Taken seats: quiet hatch. Open contest: stronger ink fill (the answer). */
@@ -316,18 +323,42 @@
   text-overflow: clip;
 }
 
-/* One unit in/out — never stagger taken before open (hatch-only ghost). */
-.plan-slab-wrap.is-awake:not(.is-sleeping) .plan-slab-seg,
+/* One wipe in/out — composition paints as a unit from the left. */
+.plan-slab-wrap.is-awake:not(.is-sleeping) .plan-slab-fill {
+  animation: plan-slab-fill-in 420ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 .plan-slab-wrap.is-awake:not(.is-sleeping) .plan-slab-caption {
-  animation: plan-slab-in 300ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: plan-slab-caption-in 320ms cubic-bezier(0.16, 1, 0.3, 1) 60ms both;
 }
 
-.plan-slab-wrap.is-sleeping .plan-slab-seg,
+.plan-slab-wrap.is-sleeping .plan-slab-fill {
+  animation: plan-slab-fill-sleep 280ms cubic-bezier(0.55, 0, 1, 1) both;
+}
+
 .plan-slab-wrap.is-sleeping .plan-slab-caption {
-  animation: plan-slab-sleep 220ms cubic-bezier(0.55, 0, 1, 1) both;
+  animation: plan-slab-caption-sleep 200ms cubic-bezier(0.55, 0, 1, 1) both;
 }
 
-@keyframes plan-slab-in {
+@keyframes plan-slab-fill-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0% 0 0);
+  }
+}
+
+@keyframes plan-slab-fill-sleep {
+  from {
+    clip-path: inset(0 0% 0 0);
+  }
+  to {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+
+@keyframes plan-slab-caption-in {
   from {
     opacity: 0;
   }
@@ -336,7 +367,7 @@
   }
 }
 
-@keyframes plan-slab-sleep {
+@keyframes plan-slab-caption-sleep {
   from {
     opacity: 1;
   }
@@ -345,34 +376,44 @@
   }
 }
 
-.plan-slab-wrap.is-awake.is-instant .plan-slab-seg,
+.plan-slab-wrap.is-awake.is-instant .plan-slab-fill {
+  animation: none;
+  clip-path: inset(0 0% 0 0);
+}
+
 .plan-slab-wrap.is-awake.is-instant .plan-slab-caption {
   animation: none;
   opacity: 1;
 }
 
-/* Seats story finishes before contest rail starts filling */
+/* Seats wipe finishes before contest rail starts filling */
 .detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-fill {
-  animation-delay: 440ms;
+  animation-delay: 400ms;
 }
 .detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-cut {
-  animation-delay: 560ms;
+  animation-delay: 520ms;
 }
 .detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-you {
-  animation-delay: 600ms;
+  animation-delay: 560ms;
 }
 .detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-axis-cut,
 .detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-axis-you,
 .detail-inner:has(.plan-slab-wrap) .chance-track-wrap.is-awake:not(.is-sleeping) .chance-stats {
-  animation-delay: 640ms;
+  animation-delay: 600ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .plan-slab-seg,
+  .plan-slab-fill,
   .plan-slab-caption {
     animation: none !important;
+  }
+
+  .plan-slab-fill {
+    clip-path: inset(0 0% 0 0) !important;
+  }
+
+  .plan-slab-caption {
     opacity: 1 !important;
-    transform: none !important;
   }
 }
 

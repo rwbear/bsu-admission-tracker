@@ -8,9 +8,9 @@ import {
   formatQuotaNote,
   buildHistCaption,
   summarizeStatuses,
-} from './charts.js?v=20260718ol';
+} from './charts.js?v=20260718pf';
 import { primeReveal, finalizeReveal } from './reveal.js';
-import { awakenEl, armScrollAwaken, disposeScrollAwaken } from './awaken.js';
+import { armScrollAwaken, disposeScrollAwaken } from './awaken.js';
 import { armPanelDisclosures, disposePanelDisclosures } from './panel-disclosure.js';
 import { shouldAutoOpenMoreDetails } from './detail-density.js';
 import {
@@ -429,16 +429,9 @@ export function renderDetailPanel(container, row, score, meta = {}, motion = {})
   armPanelDisclosures(container, { reduceMotion });
 
   if (intro) {
+    // Plan stays dormant (empty soft track) under the reveal veil, then
+    // wakes once on reveal:done — clip wipe paints seats as one unit.
     primeReveal(inner);
-    // Plan slab is a composition, not a meter — reveal already carries the
-    // entrance. Playing plan-slab-in on top (esp. after faculty dual-panel
-    // height settle) read as a broken loader on the wide open segment.
-    // Chance / hist still wake on reveal:done with real motion.
-    for (const node of inner.querySelectorAll('[data-awaken="plan"]')) {
-      if (node instanceof HTMLElement) {
-        awakenEl(node, { instant: true });
-      }
-    }
     armScrollAwaken(container, { immediate: false, reduceMotion: false });
   } else {
     finalizeReveal(inner);

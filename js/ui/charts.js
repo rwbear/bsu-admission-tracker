@@ -327,6 +327,8 @@ export function renderPlanSlab(mount, row) {
     'aria-label': `План ${plan} мест: ${formatQuotaCaptionCompact(row)}`,
   });
 
+  // Fill layer clips closed while dormant — soft track stays, seats stay empty.
+  const fill = el('div', { className: 'plan-slab-fill' });
   for (const seg of segments) {
     const pct = (seg.count / plan) * 100;
     const node = el('div', {
@@ -342,8 +344,9 @@ export function renderPlanSlab(mount, row) {
         }),
       );
     }
-    bar.append(node);
+    fill.append(node);
   }
+  bar.append(fill);
 
   const wrap = el(
     'div',
