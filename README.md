@@ -2,8 +2,7 @@
 
 **[rwbear.github.io/bsu-admission-tracker](https://rwbear.github.io/bsu-admission-tracker/)**
 
-Визуализация проходных таблиц в live формате.  
-Введите свой проходной балл и увидите своё место в конкурсе.
+Введи балл и отследи своё место в Конкурсе БГУ по live-таблицам и графикам.
 
 made by: **r.w.b. | production**
 
