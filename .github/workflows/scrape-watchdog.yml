@@ -1,0 +1,106 @@
+name: Scrape watchdog
+
+# If the self-arm chain dies (cancel mid-sleep, skipped dispatch, etc.),
+# cron alone can leave data frozen for hours. This watchdog only fires a
+# scrape when the last published tip is older than the threshold AND no
+# scrape is already queued/running.
+#
+# Must live on default branch (main) for schedule. Dispatches the scrape
+# workflow on the Pages branch.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+  pages: read
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Resolve Pages branch
+        id: target
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH=$(gh api "repos/${{ github.repository }}/pages" --jq '.source.branch' 2>/dev/null || true)
+          if [ -z "$BRANCH" ] || [ "$BRANCH" = "null" ]; then
+            BRANCH="cursor/admission-tracker-rebuild-be86"
+          fi
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tip metadata
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.target.outputs.branch }}
+          sparse-checkout: |
+            data/latest.json
+            data/sb-bsu.json
+          sparse-checkout-cone-mode: false
+
+      - name: Arm scrape if tip is stale
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.target.outputs.branch }}
+          # Above normal ~5 min cadence; below client 12 min stale banner.
+          STALE_MINUTES: "15"
+        run: |
+          set -uo pipefail
+
+          QUEUED=$(gh run list --workflow="Scrape admission tables" --status queued --limit 5 --json databaseId --jq 'length')
+          INPROG=$(gh run list --workflow="Scrape admission tables" --status in_progress --limit 5 --json databaseId --jq 'length')
+          if [ "${QUEUED:-0}" -gt 0 ] || [ "${INPROG:-0}" -gt 0 ]; then
+            echo "Scrape already queued/in progress — watchdog idle."
+            exit 0
+          fi
+
+          set +e
+          node --input-type=module <<'EOF'
+          import { readFileSync, existsSync } from 'node:fs';
+
+          const staleMs = Number(process.env.STALE_MINUTES || 15) * 60_000;
+          const now = Date.now();
+
+          function ageMs(iso) {
+            const t = Date.parse(iso || '');
+            return Number.isFinite(t) ? now - t : Number.POSITIVE_INFINITY;
+          }
+
+          let stamp = null;
+          if (existsSync('data/latest.json')) {
+            const tip = JSON.parse(readFileSync('data/latest.json', 'utf8'));
+            stamp = tip.publishedAt || tip.universities?.[0]?.updatedAt || tip.generatedAt;
+          }
+          if (!stamp && existsSync('data/sb-bsu.json')) {
+            const snap = JSON.parse(readFileSync('data/sb-bsu.json', 'utf8'));
+            stamp = snap.updatedAt;
+          }
+
+          const age = ageMs(stamp);
+          const mins = Number.isFinite(age) ? (age / 60_000).toFixed(1) : '∞';
+          console.log(`Tip stamp=${stamp || 'missing'} age=${mins}m threshold=${process.env.STALE_MINUTES}m`);
+
+          if (age < staleMs) {
+            console.log('Tip is fresh — no dispatch.');
+            process.exit(0);
+          }
+          console.log('Tip is stale — requesting scrape.');
+          process.exit(42);
+          EOF
+          STATUS=$?
+          set -e
+          if [ "$STATUS" -eq 0 ]; then
+            exit 0
+          fi
+          if [ "$STATUS" -ne 42 ]; then
+            echo "Watchdog check failed with status $STATUS"
+            exit "$STATUS"
+          fi
+
+          gh workflow run "Scrape admission tables" --ref "${BRANCH}"
+          echo "Dispatched scrape via watchdog → ${BRANCH}"
