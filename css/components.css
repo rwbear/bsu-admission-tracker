@@ -284,9 +284,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.55;
-  transform: scaleX(0.92);
-  transform-origin: left center;
+  /* Opacity only — scaleX read as a broken loader on wide open segments. */
+  opacity: 0;
 }
 
 /* Taken seats: quiet hatch. Open contest: stronger ink fill (the answer). */
@@ -343,12 +342,10 @@
 
 @keyframes plan-slab-in {
   from {
-    opacity: 0.35;
-    transform: scaleX(0.4);
+    opacity: 0;
   }
   to {
     opacity: 1;
-    transform: scaleX(1);
   }
 }
 
@@ -356,7 +353,6 @@
 .plan-slab-wrap.is-awake.is-instant .plan-slab-caption {
   animation: none;
   opacity: 1;
-  transform: none;
 }
 
 /* Seats story finishes before contest rail starts filling */

@@ -7,6 +7,7 @@ import {
   allAsleep,
   disposeScrollAwaken,
   shouldDeferSleep,
+  isUnderPanelSwap,
   AWAKEN_WAKE_RATIO,
   AWAKEN_SLEEP_RATIO,
   AWAKEN_SLEEP_MS,
@@ -129,5 +130,21 @@ describe('awaken foundation', () => {
       shouldDeferSleep(/** @type {any} */ (el), performance.now() + AWAKEN_SLEEP_GRACE_MS + 1),
       false,
     );
+  });
+
+  it('detects panel-swap height lock ancestors', () => {
+    const panel = {
+      classList: { contains: (c) => c === 'is-panel-swapping' },
+      closest(sel) {
+        return sel === '.is-panel-swapping' ? this : null;
+      },
+    };
+    const child = {
+      closest(sel) {
+        return sel === '.is-panel-swapping' ? panel : null;
+      },
+    };
+    assert.equal(isUnderPanelSwap(/** @type {any} */ (child)), true);
+    assert.equal(isUnderPanelSwap(/** @type {any} */ ({ closest: () => null })), false);
   });
 });

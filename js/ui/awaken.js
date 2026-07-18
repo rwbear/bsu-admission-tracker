@@ -37,9 +37,10 @@ export const AWAKEN_SLEEP_MS = 420;
 /**
  * After a wake, ignore sleep for this long. Layout/IO flicker during reveal
  * or panel height settle was putting graphics to sleep mid-intro and waking
- * them again — CSS replayed plan-slab / chance fill twice on load.
+ * them again — CSS replayed plan-slab / chance fill twice on load / faculty
+ * select (dual-panel height lock clips IntersectionObserver).
  */
-export const AWAKEN_SLEEP_GRACE_MS = 700;
+export const AWAKEN_SLEEP_GRACE_MS = 900;
 
 /** @type {WeakMap<Element, number>} */
 const awakeAt = new WeakMap();
@@ -128,12 +129,16 @@ export function armScrollAwaken(scope, opts = {}) {
         step.removeEventListener("reveal:done", onDone);
         waitingOnReveal.delete(el);
         if (abort.signal.aborted || !el.isConnected) return;
+        // Always wake when the reveal step finishes — do not gate on
+        // visibilityRatio. During faculty dual-panel swaps the detail is
+        // height-locked + overflow:hidden; ratio can read ~0 while the
+        // cascade is intentionally introducing the graphic. Skipping here
+        // left plan-slab dormant (empty track) until a later IO pulse,
+        // which replayed the intro and looked broken.
         requestAnimationFrame(() => {
           if (abort.signal.aborted || !el.isConnected) return;
-          if (visibilityRatio(el) >= AWAKEN_WAKE_RATIO) {
-            clearSleepTimer(el);
-            awakenEl(el);
-          }
+          clearSleepTimer(el);
+          awakenEl(el);
         });
       };
       step.addEventListener("reveal:done", onDone, { once: true });
@@ -155,6 +160,8 @@ export function armScrollAwaken(scope, opts = {}) {
       return;
     }
     if (shouldDeferSleep(el)) return;
+    // Panel height settle clips descendants; IO reports "gone" falsely.
+    if (isUnderPanelSwap(el)) return;
     sleepEl(el, {
       settleMs: AWAKEN_SLEEP_MS,
       onSchedule: (timer) => {
@@ -198,6 +205,15 @@ export function disposeScrollAwaken(scope) {
   for (const t of prev.sleepTimers.values()) clearTimeout(t);
   prev.sleepTimers.clear();
   scopeState.delete(scope);
+}
+
+/**
+ * True while a sequential panel dissolve still owns layout (height lock +
+ * overflow clip). IO ratios are unreliable for descendants in this window.
+ * @param {Element} el
+ */
+export function isUnderPanelSwap(el) {
+  return Boolean(el?.closest?.(".is-panel-swapping"));
 }
 
 /**
