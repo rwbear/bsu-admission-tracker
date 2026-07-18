@@ -8,6 +8,8 @@ import {
   tableById,
 } from '../tables.js';
 import { patchOptionSelection } from './selection-list.js';
+import { bindOptionActivate } from './option-activate.js';
+import { pinOverlayShell } from './overlay-viewport.js';
 import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
@@ -16,6 +18,8 @@ import {
 } from './overlay-scroll-lock.js';
 
 const OVERLAY_ID = 'table-overlay-root';
+const DIALOG_ID = 'table-overlay';
+const TRIGGER_ID = 'table-trigger';
 const LOCK_ID = 'table';
 
 function prefersReducedMotion() {
@@ -53,6 +57,47 @@ function clearCloseTimer(host) {
   }
   host._tableClosing = false;
 }
+
+/**
+ * @param {HTMLElement} host
+ */
+function disposeTableViewport(host) {
+  host._tableViewport?.dispose?.();
+  host._tableViewport = null;
+}
+
+/**
+ * @param {HTMLElement} host
+ */
+function freezeTableViewport(host) {
+  host._tableViewport?.freeze?.();
+}
+
+/**
+ * @param {ParentNode | null} root
+ */
+function blurTableSearch(root) {
+  const search = root?.querySelector?.('#table-search-input');
+  if (search instanceof HTMLElement && document.activeElement === search) {
+    search.blur();
+  }
+}
+
+/**
+ * @param {HTMLElement} shell
+ * @param {HTMLElement} dialog
+ */
+function openShellMotion(shell, dialog) {
+  if (prefersReducedMotion()) {
+    shell.classList.add('is-open');
+    focusNoScroll(dialog);
+    return;
+  }
+  void shell.offsetWidth;
+  shell.classList.add('is-open');
+  focusNoScroll(dialog);
+}
+
 
 /**
  * Rebuild only the option list — never the dialog shell or search field.
@@ -143,12 +188,15 @@ function paintTableList(list, model) {
           text: String(table.specialtyCount ?? 0),
         }),
       );
-      option.addEventListener('click', (e) => {
-        e.stopPropagation();
-        patchOptionSelection(list, '.faculty-option', table.id, 'is-active');
-        const current = overlayHost()._tableOpts;
-        if (current?.onSelect) current.onSelect(table.id);
-      });
+      bindOptionActivate(
+        option,
+        () => {
+          patchOptionSelection(list, '.faculty-option', table.id, 'is-active');
+          const current = overlayHost()._tableOpts;
+          if (current?.onSelect) current.onSelect(table.id);
+        },
+        { scrollParent: list },
+      );
       list.append(option);
     }
   }
@@ -163,7 +211,7 @@ function paintTableList(list, model) {
 function paintTrigger(mount, label, open, onToggle) {
   const root = mount.querySelector('.table-picker');
   const labelEl = mount.querySelector('.table-trigger-label');
-  const btn = mount.querySelector('#table-trigger');
+  const btn = mount.querySelector(`#${TRIGGER_ID}`);
   if (
     root instanceof HTMLElement &&
     labelEl instanceof HTMLElement &&
@@ -182,10 +230,10 @@ function paintTrigger(mount, label, open, onToggle) {
   const nextBtn = el('button', {
     className: 'table-trigger',
     type: 'button',
-    id: 'table-trigger',
+    id: TRIGGER_ID,
     'aria-haspopup': 'dialog',
     'aria-expanded': open ? 'true' : 'false',
-    'aria-controls': 'table-overlay',
+    'aria-controls': DIALOG_ID,
   });
   nextBtn.append(
     el('span', { className: 'table-trigger-label', text: label }),
@@ -217,6 +265,7 @@ function paintTrigger(mount, label, open, onToggle) {
  */
 function mountOverlay(host, opts, tables, groups, query, selectedId) {
   clearCloseTimer(host);
+  disposeTableViewport(host);
   host.innerHTML = '';
   acquireOverlayScrollLock(LOCK_ID);
   document.documentElement.classList.add('table-overlay-open');
@@ -236,7 +285,7 @@ function mountOverlay(host, opts, tables, groups, query, selectedId) {
 
   const dialog = el('div', {
     className: 'faculty-overlay table-overlay',
-    id: 'table-overlay',
+    id: DIALOG_ID,
     role: 'dialog',
     'aria-modal': 'true',
     'aria-labelledby': 'table-overlay-title',
@@ -286,7 +335,7 @@ function mountOverlay(host, opts, tables, groups, query, selectedId) {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       const first = dialog.querySelector('.faculty-option');
-      if (first instanceof HTMLElement) first.focus();
+      if (first instanceof HTMLElement) focusNoScroll(first);
     }
   });
   searchWrap.append(search);
@@ -301,44 +350,79 @@ function mountOverlay(host, opts, tables, groups, query, selectedId) {
   dialog.append(header, searchWrap, list);
   dialog.addEventListener('click', (e) => e.stopPropagation());
 
-  const shell = el('div', { className: 'faculty-overlay-shell is-motion' });
+  search.addEventListener(
+    'focus',
+    () => {
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+    },
+    true,
+  );
+
+  const shell = el('div', {
+    className: 'faculty-overlay-shell is-motion is-picker-shell',
+  });
   shell.append(backdrop, dialog);
   host.append(shell);
   host._tableOpts = opts;
+  disposeTableViewport(host);
+  host._tableViewport = pinOverlayShell(shell);
 
-  if (prefersReducedMotion()) {
-    shell.classList.add('is-open');
-    focusNoScroll(dialog);
-    return { dialog, search, list, shell };
-  }
-
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!host.contains(shell)) return;
-      shell.classList.add('is-open');
-      focusNoScroll(dialog);
-    });
-  });
+  openShellMotion(shell, dialog);
 
   return { dialog, search, list, shell };
 }
 
 /**
+ * Restore trigger focus + unlock in one synchronous turn.
  * @param {HTMLElement} host
+ * @param {HTMLElement | null} shell
+ * @param {boolean} restoreFocus
  */
-function beginCloseOverlay(host) {
+function teardownTableOverlay(host, shell, restoreFocus) {
+  clearCloseTimer(host);
+  blurTableSearch(shell);
+  disposeTableViewport(host);
+
+  if (restoreFocus) {
+    const trigger = document.getElementById(TRIGGER_ID);
+    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+  } else {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && shell?.contains(active)) active.blur();
+  }
+
+  document.documentElement.classList.remove('table-overlay-open');
+  if (shell && host.contains(shell)) shell.remove();
+  if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
+  releaseOverlayScrollLock(LOCK_ID);
+  host._tableRestoreFocus = true;
+}
+
+/**
+ * @param {HTMLElement} host
+ * @param {{ restoreFocus?: boolean }} [opts]
+ */
+function beginCloseOverlay(host, opts = {}) {
   const shell = host.querySelector('.faculty-overlay-shell');
   if (!shell) {
+    // Idle cleanup only — never focus the trigger on routine chrome paints.
+    disposeTableViewport(host);
     document.documentElement.classList.remove('table-overlay-open');
     releaseOverlayScrollLock(LOCK_ID);
-    host.innerHTML = '';
     return;
   }
   if (host._tableClosing) return;
 
+  host._tableRestoreFocus = opts.restoreFocus !== false;
   host._tableClosing = true;
   shell.style.pointerEvents = 'none';
-  const dialog = shell.querySelector('#table-overlay');
+  freezeTableViewport(host);
+  blurTableSearch(shell);
+  const dialog = shell.querySelector(`#${DIALOG_ID}`);
   if (dialog instanceof HTMLElement) focusNoScroll(dialog);
 
   shell.classList.remove('is-open');
@@ -350,11 +434,7 @@ function beginCloseOverlay(host) {
     if (settled) return;
     settled = true;
     if (backdrop) backdrop.removeEventListener('transitionend', onEnd);
-    clearCloseTimer(host);
-    document.documentElement.classList.remove('table-overlay-open');
-    if (host.contains(shell)) shell.remove();
-    if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
-    releaseOverlayScrollLock(LOCK_ID);
+    teardownTableOverlay(host, shell, host._tableRestoreFocus !== false);
   };
 
   const onEnd = (ev) => {
@@ -386,6 +466,7 @@ function beginCloseOverlay(host) {
  *   onSelect: (id: string) => void,
  *   onClose: () => void,
  *   onQuery: (q: string) => void,
+ *   restoreFocus?: boolean,
  * }} opts
  */
 export function renderTablePicker(mount, opts) {
@@ -409,12 +490,13 @@ export function renderTablePicker(mount, opts) {
   const existing = host.querySelector('.faculty-overlay-shell');
 
   if (!opts.open) {
-    beginCloseOverlay(host);
+    beginCloseOverlay(host, { restoreFocus: opts.restoreFocus !== false });
     return { button: btn, menu: null, search: null };
   }
 
   if (existing?.classList.contains('is-leaving')) {
     clearCloseTimer(host);
+    disposeTableViewport(host);
     existing.remove();
   }
 

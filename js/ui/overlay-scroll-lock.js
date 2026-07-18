@@ -8,8 +8,10 @@
  * Contract:
  * - `acquireOverlayScrollLock(id)` freezes the page via `body { position: fixed }`.
  * - Nested / overlapping holders use a Set — unlock only when the last releases.
- * - `releaseOverlayScrollLock(id)` restores scrollY with behavior: 'auto'.
+ * - `releaseOverlayScrollLock(id)` restores scrollY with behavior: 'instant'/'auto'.
  * - `focusNoScroll` for return-focus after close.
+ * - Callers must restore focus in the SAME synchronous turn as unlock
+ *   (before the browser can paint with focus on <body> after dialog removal).
  */
 
 /** @type {Set<string>} */
@@ -25,11 +27,16 @@ export function acquireOverlayScrollLock(id) {
   if (holders.size === 0) {
     lockY = window.scrollY || window.pageYOffset || 0;
     const { body } = document;
+    const root = document.documentElement;
     body.style.position = 'fixed';
     body.style.top = `-${lockY}px`;
     body.style.left = '0';
     body.style.right = '0';
     body.style.width = '100%';
+    // Belt: block overscroll chaining without the overflow:hidden unlock blink.
+    // Do NOT set touch-action on body — it would kill list scrolling inside overlays.
+    root.style.overscrollBehavior = 'none';
+    body.style.overscrollBehavior = 'none';
   }
   holders.add(key);
 }
@@ -44,16 +51,34 @@ export function releaseOverlayScrollLock(id) {
   if (holders.size > 0) return;
 
   const { body } = document;
+  const root = document.documentElement;
   body.style.position = '';
   body.style.top = '';
   body.style.left = '';
   body.style.right = '';
   body.style.width = '';
+  body.style.overscrollBehavior = '';
+  root.style.overscrollBehavior = '';
 
-  const root = document.documentElement;
+  // Defeat html { scroll-behavior: smooth } — animated restore = visible blink.
+  const y = lockY;
   const prev = root.style.scrollBehavior;
   root.style.scrollBehavior = 'auto';
-  window.scrollTo(0, lockY);
+  try {
+    window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+  } catch {
+    window.scrollTo(0, y);
+  }
+  // Second paint: some mobile WebKits apply the unlock layout one frame late.
+  // Skip if another overlay locked again before the frame (handoff race).
+  requestAnimationFrame(() => {
+    if (holders.size > 0) return;
+    try {
+      window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+    } catch {
+      window.scrollTo(0, y);
+    }
+  });
   root.style.scrollBehavior = prev;
 }
 
@@ -76,5 +101,5 @@ export function focusNoScroll(node) {
   }
 }
 
-/** Leave budget — must be ≥ CSS backdrop opacity transition. */
-export const OVERLAY_LEAVE_MS = 280;
+/** Leave budget — must be ≥ CSS backdrop opacity transition (180ms). */
+export const OVERLAY_LEAVE_MS = 260;

@@ -8,6 +8,8 @@ import {
   optionListMatches,
   patchOptionSelection,
 } from './selection-list.js';
+import { bindOptionActivate } from './option-activate.js';
+import { pinOverlayShell } from './overlay-viewport.js';
 import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
@@ -16,6 +18,8 @@ import {
 } from './overlay-scroll-lock.js';
 
 const OVERLAY_ID = 'faculty-overlay-root';
+const DIALOG_ID = 'faculty-overlay';
+const TRIGGER_ID = 'faculty-trigger';
 const LOCK_ID = 'faculty';
 
 function prefersReducedMotion() {
@@ -53,6 +57,51 @@ function clearCloseTimer(host) {
     closeTimer = null;
   }
   host._facultyClosing = false;
+}
+
+/**
+ * @param {HTMLElement} host
+ */
+function disposeFacultyViewport(host) {
+  host._facultyViewport?.dispose?.();
+  host._facultyViewport = null;
+}
+
+/**
+ * @param {HTMLElement} host
+ */
+function freezeFacultyViewport(host) {
+  host._facultyViewport?.freeze?.();
+}
+
+/**
+ * Blur search before leave so the keyboard starts dismissing under a
+ * full-bleed frozen shell (not while geometry is still tracking vv).
+ * @param {ParentNode | null} root
+ */
+function blurFacultySearch(root) {
+  const search = root?.querySelector?.('#faculty-search-input');
+  if (search instanceof HTMLElement && document.activeElement === search) {
+    search.blur();
+  }
+}
+
+/**
+ * Snappy open: force one reflow, then add is-open in the same turn.
+ * Double-rAF deferred the first paint of the enter motion (~32ms+ lag).
+ * @param {HTMLElement} shell
+ * @param {HTMLElement} dialog
+ */
+function openShellMotion(shell, dialog) {
+  if (prefersReducedMotion()) {
+    shell.classList.add('is-open');
+    focusNoScroll(dialog);
+    return;
+  }
+  // Ensure the browser commits the hidden state before transitioning.
+  void shell.offsetWidth;
+  shell.classList.add('is-open');
+  focusNoScroll(dialog);
 }
 
 /**
@@ -138,12 +187,14 @@ function paintFacultyList(list, model) {
         text: String(fac.specialtyCount ?? 0),
       }),
     );
-    option.addEventListener('click', (e) => {
-      e.stopPropagation();
-      // Optimistic highlight on this frame so the color can ease before close.
-      patchOptionSelection(list, '.faculty-option', fac.id, 'is-active');
-      model.onSelect(fac.id);
-    });
+    bindOptionActivate(
+      option,
+      () => {
+        patchOptionSelection(list, '.faculty-option', fac.id, 'is-active');
+        model.onSelect(fac.id);
+      },
+      { scrollParent: list },
+    );
     list.append(option);
   }
 }
@@ -157,7 +208,7 @@ function paintFacultyList(list, model) {
 function paintTrigger(mount, label, open, onToggle) {
   const root = mount.querySelector('.faculty-picker');
   const labelEl = mount.querySelector('.faculty-trigger-label');
-  const btn = mount.querySelector('#faculty-trigger');
+  const btn = mount.querySelector(`#${TRIGGER_ID}`);
   if (
     root instanceof HTMLElement &&
     labelEl instanceof HTMLElement &&
@@ -176,10 +227,10 @@ function paintTrigger(mount, label, open, onToggle) {
   const nextBtn = el('button', {
     className: 'faculty-trigger',
     type: 'button',
-    id: 'faculty-trigger',
+    id: TRIGGER_ID,
     'aria-haspopup': 'dialog',
     'aria-expanded': open ? 'true' : 'false',
-    'aria-controls': 'faculty-overlay',
+    'aria-controls': DIALOG_ID,
   });
   nextBtn.append(
     el('span', { className: 'faculty-trigger-label', text: label }),
@@ -212,6 +263,7 @@ function paintTrigger(mount, label, open, onToggle) {
  */
 function mountOverlay(host, opts, faculties, filtered, query, selected) {
   clearCloseTimer(host);
+  disposeFacultyViewport(host);
   host.innerHTML = '';
   acquireOverlayScrollLock(LOCK_ID);
   document.documentElement.classList.add('faculty-overlay-open');
@@ -222,8 +274,6 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
     'aria-label': 'Закрыть',
     tabindex: '-1',
   });
-  // pointerdown + preventDefault: don't steal focus onto the backdrop
-  // (focus→trigger with smooth scroll was a close blink).
   backdrop.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -233,7 +283,7 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
 
   const dialog = el('div', {
     className: 'faculty-overlay',
-    id: 'faculty-overlay',
+    id: DIALOG_ID,
     role: 'dialog',
     'aria-modal': 'true',
     'aria-labelledby': 'faculty-overlay-title',
@@ -275,7 +325,6 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
     'aria-label': 'Поиск факультета по названию, сокращению или специальности',
   });
   search.value = query;
-  // Keep the input node alive across keystrokes — query updates patch the list only.
   search.addEventListener('input', () => {
     const current = host._facultyOpts;
     if (current?.onQuery) current.onQuery(search.value);
@@ -284,9 +333,22 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       const first = dialog.querySelector('.faculty-option');
-      if (first instanceof HTMLElement) first.focus();
+      if (first instanceof HTMLElement) focusNoScroll(first);
     }
   });
+  // Focus must not scroll the page — iOS still pans visualViewport; pan
+  // counter in pinOverlayShell absorbs that without resizing the dialog.
+  search.addEventListener(
+    'focus',
+    () => {
+      try {
+        window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+      } catch {
+        window.scrollTo(0, 0);
+      }
+    },
+    true,
+  );
   searchWrap.append(search);
 
   const list = el('div', {
@@ -307,46 +369,74 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
   dialog.append(header, searchWrap, list);
   dialog.addEventListener('click', (e) => e.stopPropagation());
 
-  const shell = el('div', { className: 'faculty-overlay-shell is-motion' });
+  const shell = el('div', {
+    className: 'faculty-overlay-shell is-motion is-picker-shell',
+  });
   shell.append(backdrop, dialog);
   host.append(shell);
   host._facultyOpts = opts;
+  host._facultyViewport = pinOverlayShell(shell);
 
-  if (prefersReducedMotion()) {
-    shell.classList.add('is-open');
-    focusNoScroll(dialog);
-    return { dialog, search, list, shell };
-  }
-
-  // Enter on next frames so the browser paints the initial (hidden) state first.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!host.contains(shell)) return;
-      shell.classList.add('is-open');
-      focusNoScroll(dialog);
-    });
-  });
+  openShellMotion(shell, dialog);
 
   return { dialog, search, list, shell };
 }
 
 /**
- * Play exit motion, then tear down after the backdrop fade settles.
  * @param {HTMLElement} host
+ * @param {HTMLElement | null} shell
+ * @param {boolean} restoreFocus
  */
-function beginCloseOverlay(host) {
+function teardownFacultyOverlay(host, shell, restoreFocus) {
+  clearCloseTimer(host);
+  blurFacultySearch(shell);
+  disposeFacultyViewport(host);
+
+  // Focus → remove → unlock in one sync turn (no paint gap on <body>).
+  if (restoreFocus) {
+    const trigger = document.getElementById(TRIGGER_ID);
+    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+  } else {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && shell?.contains(active)) active.blur();
+  }
+
+  document.documentElement.classList.remove('faculty-overlay-open');
+  if (shell && host.contains(shell)) shell.remove();
+  if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
+  releaseOverlayScrollLock(LOCK_ID);
+  host._facultyRestoreFocus = true;
+}
+
+/**
+ * @param {HTMLElement} host
+ * @param {{ restoreFocus?: boolean }} [opts]
+ */
+function beginCloseOverlay(host, opts = {}) {
   const shell = host.querySelector('.faculty-overlay-shell');
   if (!shell) {
+    // Idle cleanup only — never focus the trigger here.
+    // renderBoard re-renders closed chrome constantly; stealing focus
+    // on every specialty/score update was a high-severity regression.
+    disposeFacultyViewport(host);
     document.documentElement.classList.remove('faculty-overlay-open');
     releaseOverlayScrollLock(LOCK_ID);
-    host.innerHTML = '';
     return;
   }
+  // Already leaving — keep the restoreFocus flag from the close that started it
+  // (handoff with restoreFocus:false must not be overwritten by later paints).
   if (host._facultyClosing) return;
 
+  host._facultyRestoreFocus = opts.restoreFocus !== false;
   host._facultyClosing = true;
   shell.style.pointerEvents = 'none';
-  const dialog = shell.querySelector('#faculty-overlay');
+
+  // 1) Freeze geometry to full layout viewport (covers keyboard dismiss).
+  freezeFacultyViewport(host);
+  // 2) Blur search — keyboard animates under the frozen full-bleed shell.
+  blurFacultySearch(shell);
+  // 3) Park focus on dialog (not trigger yet) so remove doesn't drop to body early.
+  const dialog = shell.querySelector(`#${DIALOG_ID}`);
   if (dialog instanceof HTMLElement) focusNoScroll(dialog);
 
   shell.classList.remove('is-open');
@@ -358,11 +448,7 @@ function beginCloseOverlay(host) {
     if (settled) return;
     settled = true;
     if (backdrop) backdrop.removeEventListener('transitionend', onEnd);
-    clearCloseTimer(host);
-    document.documentElement.classList.remove('faculty-overlay-open');
-    if (host.contains(shell)) shell.remove();
-    if (!host.querySelector('.faculty-overlay-shell')) host.innerHTML = '';
-    releaseOverlayScrollLock(LOCK_ID);
+    teardownFacultyOverlay(host, shell, host._facultyRestoreFocus !== false);
   };
 
   const onEnd = (ev) => {
@@ -381,9 +467,7 @@ function beginCloseOverlay(host) {
 }
 
 /**
- * Hero title button + centered popover.
- * Overlay is mounted once per open session; typing only refreshes the list
- * so the dialog does not blink, remount, or re-animate on each key.
+ * Hero title button + centered (desktop) / top-anchored (mobile) popover.
  *
  * @param {HTMLElement} mount
  * @param {{
@@ -396,6 +480,7 @@ function beginCloseOverlay(host) {
  *   onSelect: (id: string) => void,
  *   onClose: () => void,
  *   onQuery: (q: string) => void,
+ *   restoreFocus?: boolean,
  * }} opts
  */
 export function renderFacultyPicker(mount, opts) {
@@ -415,13 +500,13 @@ export function renderFacultyPicker(mount, opts) {
   const existing = host.querySelector('.faculty-overlay-shell');
 
   if (!opts.open) {
-    beginCloseOverlay(host);
+    beginCloseOverlay(host, { restoreFocus: opts.restoreFocus !== false });
     return { button: btn, menu: null, search: null };
   }
 
-  // Still animating out — cancel leave and treat as a fresh open.
   if (existing?.classList.contains('is-leaving')) {
     clearCloseTimer(host);
+    disposeFacultyViewport(host);
     existing.remove();
   }
 
