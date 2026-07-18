@@ -34,14 +34,19 @@ describe('updates sheet', () => {
 
   it('keeps Russian copy locked and frozen', () => {
     assert.match(UPDATES_TITLE, /Как обновляются данные/);
-    assert.ok(UPDATES_LEDE.length > 40);
+    assert.match(UPDATES_LEDE, /Этот сервис не подключен к БГУ напрямую/);
     assert.match(UPDATES_LEDE, /abit\.bsu\.by/);
-    assert.ok(UPDATES_FOOT.length > 40);
+    assert.match(UPDATES_LEDE, /каждые 4–5 минут/);
+    assert.match(UPDATES_FOOT, /Сайт всегда старается показать самый актуальный снимок/);
+    assert.match(UPDATES_FOOT, /помечает это в баннере/);
     assert.equal(UPDATES_FACTS.length, 3);
-    for (const fact of UPDATES_FACTS) {
-      assert.ok(fact.term);
-      assert.ok(fact.def);
-    }
+    assert.equal(UPDATES_FACTS[0].term, 'Данные HH:MM');
+    assert.match(UPDATES_FACTS[0].def, /снимка от бота/);
+    assert.equal(UPDATES_FACTS[1].term, 'След HH:MM');
+    assert.match(UPDATES_FACTS[1].def, /следующего автоматического обновления/);
+    assert.doesNotMatch(UPDATES_FACTS[1].def, /вледуйщегг/);
+    assert.equal(UPDATES_FACTS[2].term, 'Точка слева');
+    assert.match(UPDATES_FACTS[2].def, /~12 минут/);
     assert.ok(Object.isFrozen(UPDATES_FACTS));
     assert.ok(Object.isFrozen(UPDATES_FACTS[0]));
   });
