@@ -54,7 +54,13 @@ import {
   UPDATES_SHEET,
 } from './ui/updates-sheet.js';
 import { UPDATES_ARIA_LABELS } from './ui/updates-copy.js';
-import { focusNoScroll } from './ui/overlay-scroll-lock.js';
+import {
+  focusNoScroll,
+  restoreFocus,
+  afterOverlayPaint,
+} from './ui/overlay-scroll-lock.js';
+import { onPrimaryActivate } from './ui/pointer-activate.js';
+import { armInputModality } from './ui/input-modality.js';
 import {
   resolvePollMs,
   resolveEffectivePollMs,
@@ -102,6 +108,19 @@ let previousLiveState = null;
 /** True when the last completed fetch changed the snapshot. */
 let lastFetchChanged = false;
 let tableSearchQuery = '';
+/** Skip hero remount when only specialty / meta changed. */
+let lastHeroChromeKey = '';
+
+function heroChromeKey() {
+  return [
+    state.formId || '',
+    state.facultyId || '',
+    tableMenuOpen ? '1' : '0',
+    facultyMenuOpen ? '1' : '0',
+    tableSearchQuery,
+    facultySearchQuery,
+  ].join('\0');
+}
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -124,8 +143,6 @@ function syncTableSelection() {
   if (next !== state.formId) {
     state.formId = next;
     writeFormPref(next);
-  } else if (next) {
-    writeFormPref(next);
   }
 }
 
@@ -144,8 +161,6 @@ function syncFacultySelection() {
   if (next !== state.facultyId) {
     state.facultyId = next;
     writeFacultyPref(next);
-  } else if (next) {
-    writeFacultyPref(next);
   }
 }
 
@@ -157,26 +172,24 @@ function currentSpecialties() {
   return inTable.filter((s) => s.facultyId === state.facultyId);
 }
 
-function closeTableMenu() {
+function closeTableMenu(opts = {}) {
   if (!tableMenuOpen) return;
   tableMenuOpen = false;
   tableSearchQuery = '';
   renderTableChrome();
+  if (opts.restoreFocus === false) return;
   const trigger = document.getElementById('table-trigger');
-  if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+  if (trigger instanceof HTMLElement) restoreFocus(trigger);
 }
 
 function openTableMenu() {
   closeUpdatesSheet({ instant: true, restoreFocus: false });
-  closeMethodSheet({ restoreFocus: false });
-  closeFacultyMenu();
+  closeMethodSheet({ instant: true, restoreFocus: false });
+  closeFacultyMenu({ restoreFocus: false });
   tableMenuOpen = true;
   tableSearchQuery = '';
+  // Picker mounts + commitOverlayEnter handles focus/scroll — no microtask.
   renderTableChrome();
-  queueMicrotask(() => {
-    const dialog = document.getElementById('table-overlay');
-    if (dialog instanceof HTMLElement) focusNoScroll(dialog);
-  });
 }
 
 function toggleTableMenu() {
@@ -190,7 +203,7 @@ function onSelectTable(id) {
     tableMenuOpen = false;
     renderHeroChrome();
     const trigger = document.getElementById('table-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
     return;
   }
 
@@ -209,7 +222,7 @@ function onSelectTable(id) {
     tableMenuOpen = false;
     renderHeroChrome();
     const trigger = document.getElementById('table-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
   }, closeAfter);
 }
 
@@ -240,35 +253,31 @@ function renderTableChrome() {
     onClose: closeTableMenu,
     onQuery: onTableQuery,
   });
+  lastHeroChromeKey = heroChromeKey();
 }
 
-function closeFacultyMenu() {
+function closeFacultyMenu(opts = {}) {
   if (!facultyMenuOpen) return;
   facultyMenuOpen = false;
   facultySearchQuery = '';
   renderFacultyChrome();
+  if (opts.restoreFocus === false) return;
   window.setTimeout(() => {
     if (facultyMenuOpen) return;
     const trigger = document.getElementById('faculty-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
-  }, 280);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
+  }, 200);
 }
 
 function openFacultyMenu() {
   closeUpdatesSheet({ instant: true, restoreFocus: false });
-  closeMethodSheet({ restoreFocus: false });
-  closeTableMenu();
+  closeMethodSheet({ instant: true, restoreFocus: false });
+  closeTableMenu({ restoreFocus: false });
   facultyMenuOpen = true;
   facultySearchQuery = '';
+  // Picker mounts + commitOverlayEnter focuses/scrolls the list port —
+  // no microtask scrollIntoView (that fought body position:fixed on mobile).
   renderFacultyChrome();
-  queueMicrotask(() => {
-    const dialog = document.getElementById('faculty-overlay');
-    if (dialog instanceof HTMLElement) focusNoScroll(dialog);
-    const active = dialog?.querySelector('.faculty-option.is-active');
-    if (active instanceof HTMLElement) {
-      active.scrollIntoView({ block: 'nearest' });
-    }
-  });
 }
 
 function toggleFacultyMenu() {
@@ -289,8 +298,8 @@ function closeFacultyMenuAfterSelect() {
   window.setTimeout(() => {
     if (facultyMenuOpen) return;
     const trigger = document.getElementById('faculty-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
-  }, 280);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
+  }, 200);
 }
 
 function onSelectFaculty(id) {
@@ -338,6 +347,7 @@ function renderFacultyChrome() {
     onClose: closeFacultyMenu,
     onQuery: onFacultyQuery,
   });
+  lastHeroChromeKey = heroChromeKey();
 }
 
 function renderHeroChrome() {
@@ -346,10 +356,9 @@ function renderHeroChrome() {
 }
 
 function onSelectSpecialty(id) {
-  // Optimistic highlight — master-detail paint is queued/async; without this
-  // the selected row waits on the dissolve chain and the color pops late.
+  // Optimistic highlight — paint selection this frame, board work next.
   if (id) patchOptionSelection($overview, '.overview-row', id, 'selected');
-  setSelected(id);
+  afterOverlayPaint(() => setSelected(id));
 }
 
 /**
@@ -463,7 +472,9 @@ function renderBoard() {
   try {
     syncTableSelection();
     syncFacultySelection();
-    renderHeroChrome();
+    if (heroChromeKey() !== lastHeroChromeKey) {
+      renderHeroChrome();
+    }
     renderCommandMeta();
     $sourceLink.href = sourceUrlForTable(state.formId || DEFAULT_TABLE_ID);
 
@@ -793,7 +804,7 @@ function bindPickerChrome() {
     beforeOpen: () => closeAllOverlaysExcept('updates'),
   });
 
-  $updateStatus.addEventListener('click', () => {
+  onPrimaryActivate($updateStatus, () => {
     toggleUpdatesSheet();
     renderCommandMeta();
   });
@@ -948,4 +959,6 @@ $('#retry-btn').addEventListener('click', () =>
 
 subscribe(() => renderBoard());
 
+// Before first paint interaction — hide pointer focus rings from frame 0.
+armInputModality();
 bootstrap();

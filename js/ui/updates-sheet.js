@@ -16,6 +16,9 @@ import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
   focusNoScroll,
+  restoreFocus as restoreFocusQuiet,
+  commitOverlayEnter,
+  afterOverlayPaint,
   OVERLAY_LEAVE_MS,
 } from './overlay-scroll-lock.js';
 
@@ -165,19 +168,23 @@ export function openUpdatesSheet(opts = {}) {
   shell.append(backdrop, dialog);
   host.append(shell);
 
+  const settle = () => {
+    if (!shell.isConnected) return;
+    focusNoScroll(dialog);
+  };
+
+  const reveal = () => {
+    shell.classList.add('is-open');
+    afterOverlayPaint(settle);
+  };
+
   if (prefersReducedMotion()) {
     shell.classList.add('is-open');
-    focusNoScroll(dialog);
+    settle();
     return;
   }
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!host.contains(shell)) return;
-      shell.classList.add('is-open');
-      focusNoScroll(dialog);
-    });
-  });
+  commitOverlayEnter(shell, reveal);
 }
 
 /**
@@ -207,7 +214,7 @@ export function closeUpdatesSheet(opts = {}) {
 
     if (restoreFocus && focusId) {
       const trigger = document.getElementById(focusId);
-      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+      if (trigger instanceof HTMLElement) restoreFocusQuiet(trigger);
     }
   };
 

@@ -12,8 +12,12 @@ import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
   focusNoScroll,
+  commitOverlayEnter,
+  afterOverlayPaint,
+  scrollOverlayOptionIntoView,
   OVERLAY_LEAVE_MS,
 } from './overlay-scroll-lock.js';
+import { onPrimaryActivate } from './pointer-activate.js';
 
 const OVERLAY_ID = 'faculty-overlay-root';
 const LOCK_ID = 'faculty';
@@ -138,11 +142,14 @@ function paintFacultyList(list, model) {
         text: String(fac.specialtyCount ?? 0),
       }),
     );
+    // click (not pointerdown): list is scrollable — press-to-scroll must not select.
+    // Focus rings are gated by data-input=pointer — do not preventDefault here
+    // (that can kill click on iOS).
     option.addEventListener('click', (e) => {
       e.stopPropagation();
-      // Optimistic highlight on this frame so the color can ease before close.
+      // Optimistic highlight this frame; board work yields so press can paint.
       patchOptionSelection(list, '.faculty-option', fac.id, 'is-active');
-      model.onSelect(fac.id);
+      afterOverlayPaint(() => model.onSelect(fac.id));
     });
     list.append(option);
   }
@@ -189,7 +196,7 @@ function paintTrigger(mount, label, open, onToggle) {
       text: '^',
     }),
   );
-  nextBtn.addEventListener('click', (e) => {
+  onPrimaryActivate(nextBtn, (e) => {
     e.stopPropagation();
     const host = overlayHost();
     const current = host._facultyOpts;
@@ -312,20 +319,29 @@ function mountOverlay(host, opts, faculties, filtered, query, selected) {
   host.append(shell);
   host._facultyOpts = opts;
 
+  const settle = () => {
+    if (!shell.isConnected) return;
+    focusNoScroll(dialog);
+    scrollOverlayOptionIntoView(
+      list,
+      list.querySelector('.faculty-option.is-active'),
+    );
+  };
+
+  const reveal = () => {
+    shell.classList.add('is-open');
+    // Focus/scroll force layout — yield so `.is-open` can paint first.
+    afterOverlayPaint(settle);
+  };
+
   if (prefersReducedMotion()) {
     shell.classList.add('is-open');
-    focusNoScroll(dialog);
+    settle();
     return { dialog, search, list, shell };
   }
 
-  // Enter on next frames so the browser paints the initial (hidden) state first.
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!host.contains(shell)) return;
-      shell.classList.add('is-open');
-      focusNoScroll(dialog);
-    });
-  });
+  // Sync flush + open — double-rAF sat invisible after tap on mobile.
+  commitOverlayEnter(shell, reveal);
 
   return { dialog, search, list, shell };
 }

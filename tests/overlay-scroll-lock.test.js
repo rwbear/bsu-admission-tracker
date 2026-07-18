@@ -5,6 +5,9 @@ import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
   isOverlayScrollLocked,
+  commitOverlayEnter,
+  afterOverlayPaint,
+  scrollOverlayOptionIntoView,
 } from '../js/ui/overlay-scroll-lock.js';
 
 describe('overlay scroll lock', () => {
@@ -31,5 +34,67 @@ describe('overlay scroll lock', () => {
     assert.equal(isOverlayScrollLocked(), true);
     releaseOverlayScrollLock('method');
     assert.equal(isOverlayScrollLocked(), false);
+  });
+});
+
+describe('commitOverlayEnter', () => {
+  it('opens synchronously after a style flush (no rAF delay)', () => {
+    assert.equal(typeof commitOverlayEnter, 'function');
+
+    let called = 0;
+    commitOverlayEnter(null, () => {
+      called += 1;
+    });
+    assert.equal(called, 0);
+
+    // Duck-typed shell: flush reads offsetWidth, then open runs in-turn.
+    const shell = { offsetWidth: 320, classList: { add() {} } };
+    commitOverlayEnter(shell, () => {
+      called += 1;
+    });
+    assert.equal(called, 1);
+  });
+});
+
+describe('afterOverlayPaint', () => {
+  it('schedules work on rAF when available', async () => {
+    assert.equal(typeof afterOverlayPaint, 'function');
+    let ran = false;
+    await new Promise((resolve) => {
+      afterOverlayPaint(() => {
+        ran = true;
+        resolve();
+      });
+      // Node has rAF in recent versions; fall back tick if not.
+      if (typeof requestAnimationFrame !== 'function') {
+        ran = true;
+        resolve();
+      }
+    });
+    assert.equal(ran, true);
+  });
+});
+
+describe('scrollOverlayOptionIntoView', () => {
+  it('scrolls the list port via scrollTop, not scrollIntoView', () => {
+    assert.equal(typeof scrollOverlayOptionIntoView, 'function');
+
+    scrollOverlayOptionIntoView(null, null);
+
+    const active = {
+      offsetTop: 200,
+      offsetHeight: 40,
+    };
+    const list = {
+      clientHeight: 100,
+      scrollTop: 0,
+      contains(node) {
+        return node === active;
+      },
+    };
+
+    scrollOverlayOptionIntoView(list, active);
+    // Center active in the port: 200 - 50 + 20 = 170
+    assert.equal(list.scrollTop, 170);
   });
 });

@@ -33,9 +33,25 @@ input {
   color: inherit;
 }
 
+/* Keyboard rings only. Pointer/touch must never paint a post-tap outline. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 :focus-visible {
   outline: 1.5px solid var(--line-strong);
   outline-offset: 2px;
+}
+
+html[data-input='pointer'] :focus,
+html[data-input='pointer'] :focus-visible {
+  outline: none;
+}
+
+html[data-input='pointer'] .faculty-option:focus-visible,
+html[data-input='pointer'] .faculty-option.is-active:focus-visible,
+html[data-input='pointer'] .overview-row:focus-visible {
+  box-shadow: none;
 }
 
 .sr-only {
@@ -129,14 +145,19 @@ input {
   appearance: none;
   -webkit-appearance: none;
   text-align: end;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.command-meta:hover {
-  background: color-mix(in srgb, var(--ink) 4%, transparent);
-  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+/* Desktop hover only — sticky :hover on iOS was a post-tap fill flash. */
+@media (hover: hover) and (pointer: fine) {
+  .command-meta:hover {
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
+    border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  }
 }
 
-.command-meta:focus-visible {
+html[data-input='keyboard'] .command-meta:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
@@ -207,7 +228,8 @@ input {
   width: min(100%, 28rem);
 }
 
-/* Quiet channel line above the faculty title */
+/* Quiet channel line above the faculty title.
+   Press feedback = overlay enter + chevron — never a fill flash. */
 .table-trigger {
   display: inline-flex;
   align-items: center;
@@ -227,16 +249,17 @@ input {
   color: var(--ink-faint);
   user-select: none;
   -webkit-user-select: none;
-  transition: color var(--transition), background var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.table-trigger:hover,
-.table-picker.is-open .table-trigger {
-  color: var(--ink-dim);
-  background: var(--soft);
+@media (hover: hover) and (pointer: fine) {
+  .table-trigger:hover {
+    color: var(--ink-dim);
+  }
 }
 
-.table-trigger:focus-visible {
+html[data-input='keyboard'] .table-trigger:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
@@ -281,7 +304,8 @@ input {
   width: min(100%, 26rem);
 }
 
-/* Same visual as the old h1.hero-sub — just a button with ^ */
+/* Same visual as the old h1.hero-sub — just a button with ^.
+   Press feedback = overlay enter + chevron — never a fill flash. */
 .faculty-trigger {
   display: inline-flex;
   align-items: center;
@@ -301,16 +325,17 @@ input {
   color: var(--ink-dim);
   user-select: none;
   -webkit-user-select: none;
-  transition: color var(--transition), background var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.faculty-trigger:hover,
-.faculty-picker.is-open .faculty-trigger {
-  color: var(--ink);
-  background: var(--soft);
+@media (hover: hover) and (pointer: fine) {
+  .faculty-trigger:hover {
+    color: var(--ink);
+  }
 }
 
-.faculty-trigger:focus-visible {
+html[data-input='keyboard'] .faculty-trigger:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
@@ -401,7 +426,8 @@ html.updates-overlay-open {
 .faculty-overlay-shell.is-motion .faculty-overlay-backdrop {
   animation: none;
   opacity: 0;
-  transition: opacity 180ms ease;
+  /* Snappy dim — long fades read as blink after a tap. */
+  transition: opacity 120ms ease;
   cursor: pointer;
 }
 
@@ -411,7 +437,7 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.is-motion.is-leaving .faculty-overlay-backdrop {
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 160ms ease;
 }
 
 .faculty-overlay-shell.is-motion .faculty-overlay {
@@ -420,11 +446,11 @@ html.updates-overlay-open {
   height: min(70vh, 28rem);
   max-height: min(70vh, 28rem);
   opacity: 0;
-  /* Rise only — scale left a GPU flicker on close (same fix as method sheet). */
-  transform: translateY(0.4rem);
+  /* Short rise — less travel = less “flash then settle”. */
+  transform: translateY(0.18rem);
   transition:
-    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .faculty-overlay-shell.is-motion.is-open .faculty-overlay {
@@ -434,10 +460,10 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.is-motion.is-leaving .faculty-overlay {
   opacity: 0;
-  transform: translateY(0.2rem);
+  transform: translateY(0.12rem);
   transition:
-    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
-    transform 160ms cubic-bezier(0.55, 0, 1, 1);
+    opacity 120ms cubic-bezier(0.55, 0, 1, 1),
+    transform 120ms cubic-bezier(0.55, 0, 1, 1);
 }
 
 /*
@@ -455,7 +481,7 @@ html.updates-overlay-open {
 .faculty-overlay-shell.method-shell.is-motion .method-shell-backdrop {
   animation: none;
   opacity: 0;
-  transition: opacity 180ms ease;
+  transition: opacity 120ms ease;
   cursor: pointer;
 }
 
@@ -465,7 +491,7 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.method-shell.is-motion.is-leaving .method-shell-backdrop {
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 160ms ease;
 }
 
 .faculty-overlay-shell.method-shell.is-motion .faculty-overlay.method-overlay {
@@ -473,10 +499,10 @@ html.updates-overlay-open {
   height: auto;
   max-height: min(70vh, 28rem);
   opacity: 0;
-  transform: translateY(0.4rem);
+  transform: translateY(0.18rem);
   transition:
-    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .faculty-overlay-shell.method-shell.is-motion.is-open .faculty-overlay.method-overlay {
@@ -486,10 +512,10 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.method-shell.is-motion.is-leaving .faculty-overlay.method-overlay {
   opacity: 0;
-  transform: translateY(0.2rem);
+  transform: translateY(0.12rem);
   transition:
-    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
-    transform 160ms cubic-bezier(0.55, 0, 1, 1);
+    opacity 120ms cubic-bezier(0.55, 0, 1, 1),
+    transform 120ms cubic-bezier(0.55, 0, 1, 1);
 }
 
 .method-overlay-body {
@@ -533,7 +559,7 @@ html.updates-overlay-open {
 .faculty-overlay-shell.updates-shell.is-motion .updates-shell-backdrop {
   animation: none;
   opacity: 0;
-  transition: opacity 180ms ease;
+  transition: opacity 120ms ease;
   cursor: pointer;
 }
 
@@ -543,7 +569,7 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.updates-shell.is-motion.is-leaving .updates-shell-backdrop {
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 160ms ease;
 }
 
 .faculty-overlay-shell.updates-shell.is-motion .faculty-overlay.updates-overlay {
@@ -551,10 +577,10 @@ html.updates-overlay-open {
   height: auto;
   max-height: min(70vh, 28rem);
   opacity: 0;
-  transform: translateY(0.4rem);
+  transform: translateY(0.18rem);
   transition:
-    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .faculty-overlay-shell.updates-shell.is-motion.is-open .faculty-overlay.updates-overlay {
@@ -564,10 +590,10 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.updates-shell.is-motion.is-leaving .faculty-overlay.updates-overlay {
   opacity: 0;
-  transform: translateY(0.2rem);
+  transform: translateY(0.12rem);
   transition:
-    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
-    transform 160ms cubic-bezier(0.55, 0, 1, 1);
+    opacity 120ms cubic-bezier(0.55, 0, 1, 1),
+    transform 120ms cubic-bezier(0.55, 0, 1, 1);
 }
 
 .updates-facts {
@@ -691,6 +717,7 @@ html.updates-overlay-open {
   text-align: left;
   color: var(--ink);
   overflow: hidden;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--select-ms) var(--select-ease);
 }
@@ -715,16 +742,20 @@ html.updates-overlay-open {
   outline: none;
 }
 
-.faculty-option:hover {
-  background-color: var(--soft);
+@media (hover: hover) and (pointer: fine) {
+  .faculty-option:hover {
+    background-color: var(--soft);
+  }
 }
 
+/* Selection press only — not a lingering soft fill. */
 .faculty-option:active {
   background-color: var(--select);
+  transition-duration: 0ms;
 }
 
 /* Keyboard only — never flash an inset ring on pointer click. */
-.faculty-option:focus-visible:not(.is-active) {
+html[data-input='keyboard'] .faculty-option:focus-visible:not(.is-active) {
   background-color: var(--soft);
   box-shadow: inset 0 0 0 1.5px var(--line-strong);
 }
@@ -738,14 +769,20 @@ html.updates-overlay-open {
   transition: opacity var(--select-ms) var(--select-ease);
 }
 
-.faculty-option.is-active:hover,
-.faculty-option.is-active:active,
-.faculty-option.is-active:focus-visible {
+.faculty-option.is-active:active {
   background-color: var(--select);
   box-shadow: none;
 }
 
-.faculty-option.is-active:focus-visible {
+@media (hover: hover) and (pointer: fine) {
+  .faculty-option.is-active:hover {
+    background-color: var(--select);
+    box-shadow: none;
+  }
+}
+
+html[data-input='keyboard'] .faculty-option.is-active:focus-visible {
+  background-color: var(--select);
   box-shadow: inset 0 0 0 1.5px var(--line-strong);
 }
 
@@ -850,15 +887,20 @@ html.updates-overlay-open {
   text-transform: uppercase;
   font-size: var(--text-sm);
   cursor: pointer;
-  transition: opacity var(--transition), transform var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--transition);
 }
 
-.btn-apply:hover {
-  opacity: 0.92;
+@media (hover: hover) and (pointer: fine) {
+  .btn-apply:hover {
+    opacity: 0.92;
+  }
 }
 
 .btn-apply:active {
-  transform: translateY(1px);
+  opacity: 0.88;
+  transition-duration: 0ms;
 }
 
 .banner {
