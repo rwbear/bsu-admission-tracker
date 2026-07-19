@@ -116,14 +116,14 @@ function buildOverviewList(rows, selectedId, onSelect) {
     return list;
   }
 
-  // IB: «Общий конкурс» in its own block above the specialty lines.
+  // IB: «Общий конкурс» in its own panel box above the specialty panel.
   const stack = el('div', {
     className: 'overview-stack',
     'data-reveal-root': '',
   });
 
   const unifiedList = el('div', {
-    className: 'overview-list overview-list--unified',
+    className: 'panel overview-list overview-list--unified',
     role: 'listbox',
     'aria-label': 'Общий конкурс',
   });
@@ -132,7 +132,7 @@ function buildOverviewList(rows, selectedId, onSelect) {
   });
 
   const memberList = el('div', {
-    className: 'overview-list overview-list--members',
+    className: 'panel overview-list overview-list--members',
     role: 'listbox',
     'aria-label': 'Специальности',
   });

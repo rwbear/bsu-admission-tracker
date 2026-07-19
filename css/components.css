@@ -3,20 +3,14 @@
   display: grid;
 }
 
-/* IB: unified contest block above specialty lines — same row chrome, clear gap. */
+/*
+ * IB: «Общий конкурс» + specialties as two sibling panel boxes.
+ * Outer #overview-list.panel chrome is neutralized (see layout.css);
+ * each list below carries the real elevated box.
+ */
 .overview-stack {
   display: grid;
   gap: var(--space-3);
-}
-
-.overview-list--unified .overview-row {
-  border-bottom: 0;
-  border-radius: var(--radius);
-}
-
-.overview-list--unified .overview-row:first-child,
-.overview-list--unified .overview-row:last-child {
-  border-radius: var(--radius);
 }
 
 .overview-row--unified .ov-name {
