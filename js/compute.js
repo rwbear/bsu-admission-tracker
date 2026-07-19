@@ -3,6 +3,11 @@
  * Used by the site and by scrapers (via relative import).
  */
 
+import {
+  injectUnifiedContest,
+  isUnifiedContestSpec,
+} from './unified-contest.js';
+
 /** @typedef {{ ranges: string[], buckets: number[], plan: number, inCompetition?: number }} SpecBuckets */
 
 /**
@@ -272,6 +277,29 @@ export function resolveSeatQuota(spec) {
     ? Number(spec.admittedOutOfCompetition) || 0
     : null;
 
+  // Unified IB row already summed per-member open seats — don't re-derive
+  // from summed targeted/БВИ (max(sum) ≠ sum(max)).
+  if (isUnifiedContestSpec(spec)) {
+    const taken = Number(spec.taken) || 0;
+    const openPlan =
+      spec.openPlan != null && Number.isFinite(Number(spec.openPlan))
+        ? Math.max(0, Number(spec.openPlan))
+        : Math.max(0, planOfficial - taken);
+    return {
+      planOfficial,
+      planTargeted,
+      planPaid,
+      enrolledTargeted,
+      admittedNoExam,
+      admittedOutOfCompetition,
+      quotaParseOk,
+      taken,
+      openPlan,
+      showFacts: quotaParseOk,
+      showQuota: quotaParseOk && taken > 0,
+    };
+  }
+
   let taken = 0;
   let openPlan = planOfficial;
   if (quotaParseOk) {
@@ -415,7 +443,8 @@ export function prepareSpecs(specs, score, opts = {}) {
   const filter = opts.filter || 'all';
   const query = (opts.query || '').trim().toLowerCase();
 
-  let rows = specs.map((s) => enrichSpec(s, score));
+  // IB: prepend synthetic «Общий конкурс» before enrich — same math path as rows.
+  let rows = injectUnifiedContest(specs).map((s) => enrichSpec(s, score));
 
   if (query) {
     rows = rows.filter((s) => {
@@ -429,6 +458,10 @@ export function prepareSpecs(specs, score, opts = {}) {
   }
 
   rows.sort((a, b) => {
+    // Group contest stays pinned above specialty lines.
+    const ua = isUnifiedContestSpec(a);
+    const ub = isUnifiedContestSpec(b);
+    if (ua !== ub) return ua ? -1 : 1;
     const oa = specOrderIndex(a.specName);
     const ob = specOrderIndex(b.specName);
     if (oa !== ob) return oa - ob;
