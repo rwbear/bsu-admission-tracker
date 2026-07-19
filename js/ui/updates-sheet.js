@@ -112,7 +112,7 @@ export function openUpdatesSheet(opts = {}) {
   backdrop.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    closeUpdatesSheet();
+    closeUpdatesSheet({ restoreFocus: false });
   });
 
   const dialog = el('div', {
@@ -138,7 +138,9 @@ export function openUpdatesSheet(opts = {}) {
         'aria-label': 'Закрыть',
         text: '×',
       });
-      close.addEventListener('click', () => closeUpdatesSheet());
+      close.addEventListener('click', () =>
+        closeUpdatesSheet({ restoreFocus: false }),
+      );
       return close;
     })(),
   );
@@ -191,7 +193,7 @@ export function openUpdatesSheet(opts = {}) {
  * @param {{ instant?: boolean, restoreFocus?: boolean }} [opts]
  */
 export function closeUpdatesSheet(opts = {}) {
-  const { instant = false, restoreFocus = true } = opts;
+  const { instant = false, restoreFocus = false } = opts;
   const host = overlayHost();
   const shell = host.querySelector('.updates-shell');
 
@@ -254,9 +256,10 @@ export function closeUpdatesSheet(opts = {}) {
 
 /**
  * Toggle open/close from the header trigger.
+ * Pointer closes never restore focus — that painted a ring on #update-status.
  */
 export function toggleUpdatesSheet() {
-  if (open) closeUpdatesSheet();
+  if (open) closeUpdatesSheet({ restoreFocus: false });
   else openUpdatesSheet();
 }
 

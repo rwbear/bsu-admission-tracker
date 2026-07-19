@@ -812,7 +812,7 @@ function bindPickerChrome() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && isUpdatesSheetOpen()) {
       e.preventDefault();
-      closeUpdatesSheet();
+      closeUpdatesSheet({ restoreFocus: true });
       renderCommandMeta();
       return;
     }
