@@ -113,12 +113,41 @@ html[data-input='pointer'] .overview-row:focus-visible {
 
 .command-brand {
   flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   white-space: nowrap;
+  font: inherit;
   font-weight: 700;
   font-size: var(--text-md);
   letter-spacing: 0.02em;
   text-decoration: none;
   text-transform: none;
+  color: var(--ink);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .command-brand:hover {
+    color: var(--ink-dim);
+  }
+}
+
+.command-brand:focus {
+  outline: none;
+}
+
+.command-brand:focus-visible {
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
 }
 
 .command-meta {
@@ -312,7 +341,8 @@ html[data-input='pointer'] .overview-row:focus-visible {
 
 #table-overlay-root,
 #method-overlay-root,
-#updates-overlay-root {
+#updates-overlay-root,
+#creator-overlay-root {
   position: relative;
   z-index: 80;
 }
@@ -397,7 +427,8 @@ html[data-input='pointer'] .overview-row:focus-visible {
 html.faculty-overlay-open,
 html.table-overlay-open,
 html.method-overlay-open,
-html.updates-overlay-open {
+html.updates-overlay-open,
+html.creator-overlay-open {
   overscroll-behavior: none;
 }
 
@@ -571,7 +602,9 @@ html.updates-overlay-open {
   .faculty-overlay-shell.method-shell.is-motion .method-shell-backdrop,
   .faculty-overlay-shell.method-shell.is-motion .faculty-overlay.method-overlay,
   .faculty-overlay-shell.updates-shell.is-motion .updates-shell-backdrop,
-  .faculty-overlay-shell.updates-shell.is-motion .faculty-overlay.updates-overlay {
+  .faculty-overlay-shell.updates-shell.is-motion .faculty-overlay.updates-overlay,
+  .faculty-overlay-shell.creator-shell.is-motion .creator-shell-backdrop,
+  .faculty-overlay-shell.creator-shell.is-motion .faculty-overlay.creator-overlay {
     transition: none;
   }
 }
@@ -656,6 +689,110 @@ html.updates-overlay-open {
 
 .updates-foot {
   color: var(--ink-faint);
+}
+
+/* Creator sheet — same motion language as updates. */
+.faculty-overlay.creator-overlay {
+  grid-template-rows: auto minmax(0, 1fr);
+  height: auto;
+  max-height: min(78vh, 32rem);
+  animation: none;
+}
+
+.faculty-overlay-shell.creator-shell.is-motion .creator-shell-backdrop {
+  animation: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  cursor: pointer;
+}
+
+.faculty-overlay-shell.creator-shell.is-motion.is-open .creator-shell-backdrop {
+  opacity: 1;
+}
+
+.faculty-overlay-shell.creator-shell.is-motion.is-leaving .creator-shell-backdrop {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.faculty-overlay-shell.creator-shell.is-motion .faculty-overlay.creator-overlay {
+  animation: none;
+  height: auto;
+  max-height: min(78vh, 32rem);
+  opacity: 0;
+  transform: translateY(0.4rem);
+  transition:
+    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.faculty-overlay-shell.creator-shell.is-motion.is-open .faculty-overlay.creator-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.faculty-overlay-shell.creator-shell.is-motion.is-leaving .faculty-overlay.creator-overlay {
+  opacity: 0;
+  transform: translateY(0.2rem);
+  transition:
+    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
+    transform 160ms cubic-bezier(0.55, 0, 1, 1);
+}
+
+.creator-greeting {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.creator-lede {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--ink-dim);
+}
+
+.creator-contacts {
+  margin-top: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.creator-contacts-title {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.creator-contact-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  word-break: break-word;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .creator-contact-link:hover {
+    color: var(--ink-dim);
+  }
+}
+
+.creator-contact-link:focus {
+  outline: none;
+}
+
+.creator-contact-link:focus-visible {
+  outline: none;
+  text-decoration-thickness: 2px;
 }
 
 .faculty-overlay:focus {
