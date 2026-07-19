@@ -1168,11 +1168,13 @@
   text-align: left;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+.detail-method-trigger:focus {
+  outline: none;
 }
 
-html[data-input='keyboard'] .detail-method-trigger:focus-visible {
-  outline: 1.5px solid var(--line-strong);
-  outline-offset: 2px;
+.detail-method-trigger:focus-visible {
+  outline: none;
+  text-decoration-thickness: 2px;
 }
 
 .detail-footer .detail-link {

@@ -126,9 +126,9 @@ html[data-input='pointer'] .overview-row:focus-visible {
   align-items: center;
   gap: var(--space-2);
   margin: 0;
-  padding: 0.35rem 0.55rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  padding: 0.35rem 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   font: inherit;
   font-size: var(--text-xs);
@@ -149,17 +149,23 @@ html[data-input='pointer'] .overview-row:focus-visible {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Desktop hover only — sticky :hover on iOS was a post-tap fill flash. */
+/* No hover pill — chrome stays bare text + live-dot. */
 @media (hover: hover) and (pointer: fine) {
   .command-meta:hover {
-    background: color-mix(in srgb, var(--ink) 4%, transparent);
-    border-color: color-mix(in srgb, var(--line) 70%, transparent);
+    color: var(--ink);
   }
 }
 
-html[data-input='keyboard'] .command-meta:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+.command-meta:focus {
+  outline: none;
+}
+
+.command-meta:focus-visible {
+  outline: none;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
 }
 
 .command-meta-data,
@@ -228,8 +234,7 @@ html[data-input='keyboard'] .command-meta:focus-visible {
   width: min(100%, 28rem);
 }
 
-/* Quiet channel line above the faculty title.
-   Press feedback = overlay enter + chevron — never a fill flash. */
+/* Quiet channel line above the faculty title — text + chevron, no soft pill. */
 .table-trigger {
   display: inline-flex;
   align-items: center;
@@ -239,7 +244,7 @@ html[data-input='keyboard'] .command-meta:focus-visible {
   margin: 0;
   padding: 0.2rem 0.65rem;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
   cursor: pointer;
   font-weight: 500;
@@ -251,6 +256,7 @@ html[data-input='keyboard'] .command-meta:focus-visible {
   -webkit-user-select: none;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -259,9 +265,20 @@ html[data-input='keyboard'] .command-meta:focus-visible {
   }
 }
 
-html[data-input='keyboard'] .table-trigger:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+.table-picker.is-open .table-trigger {
+  color: var(--ink-dim);
+}
+
+.table-trigger:focus {
+  outline: none;
+}
+
+.table-trigger:focus-visible {
+  outline: none;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
 }
 
 .table-trigger-label {
@@ -304,8 +321,7 @@ html[data-input='keyboard'] .table-trigger:focus-visible {
   width: min(100%, 26rem);
 }
 
-/* Same visual as the old h1.hero-sub — just a button with ^.
-   Press feedback = overlay enter + chevron — never a fill flash. */
+/* Same visual as the old h1.hero-sub — text + chevron, no soft pill. */
 .faculty-trigger {
   display: inline-flex;
   align-items: center;
@@ -315,7 +331,7 @@ html[data-input='keyboard'] .table-trigger:focus-visible {
   margin: 0;
   padding: 0.35rem 0.75rem;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
   cursor: pointer;
   font-weight: 600;
@@ -327,6 +343,7 @@ html[data-input='keyboard'] .table-trigger:focus-visible {
   -webkit-user-select: none;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition);
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -335,9 +352,20 @@ html[data-input='keyboard'] .table-trigger:focus-visible {
   }
 }
 
-html[data-input='keyboard'] .faculty-trigger:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+.faculty-picker.is-open .faculty-trigger {
+  color: var(--ink);
+}
+
+.faculty-trigger:focus {
+  outline: none;
+}
+
+.faculty-trigger:focus-visible {
+  outline: none;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
 }
 
 .faculty-trigger-label {
@@ -1027,7 +1055,7 @@ html[data-input='keyboard'] .faculty-option.is-active:focus-visible {
   .command-meta {
     font-size: 0.625rem;
     letter-spacing: 0.02em;
-    padding-inline: 0.25rem;
+    padding-inline: 0;
     gap: 0.35rem;
     max-width: min(16rem, 64vw);
   }
