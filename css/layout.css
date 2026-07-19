@@ -114,9 +114,9 @@ input {
   align-items: center;
   gap: var(--space-2);
   margin: 0;
-  padding: 0.35rem 0.55rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  padding: 0.35rem 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   font: inherit;
   font-size: var(--text-xs);
@@ -137,11 +137,10 @@ input {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Desktop hover only — sticky :hover on iOS painted a soft “outline” fill. */
+/* No hover pill — chrome stays bare text + live-dot. */
 @media (hover: hover) and (pointer: fine) {
   .command-meta:hover {
-    background: color-mix(in srgb, var(--ink) 4%, transparent);
-    border-color: color-mix(in srgb, var(--line) 70%, transparent);
+    color: var(--ink);
   }
 }
 
@@ -150,8 +149,11 @@ input {
 }
 
 .command-meta:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: none;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
 }
 
 .command-meta-data,
@@ -220,7 +222,7 @@ input {
   width: min(100%, 28rem);
 }
 
-/* Quiet channel line above the faculty title */
+/* Quiet channel line above the faculty title — text + chevron, no soft pill. */
 .table-trigger {
   display: inline-flex;
   align-items: center;
@@ -230,7 +232,7 @@ input {
   margin: 0;
   padding: 0.2rem 0.65rem;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
   cursor: pointer;
   font-weight: 500;
@@ -240,18 +242,31 @@ input {
   color: var(--ink-faint);
   user-select: none;
   -webkit-user-select: none;
-  transition: color var(--transition), background var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition);
 }
 
-.table-trigger:hover,
+@media (hover: hover) and (pointer: fine) {
+  .table-trigger:hover {
+    color: var(--ink-dim);
+  }
+}
+
 .table-picker.is-open .table-trigger {
   color: var(--ink-dim);
-  background: var(--soft);
+}
+
+.table-trigger:focus {
+  outline: none;
 }
 
 .table-trigger:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: none;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
 }
 
 .table-trigger-label {
@@ -294,7 +309,7 @@ input {
   width: min(100%, 26rem);
 }
 
-/* Same visual as the old h1.hero-sub — just a button with ^ */
+/* Same visual as the old h1.hero-sub — text + chevron, no soft pill. */
 .faculty-trigger {
   display: inline-flex;
   align-items: center;
@@ -304,7 +319,7 @@ input {
   margin: 0;
   padding: 0.35rem 0.75rem;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
   cursor: pointer;
   font-weight: 600;
@@ -314,18 +329,31 @@ input {
   color: var(--ink-dim);
   user-select: none;
   -webkit-user-select: none;
-  transition: color var(--transition), background var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition);
 }
 
-.faculty-trigger:hover,
+@media (hover: hover) and (pointer: fine) {
+  .faculty-trigger:hover {
+    color: var(--ink);
+  }
+}
+
 .faculty-picker.is-open .faculty-trigger {
   color: var(--ink);
-  background: var(--soft);
+}
+
+.faculty-trigger:focus {
+  outline: none;
 }
 
 .faculty-trigger:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: none;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
 }
 
 .faculty-trigger-label {
@@ -998,7 +1026,7 @@ html.updates-overlay-open {
   .command-meta {
     font-size: 0.625rem;
     letter-spacing: 0.02em;
-    padding-inline: 0.25rem;
+    padding-inline: 0;
     gap: 0.35rem;
     max-width: min(16rem, 64vw);
   }
