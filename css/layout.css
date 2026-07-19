@@ -33,6 +33,10 @@ input {
   color: inherit;
 }
 
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 :focus-visible {
   outline: 1.5px solid var(--line-strong);
   outline-offset: 2px;
@@ -129,11 +133,20 @@ input {
   appearance: none;
   -webkit-appearance: none;
   text-align: end;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.command-meta:hover {
-  background: color-mix(in srgb, var(--ink) 4%, transparent);
-  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+/* Desktop hover only — sticky :hover on iOS painted a soft “outline” fill. */
+@media (hover: hover) and (pointer: fine) {
+  .command-meta:hover {
+    background: color-mix(in srgb, var(--ink) 4%, transparent);
+    border-color: color-mix(in srgb, var(--line) 70%, transparent);
+  }
+}
+
+.command-meta:focus {
+  outline: none;
 }
 
 .command-meta:focus-visible {

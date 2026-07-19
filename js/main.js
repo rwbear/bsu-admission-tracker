@@ -793,7 +793,22 @@ function bindPickerChrome() {
     beforeOpen: () => closeAllOverlaysExcept('updates'),
   });
 
-  $updateStatus.addEventListener('click', () => {
+  // Pointer: preventDefault so the button never takes focus (kills the ring).
+  // Activate on press; swallow the synthetic click. Keyboard uses click.
+  let ignoreMetaClickUntil = 0;
+  $updateStatus.addEventListener('pointerdown', (e) => {
+    if (typeof e.button === 'number' && e.button !== 0) return;
+    if (e.isPrimary === false) return;
+    e.preventDefault();
+    ignoreMetaClickUntil = performance.now() + 600;
+    toggleUpdatesSheet();
+    renderCommandMeta();
+  });
+  $updateStatus.addEventListener('click', (e) => {
+    if (performance.now() < ignoreMetaClickUntil) {
+      e.preventDefault();
+      return;
+    }
     toggleUpdatesSheet();
     renderCommandMeta();
   });
@@ -801,7 +816,7 @@ function bindPickerChrome() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && isUpdatesSheetOpen()) {
       e.preventDefault();
-      closeUpdatesSheet();
+      closeUpdatesSheet({ restoreFocus: true });
       renderCommandMeta();
       return;
     }
