@@ -33,6 +33,8 @@ let returnFocusId = null;
 /** @type {null | (() => void)} */
 let beforeOpenHook = null;
 let open = false;
+/** Ignore backdrop closes from the same tap that opened the sheet. */
+let ignoreBackdropUntil = 0;
 
 /**
  * Wire mutual exclusion with other overlays (from main.js).
@@ -102,6 +104,8 @@ export function openCreatorSheet(opts = {}) {
   document.documentElement.classList.add('creator-overlay-open');
   const brand = document.getElementById(TRIGGER_ID);
   if (brand) brand.setAttribute('aria-expanded', 'true');
+  // Same finger that opened must not instantly close via the new backdrop.
+  ignoreBackdropUntil = performance.now() + 500;
 
   const backdrop = el('div', {
     className: 'faculty-overlay-backdrop creator-shell-backdrop',
@@ -112,6 +116,7 @@ export function openCreatorSheet(opts = {}) {
   backdrop.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     e.stopPropagation();
+    if (performance.now() < ignoreBackdropUntil) return;
     closeCreatorSheet({ restoreFocus: false });
   });
 
@@ -193,19 +198,24 @@ export function openCreatorSheet(opts = {}) {
   shell.append(backdrop, dialog);
   host.append(shell);
 
-  if (prefersReducedMotion()) {
+  const reveal = () => {
+    if (!host.contains(shell)) return;
     shell.classList.add('is-open');
-    focusNoScroll(dialog);
+    // Focus after paint — some mobile browsers still scroll on focus.
+    requestAnimationFrame(() => {
+      if (host.contains(shell)) focusNoScroll(dialog);
+    });
+  };
+
+  if (prefersReducedMotion()) {
+    reveal();
     return;
   }
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!host.contains(shell)) return;
-      shell.classList.add('is-open');
-      focusNoScroll(dialog);
-    });
-  });
+  // Flush closed styles, then open in the same turn — double-rAF left the
+  // shell invisible and invited same-gesture backdrop closes.
+  void shell.offsetWidth;
+  reveal();
 }
 
 /**

@@ -817,20 +817,17 @@ function bindPickerChrome() {
       isCreatorSheetOpen() ? 'true' : 'false',
     );
   };
-  let ignoreBrandClickUntil = 0;
+  // pointerdown: kill focus only. Open on click — opening on pointerdown
+  // mounted the backdrop under the finger and the same gesture closed it
+  // (scroll-lock jump, no visible sheet).
   $creatorTrigger.addEventListener('pointerdown', (e) => {
     if (typeof e.button === 'number' && e.button !== 0) return;
     if (e.isPrimary === false) return;
     e.preventDefault();
-    ignoreBrandClickUntil = performance.now() + 600;
-    toggleCreatorSheet();
-    syncCreatorExpanded();
   });
   $creatorTrigger.addEventListener('click', (e) => {
-    if (performance.now() < ignoreBrandClickUntil) {
-      e.preventDefault();
-      return;
-    }
+    e.preventDefault();
+    e.stopPropagation();
     toggleCreatorSheet();
     syncCreatorExpanded();
   });
