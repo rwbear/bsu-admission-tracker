@@ -1225,24 +1225,26 @@ html[data-input='keyboard'] .faculty-option.is-active:focus-visible {
 }
 
 /* Panel stages — sequential dissolve foundation (see panel-swap.js) */
-#overview-list.panel,
+#overview-list,
 #detail-panel.panel {
   position: relative;
   min-width: 0;
 }
 
 /*
- * IB split: mount is a transparent stack; each .overview-list is its own box.
- * Without this, one outer panel would wrap both lists as a single slab.
+ * IB split: mount is not a panel — the two child `.panel` lists are the boxes.
+ * Toggled via JS (`is-overview-stack`). Avoids nested `.panel` + `:has()` —
+ * Safari/WebKit often keeps the parent's overflow clip and hides the separate
+ * one-line box chrome that Chrome paints correctly.
  */
-#overview-list.panel:has(> .overview-stack) {
+#overview-list.is-overview-stack {
   border: 0;
   background: transparent;
   box-shadow: none;
   overflow: visible;
 }
 
-#overview-list.panel.is-panel-swapping,
+#overview-list.is-panel-swapping,
 #detail-panel.panel.is-panel-swapping {
   pointer-events: none;
   /* Chrome stays solid; content opacity is animated on the child root */
@@ -1250,11 +1252,11 @@ html[data-input='keyboard'] .faculty-option.is-active:focus-visible {
   will-change: height;
 }
 
-#overview-list.panel:has(> .overview-stack).is-panel-swapping {
+#overview-list.is-overview-stack.is-panel-swapping {
   background: transparent;
 }
 
-#overview-list.panel.is-panel-swapping > *,
+#overview-list.is-panel-swapping > *,
 #detail-panel.panel.is-panel-swapping > * {
   will-change: opacity;
 }

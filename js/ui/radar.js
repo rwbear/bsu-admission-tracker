@@ -171,6 +171,17 @@ export function overviewListKey(specialties, score) {
  * }} opts
  * @returns {object[]} enriched sorted rows
  */
+/**
+ * Outer mount is a `.panel` for single lists. For IB split, children are the
+ * panels — strip outer chrome so Safari doesn't clip the one-line box.
+ * @param {HTMLElement} container
+ * @param {boolean} stacked
+ */
+function syncOverviewMountChrome(container, stacked) {
+  container.classList.toggle('is-overview-stack', stacked);
+  container.classList.toggle('panel', !stacked);
+}
+
 export function renderOverviewList(container, specialties, score, opts) {
   const rows = prepareSpecs(specialties, score);
   const existingRows = [...container.querySelectorAll('.overview-row')];
@@ -199,6 +210,7 @@ export function renderOverviewList(container, specialties, score, opts) {
   container.dataset.selectionKey = listKey;
 
   if (!rows.length) {
+    syncOverviewMountChrome(container, false);
     container.append(
       el('div', {
         className: 'detail-empty overview-empty',
@@ -209,6 +221,7 @@ export function renderOverviewList(container, specialties, score, opts) {
   }
 
   const list = buildOverviewList(rows, opts.selectedId, opts.onSelect);
+  syncOverviewMountChrome(container, list.classList.contains('overview-stack'));
   container.append(list);
   if (intro) primeReveal(list);
   else finalizeReveal(list);
