@@ -3,6 +3,26 @@
   display: grid;
 }
 
+/* IB: unified contest block above specialty lines — same row chrome, clear gap. */
+.overview-stack {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.overview-list--unified .overview-row {
+  border-bottom: 0;
+  border-radius: var(--radius);
+}
+
+.overview-list--unified .overview-row:first-child,
+.overview-list--unified .overview-row:last-child {
+  border-radius: var(--radius);
+}
+
+.overview-row--unified .ov-name {
+  letter-spacing: 0.01em;
+}
+
 .overview-row {
   position: relative;
   display: grid;

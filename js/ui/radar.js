@@ -1,4 +1,5 @@
 import { prepareSpecs } from '../compute.js';
+import { isUnifiedContestSpec } from '../unified-contest.js';
 import { el, fmtNum, fmtTime } from './dom.js';
 import {
   renderChanceTrack,
@@ -52,57 +53,97 @@ function revealStep(node, order) {
  * @param {string | null} selectedId
  * @param {(id: string) => void} onSelect
  */
+function buildOverviewRow(row, selectedId, onSelect, index) {
+  const selected = selectedId === row.id;
+  const unified = isUnifiedContestSpec(row);
+  const btn = el('button', {
+    className: `overview-row${selected ? ' selected' : ''}${unified ? ' overview-row--unified' : ''}`,
+    type: 'button',
+    role: 'option',
+    'aria-selected': selected ? 'true' : 'false',
+    'data-id': row.id,
+    'data-reveal-step': String(index),
+  });
+  if (unified) btn.dataset.unified = 'true';
+
+  const peopleText =
+    row.peopleAbove == null
+      ? '—'
+      : `${fmtNum(row.peopleAbove)}/${fmtNum(row.plan)}`;
+
+  const mark = el('span', {
+    className: `ov-mark ${statusClass(row)}`.trim(),
+    'aria-hidden': 'true',
+  });
+
+  const ariaBits = [
+    row.specName,
+    unified ? 'общий конкурс по группе специальностей' : null,
+    row.statusLabel,
+    row.peopleAbove == null
+      ? null
+      : `над тобой ${fmtNum(row.peopleAbove)} при плане ${fmtNum(row.plan)}`,
+    row.delta == null ? null : `дельта ${deltaText(row)}`,
+  ].filter(Boolean);
+  btn.setAttribute('aria-label', ariaBits.join(', '));
+
+  btn.append(
+    mark,
+    el('span', { className: 'ov-name', text: row.specName }),
+    el('span', { className: 'ov-ratio', text: peopleText }),
+    el('span', { className: 'ov-delta', text: deltaText(row) }),
+  );
+
+  // click (not pointerdown): overview can scroll — drag must not select.
+  btn.addEventListener('click', () => onSelect(row.id));
+  return btn;
+}
+
 function buildOverviewList(rows, selectedId, onSelect) {
-  const list = el('div', {
-    className: 'overview-list',
-    role: 'listbox',
+  const unifiedRows = rows.filter(isUnifiedContestSpec);
+  const memberRows = rows.filter((r) => !isUnifiedContestSpec(r));
+  const split = unifiedRows.length > 0 && memberRows.length > 0;
+
+  if (!split) {
+    const list = el('div', {
+      className: 'overview-list',
+      role: 'listbox',
+      'data-reveal-root': '',
+    });
+    rows.forEach((row, index) => {
+      list.append(buildOverviewRow(row, selectedId, onSelect, index));
+    });
+    return list;
+  }
+
+  // IB: «Общий конкурс» in its own block above the specialty lines.
+  const stack = el('div', {
+    className: 'overview-stack',
     'data-reveal-root': '',
   });
 
-  rows.forEach((row, index) => {
-    const selected = selectedId === row.id;
-    const btn = el('button', {
-      className: `overview-row${selected ? ' selected' : ''}`,
-      type: 'button',
-      role: 'option',
-      'aria-selected': selected ? 'true' : 'false',
-      'data-id': row.id,
-      'data-reveal-step': String(index),
-    });
-
-    const peopleText =
-      row.peopleAbove == null
-        ? '—'
-        : `${fmtNum(row.peopleAbove)}/${fmtNum(row.plan)}`;
-
-    const mark = el('span', {
-      className: `ov-mark ${statusClass(row)}`.trim(),
-      'aria-hidden': 'true',
-    });
-
-    const ariaBits = [
-      row.specName,
-      row.statusLabel,
-      row.peopleAbove == null
-        ? null
-        : `над тобой ${fmtNum(row.peopleAbove)} при плане ${fmtNum(row.plan)}`,
-      row.delta == null ? null : `дельта ${deltaText(row)}`,
-    ].filter(Boolean);
-    btn.setAttribute('aria-label', ariaBits.join(', '));
-
-    btn.append(
-      mark,
-      el('span', { className: 'ov-name', text: row.specName }),
-      el('span', { className: 'ov-ratio', text: peopleText }),
-      el('span', { className: 'ov-delta', text: deltaText(row) }),
-    );
-
-    // click (not pointerdown): overview can scroll — drag must not select.
-    btn.addEventListener('click', () => onSelect(row.id));
-    list.append(btn);
+  const unifiedList = el('div', {
+    className: 'overview-list overview-list--unified',
+    role: 'listbox',
+    'aria-label': 'Общий конкурс',
+  });
+  unifiedRows.forEach((row, index) => {
+    unifiedList.append(buildOverviewRow(row, selectedId, onSelect, index));
   });
 
-  return list;
+  const memberList = el('div', {
+    className: 'overview-list overview-list--members',
+    role: 'listbox',
+    'aria-label': 'Специальности',
+  });
+  memberRows.forEach((row, index) => {
+    memberList.append(
+      buildOverviewRow(row, selectedId, onSelect, unifiedRows.length + index),
+    );
+  });
+
+  stack.append(unifiedList, memberList);
+  return stack;
 }
 
 /**
@@ -132,15 +173,11 @@ export function overviewListKey(specialties, score) {
  */
 export function renderOverviewList(container, specialties, score, opts) {
   const rows = prepareSpecs(specialties, score);
-  const existing = container.querySelector('.overview-list');
-  const existingIds = existing
-    ? [...existing.querySelectorAll('.overview-row')].map((n) =>
-        n.getAttribute('data-id'),
-      )
-    : [];
+  const existingRows = [...container.querySelectorAll('.overview-row')];
+  const existingIds = existingRows.map((n) => n.getAttribute('data-id'));
   const nextIds = rows.map((r) => r.id);
   const sameShape =
-    existing instanceof HTMLElement &&
+    existingRows.length > 0 &&
     existingIds.length === nextIds.length &&
     existingIds.every((id, i) => id === nextIds[i]);
 
@@ -148,7 +185,7 @@ export function renderOverviewList(container, specialties, score, opts) {
   const intro = Boolean(opts.intro) && !opts.reduceMotion;
 
   if (sameShape) {
-    for (const btn of existing.querySelectorAll('.overview-row')) {
+    for (const btn of existingRows) {
       if (!(btn instanceof HTMLElement)) continue;
       const selected = opts.selectedId === btn.getAttribute('data-id');
       btn.classList.toggle('selected', selected);
@@ -222,6 +259,14 @@ function buildDetailInner(row, score, meta) {
     row.estimatedPassing == null && plan > 0 && competition < plan
       ? `Обновлено ${fmtTime(updatedAt)} · заявлений меньше мест — расчётный балл набора ещё не сложился`
       : `Обновлено ${fmtTime(updatedAt)} · расчётный балл — оценка по таблице`;
+
+  if (isUnifiedContestSpec(row)) {
+    const n = Number(row.unifiedMemberCount) || 0;
+    note +=
+      n > 0
+        ? ` · общий конкурс Института бизнеса — сумма по ${n} специальностям`
+        : ' · общий конкурс Института бизнеса — сумма по специальностям группы';
+  }
 
   // Always-visible prose channel against silence — only when seats were taken.
   if (row.showQuota) {
