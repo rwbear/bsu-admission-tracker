@@ -509,56 +509,49 @@
   margin-right: 0.45rem;
   border-right: 1px solid currentColor;
   border-bottom: 1px solid currentColor;
-  transform: rotate(-45deg);
+  transform: rotate(-45deg) translateY(0);
   vertical-align: 0.15em;
   opacity: 0.7;
   transition:
-    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
     opacity 120ms ease;
 }
 
 .panel-details[open]:not(.is-disclosure-closing) summary::before,
 .panel-details.is-disclosure-opening summary::before {
-  transform: rotate(45deg);
-  vertical-align: 0.28em;
+  /* Rotate only — vertical-align jumps caused a layout hitch on open. */
+  transform: rotate(45deg) translateY(0.08em);
 }
 
 .panel-details.is-disclosure-closing summary::before {
-  transform: rotate(-45deg);
-  vertical-align: 0.15em;
+  transform: rotate(-45deg) translateY(0);
 }
 
 /*
- * Clip shell: animate grid-template-rows (0fr↔1fr) + opacity only.
- * Never animate height/padding — those layout-thrash on mobile.
+ * Clip shell: grid 0fr↔1fr snaps (no transition). Motion is opacity/transform
+ * on `.panel-details-inner` via panel-disclosure.js — compositor only.
+ * Animating grid-template-rows reflowed the detail column every frame on mobile.
  */
 .panel-details-body {
   display: grid;
   grid-template-rows: 0fr;
-  opacity: 0;
-  transition:
-    grid-template-rows 200ms cubic-bezier(0.16, 1, 0.3, 1),
-    opacity 160ms cubic-bezier(0.16, 1, 0.3, 1);
   pointer-events: none;
 }
 
+.panel-details.is-disclosure-opening > .panel-details-body,
+.panel-details.is-disclosure-open > .panel-details-body,
+.panel-details.is-disclosure-instant[open] > .panel-details-body,
 .panel-details.is-disclosure-closing > .panel-details-body {
-  transition:
-    grid-template-rows 160ms cubic-bezier(0.55, 0, 1, 1),
-    opacity 140ms cubic-bezier(0.55, 0, 1, 1);
+  grid-template-rows: 1fr;
 }
 
 .panel-details.is-disclosure-opening > .panel-details-body,
 .panel-details.is-disclosure-open > .panel-details-body,
 .panel-details.is-disclosure-instant[open] > .panel-details-body {
-  grid-template-rows: 1fr;
-  opacity: 1;
   pointer-events: auto;
 }
 
 .panel-details.is-disclosure-closing > .panel-details-body {
-  grid-template-rows: 0fr;
-  opacity: 0;
   pointer-events: none;
 }
 
@@ -568,6 +561,7 @@
   display: grid;
   gap: var(--space-4);
   padding-top: var(--space-3);
+  /* opacity/transform set inline during open/close (compositor path) */
 }
 
 .panel-details-inner p {
@@ -579,9 +573,10 @@
   gap: var(--space-5);
 }
 
-/* Instant path — no transition flash on first paint / reduced-motion fallback */
-.panel-details.is-disclosure-instant > .panel-details-body {
-  transition: none;
+/* Instant path — no motion flash on first paint / reduced-motion fallback */
+.panel-details.is-disclosure-instant > .panel-details-body > .panel-details-inner {
+  opacity: 1;
+  transform: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -590,15 +585,12 @@
   }
 
   .panel-details-body {
-    transition: none;
     grid-template-rows: 1fr;
-    opacity: 1;
     pointer-events: auto;
   }
 
   .panel-details:not([open]) > .panel-details-body {
     grid-template-rows: 0fr;
-    opacity: 0;
     pointer-events: none;
   }
 }
