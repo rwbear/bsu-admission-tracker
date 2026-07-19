@@ -1231,12 +1231,27 @@ html[data-input='keyboard'] .faculty-option.is-active:focus-visible {
   min-width: 0;
 }
 
+/*
+ * IB split: mount is a transparent stack; each .overview-list is its own box.
+ * Without this, one outer panel would wrap both lists as a single slab.
+ */
+#overview-list.panel:has(> .overview-stack) {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  overflow: visible;
+}
+
 #overview-list.panel.is-panel-swapping,
 #detail-panel.panel.is-panel-swapping {
   pointer-events: none;
   /* Chrome stays solid; content opacity is animated on the child root */
   background: var(--bg-elev);
   will-change: height;
+}
+
+#overview-list.panel:has(> .overview-stack).is-panel-swapping {
+  background: transparent;
 }
 
 #overview-list.panel.is-panel-swapping > *,
