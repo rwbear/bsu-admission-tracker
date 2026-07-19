@@ -54,7 +54,20 @@ import {
   UPDATES_SHEET,
 } from './ui/updates-sheet.js';
 import { UPDATES_ARIA_LABELS } from './ui/updates-copy.js';
-import { focusNoScroll } from './ui/overlay-scroll-lock.js';
+import {
+  armCreatorSheetChrome,
+  closeCreatorSheet,
+  isCreatorSheetOpen,
+  toggleCreatorSheet,
+  CREATOR_SHEET,
+} from './ui/creator-sheet.js';
+import {
+  focusNoScroll,
+  restoreFocus,
+  afterOverlayPaint,
+} from './ui/overlay-scroll-lock.js';
+import { onPrimaryActivate } from './ui/pointer-activate.js';
+import { armInputModality } from './ui/input-modality.js';
 import {
   resolvePollMs,
   resolveEffectivePollMs,
@@ -102,6 +115,19 @@ let previousLiveState = null;
 /** True when the last completed fetch changed the snapshot. */
 let lastFetchChanged = false;
 let tableSearchQuery = '';
+/** Skip hero remount when only specialty / meta changed. */
+let lastHeroChromeKey = '';
+
+function heroChromeKey() {
+  return [
+    state.formId || '',
+    state.facultyId || '',
+    tableMenuOpen ? '1' : '0',
+    facultyMenuOpen ? '1' : '0',
+    tableSearchQuery,
+    facultySearchQuery,
+  ].join('\0');
+}
 
 function showOnly(which) {
   for (const node of [$loading, $empty, $error, $results]) {
@@ -124,8 +150,6 @@ function syncTableSelection() {
   if (next !== state.formId) {
     state.formId = next;
     writeFormPref(next);
-  } else if (next) {
-    writeFormPref(next);
   }
 }
 
@@ -144,8 +168,6 @@ function syncFacultySelection() {
   if (next !== state.facultyId) {
     state.facultyId = next;
     writeFacultyPref(next);
-  } else if (next) {
-    writeFacultyPref(next);
   }
 }
 
@@ -157,26 +179,25 @@ function currentSpecialties() {
   return inTable.filter((s) => s.facultyId === state.facultyId);
 }
 
-function closeTableMenu() {
+function closeTableMenu(opts = {}) {
   if (!tableMenuOpen) return;
   tableMenuOpen = false;
   tableSearchQuery = '';
   renderTableChrome();
+  if (opts.restoreFocus === false) return;
   const trigger = document.getElementById('table-trigger');
-  if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+  if (trigger instanceof HTMLElement) restoreFocus(trigger);
 }
 
 function openTableMenu() {
   closeUpdatesSheet({ instant: true, restoreFocus: false });
-  closeMethodSheet({ restoreFocus: false });
-  closeFacultyMenu();
+  closeCreatorSheet({ instant: true, restoreFocus: false });
+  closeMethodSheet({ instant: true, restoreFocus: false });
+  closeFacultyMenu({ restoreFocus: false });
   tableMenuOpen = true;
   tableSearchQuery = '';
+  // Picker mounts + commitOverlayEnter handles focus/scroll — no microtask.
   renderTableChrome();
-  queueMicrotask(() => {
-    const dialog = document.getElementById('table-overlay');
-    if (dialog instanceof HTMLElement) focusNoScroll(dialog);
-  });
 }
 
 function toggleTableMenu() {
@@ -190,7 +211,7 @@ function onSelectTable(id) {
     tableMenuOpen = false;
     renderHeroChrome();
     const trigger = document.getElementById('table-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
     return;
   }
 
@@ -209,7 +230,7 @@ function onSelectTable(id) {
     tableMenuOpen = false;
     renderHeroChrome();
     const trigger = document.getElementById('table-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
   }, closeAfter);
 }
 
@@ -240,35 +261,32 @@ function renderTableChrome() {
     onClose: closeTableMenu,
     onQuery: onTableQuery,
   });
+  lastHeroChromeKey = heroChromeKey();
 }
 
-function closeFacultyMenu() {
+function closeFacultyMenu(opts = {}) {
   if (!facultyMenuOpen) return;
   facultyMenuOpen = false;
   facultySearchQuery = '';
   renderFacultyChrome();
+  if (opts.restoreFocus === false) return;
   window.setTimeout(() => {
     if (facultyMenuOpen) return;
     const trigger = document.getElementById('faculty-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
-  }, 280);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
+  }, 200);
 }
 
 function openFacultyMenu() {
   closeUpdatesSheet({ instant: true, restoreFocus: false });
-  closeMethodSheet({ restoreFocus: false });
-  closeTableMenu();
+  closeCreatorSheet({ instant: true, restoreFocus: false });
+  closeMethodSheet({ instant: true, restoreFocus: false });
+  closeTableMenu({ restoreFocus: false });
   facultyMenuOpen = true;
   facultySearchQuery = '';
+  // Picker mounts + commitOverlayEnter focuses/scrolls the list port —
+  // no microtask scrollIntoView (that fought body position:fixed on mobile).
   renderFacultyChrome();
-  queueMicrotask(() => {
-    const dialog = document.getElementById('faculty-overlay');
-    if (dialog instanceof HTMLElement) focusNoScroll(dialog);
-    const active = dialog?.querySelector('.faculty-option.is-active');
-    if (active instanceof HTMLElement) {
-      active.scrollIntoView({ block: 'nearest' });
-    }
-  });
 }
 
 function toggleFacultyMenu() {
@@ -289,8 +307,8 @@ function closeFacultyMenuAfterSelect() {
   window.setTimeout(() => {
     if (facultyMenuOpen) return;
     const trigger = document.getElementById('faculty-trigger');
-    if (trigger instanceof HTMLElement) focusNoScroll(trigger);
-  }, 280);
+    if (trigger instanceof HTMLElement) restoreFocus(trigger);
+  }, 200);
 }
 
 function onSelectFaculty(id) {
@@ -338,6 +356,7 @@ function renderFacultyChrome() {
     onClose: closeFacultyMenu,
     onQuery: onFacultyQuery,
   });
+  lastHeroChromeKey = heroChromeKey();
 }
 
 function renderHeroChrome() {
@@ -346,10 +365,9 @@ function renderHeroChrome() {
 }
 
 function onSelectSpecialty(id) {
-  // Optimistic highlight — master-detail paint is queued/async; without this
-  // the selected row waits on the dissolve chain and the color pops late.
+  // Optimistic highlight — paint selection this frame, board work next.
   if (id) patchOptionSelection($overview, '.overview-row', id, 'selected');
-  setSelected(id);
+  afterOverlayPaint(() => setSelected(id));
 }
 
 /**
@@ -463,7 +481,9 @@ function renderBoard() {
   try {
     syncTableSelection();
     syncFacultySelection();
-    renderHeroChrome();
+    if (heroChromeKey() !== lastHeroChromeKey) {
+      renderHeroChrome();
+    }
     renderCommandMeta();
     $sourceLink.href = sourceUrlForTable(state.formId || DEFAULT_TABLE_ID);
 
@@ -767,6 +787,9 @@ function closeAllOverlaysExcept(keep) {
   if (keep !== 'updates' && isUpdatesSheetOpen()) {
     closeUpdatesSheet({ instant: true, restoreFocus: false });
   }
+  if (keep !== 'creator' && isCreatorSheetOpen()) {
+    closeCreatorSheet({ instant: true, restoreFocus: false });
+  }
   if (keep !== 'method' && isMethodSheetOpen()) {
     closeMethodSheet({ instant: true, restoreFocus: false });
   }
@@ -792,16 +815,53 @@ function bindPickerChrome() {
   armUpdatesSheetChrome({
     beforeOpen: () => closeAllOverlaysExcept('updates'),
   });
+  armCreatorSheetChrome({
+    beforeOpen: () => closeAllOverlaysExcept('creator'),
+  });
 
-  $updateStatus.addEventListener('click', () => {
+  const $creatorTrigger = /** @type {HTMLButtonElement | null} */ (
+    $('#creator-trigger')
+  );
+  const syncCreatorExpanded = () => {
+    if (!($creatorTrigger instanceof HTMLElement)) return;
+    $creatorTrigger.setAttribute(
+      'aria-expanded',
+      isCreatorSheetOpen() ? 'true' : 'false',
+    );
+  };
+  // Brand must be a <button> — never <a href="#top"> (that scrolls <main id="top">).
+  // pointerdown: kill focus only. Open on click — opening on pointerdown
+  // mounted the backdrop under the finger and the same gesture closed it
+  // (scroll-lock jump, no visible sheet).
+  if ($creatorTrigger instanceof HTMLElement) {
+    $creatorTrigger.addEventListener('pointerdown', (e) => {
+      if (typeof e.button === 'number' && e.button !== 0) return;
+      if (e.isPrimary === false) return;
+      e.preventDefault();
+    });
+    $creatorTrigger.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleCreatorSheet();
+      syncCreatorExpanded();
+    });
+  }
+
+  onPrimaryActivate($updateStatus, () => {
     toggleUpdatesSheet();
     renderCommandMeta();
   });
 
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isCreatorSheetOpen()) {
+      e.preventDefault();
+      closeCreatorSheet({ restoreFocus: true });
+      syncCreatorExpanded();
+      return;
+    }
     if (e.key === 'Escape' && isUpdatesSheetOpen()) {
       e.preventDefault();
-      closeUpdatesSheet();
+      closeUpdatesSheet({ restoreFocus: true });
       renderCommandMeta();
       return;
     }
@@ -821,15 +881,17 @@ function bindPickerChrome() {
       return;
     }
 
-    const overlayId = isUpdatesSheetOpen()
-      ? UPDATES_SHEET.overlayId
-      : isMethodSheetOpen()
-        ? METHOD_SHEET.overlayId
-        : facultyMenuOpen
-          ? 'faculty-overlay'
-          : tableMenuOpen
-            ? 'table-overlay'
-            : null;
+    const overlayId = isCreatorSheetOpen()
+      ? CREATOR_SHEET.overlayId
+      : isUpdatesSheetOpen()
+        ? UPDATES_SHEET.overlayId
+        : isMethodSheetOpen()
+          ? METHOD_SHEET.overlayId
+          : facultyMenuOpen
+            ? 'faculty-overlay'
+            : tableMenuOpen
+              ? 'table-overlay'
+              : null;
     if (!overlayId) return;
 
     // Soft Tab trap inside the open dialog (search + options + close).
@@ -948,4 +1010,6 @@ $('#retry-btn').addEventListener('click', () =>
 
 subscribe(() => renderBoard());
 
+// Before first paint interaction — hide pointer focus rings from frame 0.
+armInputModality();
 bootstrap();

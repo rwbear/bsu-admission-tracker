@@ -76,5 +76,75 @@ export function focusNoScroll(node) {
   }
 }
 
+/**
+ * Return focus after closing an overlay — keyboard only.
+ * Pointer closes must not refocus the trigger (that paints the outline ring).
+ *
+ * @param {HTMLElement | null | undefined} node
+ */
+export function restoreFocus(node) {
+  if (!(node instanceof HTMLElement)) return;
+  try {
+    const mode = document.documentElement.getAttribute('data-input');
+    if (mode !== 'keyboard') return;
+  } catch {
+    return;
+  }
+  focusNoScroll(node);
+}
+
+/**
+ * Open an overlay shell with CSS enter transitions in the same turn as mount.
+ *
+ * Double-rAF (paint closed → wait → paint open) felt like tap lag on mobile:
+ * the shell sat at opacity 0 for two frames after the click. A single forced
+ * style flush (`offsetWidth`) commits the pre-open styles, then `.is-open` can
+ * be added synchronously — the opacity/transform transition still runs, and
+ * the first paint already includes the enter, with no blank waiting frame.
+ *
+ * Keep `open` to class toggles only. Defer focus / list scroll with
+ * `afterOverlayPaint` so layout work does not block the first open frame.
+ *
+ * @param {HTMLElement} shell
+ * @param {() => void} open add `.is-open` (and nothing layout-heavy)
+ */
+export function commitOverlayEnter(shell, open) {
+  if (!shell || typeof open !== 'function') return;
+  if (typeof shell.offsetWidth !== 'number') return;
+  void shell.offsetWidth;
+  open();
+}
+
+/**
+ * Run after the browser has a chance to paint the open shell.
+ * @param {() => void} fn
+ */
+export function afterOverlayPaint(fn) {
+  if (typeof fn !== 'function') return;
+  if (typeof requestAnimationFrame !== 'function') {
+    fn();
+    return;
+  }
+  requestAnimationFrame(() => {
+    fn();
+  });
+}
+
+/**
+ * Scroll an option into view inside an overlay list port.
+ * Prefer this over `scrollIntoView` — under `body { position: fixed }` that
+ * API can thrash the page scrollport and delay the first open paint.
+ *
+ * @param {HTMLElement} list
+ * @param {Element | null} active
+ */
+export function scrollOverlayOptionIntoView(list, active) {
+  if (!list || !active || typeof list.contains !== 'function') return;
+  if (!list.contains(active)) return;
+  const top =
+    active.offsetTop - list.clientHeight / 2 + active.offsetHeight / 2;
+  list.scrollTop = Math.max(0, top);
+}
+
 /** Leave budget — must be ≥ CSS backdrop opacity transition. */
 export const OVERLAY_LEAVE_MS = 280;

@@ -1,12 +1,18 @@
 /**
- * Methodology sheet — faculty overlay chrome, bulletproof open/close.
+ * Creator / contacts sheet — method/updates chrome, bulletproof open/close.
  *
  * Scroll lock via shared overlay-scroll-lock (body position:fixed).
  * Opacity-first leave; teardown after backdrop transitionend.
  */
 
 import { el } from './dom.js';
-import { METHOD_PARAGRAPHS } from './method-copy.js';
+import {
+  CREATOR_TITLE,
+  CREATOR_GREETING,
+  CREATOR_LEDE,
+  CREATOR_PARAGRAPHS,
+  CREATOR_CONTACTS,
+} from './creator-copy.js';
 import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
@@ -17,11 +23,11 @@ import {
   OVERLAY_LEAVE_MS,
 } from './overlay-scroll-lock.js';
 
-const OVERLAY_ID = 'method-overlay-root';
-const DIALOG_ID = 'method-overlay';
-const TITLE_ID = 'method-overlay-title';
-const TRIGGER_ID = 'method-sheet-trigger';
-const LOCK_ID = 'method';
+const OVERLAY_ID = 'creator-overlay-root';
+const DIALOG_ID = 'creator-overlay';
+const TITLE_ID = 'creator-overlay-title';
+const TRIGGER_ID = 'creator-trigger';
+const LOCK_ID = 'creator';
 
 /** @type {ReturnType<typeof setTimeout> | null} */
 let closeTimer = null;
@@ -30,12 +36,14 @@ let returnFocusId = null;
 /** @type {null | (() => void)} */
 let beforeOpenHook = null;
 let open = false;
+/** Ignore backdrop closes from the same tap that opened the sheet. */
+let ignoreBackdropUntil = 0;
 
 /**
- * Wire mutual exclusion with faculty/table menus (from main.js).
+ * Wire mutual exclusion with other overlays (from main.js).
  * @param {{ beforeOpen?: () => void }} hooks
  */
-export function armMethodSheetChrome(hooks = {}) {
+export function armCreatorSheetChrome(hooks = {}) {
   beforeOpenHook = hooks.beforeOpen || null;
 }
 
@@ -69,22 +77,22 @@ function clearCloseTimer(host) {
     clearTimeout(closeTimer);
     closeTimer = null;
   }
-  host._methodClosing = false;
+  host._creatorClosing = false;
 }
 
 /**
  * @returns {boolean}
  */
-export function isMethodSheetOpen() {
+export function isCreatorSheetOpen() {
   return open;
 }
 
 /**
  * @param {{ returnFocusId?: string | null }} [opts]
  */
-export function openMethodSheet(opts = {}) {
+export function openCreatorSheet(opts = {}) {
   const host = overlayHost();
-  if (open && host.querySelector('.method-shell') && !host._methodClosing) {
+  if (open && host.querySelector('.creator-shell') && !host._creatorClosing) {
     return;
   }
 
@@ -96,10 +104,14 @@ export function openMethodSheet(opts = {}) {
     opts.returnFocusId != null ? opts.returnFocusId : TRIGGER_ID;
 
   acquireOverlayScrollLock(LOCK_ID);
-  document.documentElement.classList.add('method-overlay-open');
+  document.documentElement.classList.add('creator-overlay-open');
+  const brand = document.getElementById(TRIGGER_ID);
+  if (brand) brand.setAttribute('aria-expanded', 'true');
+  // Same finger that opened must not instantly close via the new backdrop.
+  ignoreBackdropUntil = performance.now() + 500;
 
   const backdrop = el('div', {
-    className: 'faculty-overlay-backdrop method-shell-backdrop',
+    className: 'faculty-overlay-backdrop creator-shell-backdrop',
     role: 'button',
     'aria-label': 'Закрыть',
     tabindex: '-1',
@@ -107,11 +119,12 @@ export function openMethodSheet(opts = {}) {
   backdrop.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    closeMethodSheet();
+    if (performance.now() < ignoreBackdropUntil) return;
+    closeCreatorSheet({ restoreFocus: false });
   });
 
   const dialog = el('div', {
-    className: 'faculty-overlay method-overlay',
+    className: 'faculty-overlay creator-overlay',
     id: DIALOG_ID,
     role: 'dialog',
     'aria-modal': 'true',
@@ -124,7 +137,7 @@ export function openMethodSheet(opts = {}) {
     el('h2', {
       className: 'faculty-overlay-title',
       id: TITLE_ID,
-      text: 'Как считается место',
+      text: CREATOR_TITLE,
     }),
     (() => {
       const close = el('button', {
@@ -133,24 +146,57 @@ export function openMethodSheet(opts = {}) {
         'aria-label': 'Закрыть',
         text: '×',
       });
-      close.addEventListener('click', () => closeMethodSheet());
+      close.addEventListener('click', () =>
+        closeCreatorSheet({ restoreFocus: false }),
+      );
       return close;
     })(),
   );
 
   const body = el('div', {
-    className: 'method-overlay-body',
+    className: 'method-overlay-body creator-overlay-body',
     tabindex: '0',
   });
-  for (const text of METHOD_PARAGRAPHS) {
+
+  body.append(
+    el('p', { className: 'creator-greeting', text: CREATOR_GREETING }),
+    el('p', { className: 'creator-lede', text: CREATOR_LEDE }),
+  );
+
+  for (const text of CREATOR_PARAGRAPHS) {
     body.append(el('p', { text }));
   }
+
+  const contacts = el('div', { className: 'creator-contacts' });
+  contacts.append(
+    el('h3', {
+      className: 'creator-contacts-title',
+      text: 'Контакты',
+    }),
+  );
+
+  const dl = el('dl', { className: 'updates-facts creator-contacts-list' });
+  for (const item of CREATOR_CONTACTS) {
+    dl.append(el('dt', { text: item.term }));
+    const linkAttrs = {
+      className: 'creator-contact-link',
+      href: item.href,
+      text: item.label,
+    };
+    if (item.external) {
+      linkAttrs.target = '_blank';
+      linkAttrs.rel = 'noopener noreferrer';
+    }
+    dl.append(el('dd', {}, [el('a', linkAttrs)]));
+  }
+  contacts.append(dl);
+  body.append(contacts);
 
   dialog.append(header, body);
   dialog.addEventListener('click', (e) => e.stopPropagation());
 
   const shell = el('div', {
-    className: 'faculty-overlay-shell is-motion method-shell',
+    className: 'faculty-overlay-shell is-motion creator-shell',
   });
   shell.append(backdrop, dialog);
   host.append(shell);
@@ -171,19 +217,21 @@ export function openMethodSheet(opts = {}) {
     return;
   }
 
+  // Same-turn flush + .is-open — double-rAF left the shell invisible and
+  // invited same-gesture backdrop closes under the finger.
   commitOverlayEnter(shell, reveal);
 }
 
 /**
  * @param {{ instant?: boolean, restoreFocus?: boolean }} [opts]
  */
-export function closeMethodSheet(opts = {}) {
-  const { instant = false, restoreFocus = true } = opts;
+export function closeCreatorSheet(opts = {}) {
+  const { instant = false, restoreFocus = false } = opts;
   const host = overlayHost();
-  const shell = host.querySelector('.method-shell');
+  const shell = host.querySelector('.creator-shell');
 
   if (!open && !shell) {
-    document.documentElement.classList.remove('method-overlay-open');
+    document.documentElement.classList.remove('creator-overlay-open');
     releaseOverlayScrollLock(LOCK_ID);
     return;
   }
@@ -194,10 +242,13 @@ export function closeMethodSheet(opts = {}) {
     clearCloseTimer(host);
     open = false;
     if (shell && host.contains(shell)) shell.remove();
-    if (!host.querySelector('.method-shell')) host.innerHTML = '';
-    document.documentElement.classList.remove('method-overlay-open');
+    if (!host.querySelector('.creator-shell')) host.innerHTML = '';
+    document.documentElement.classList.remove('creator-overlay-open');
     releaseOverlayScrollLock(LOCK_ID);
     returnFocusId = null;
+
+    const brand = document.getElementById(TRIGGER_ID);
+    if (brand) brand.setAttribute('aria-expanded', 'false');
 
     if (restoreFocus && focusId) {
       const trigger = document.getElementById(focusId);
@@ -210,8 +261,8 @@ export function closeMethodSheet(opts = {}) {
     return;
   }
 
-  if (host._methodClosing) return;
-  host._methodClosing = true;
+  if (host._creatorClosing) return;
+  host._creatorClosing = true;
 
   const dialog = host.querySelector(`#${DIALOG_ID}`);
   if (dialog instanceof HTMLElement) focusNoScroll(dialog);
@@ -220,7 +271,7 @@ export function closeMethodSheet(opts = {}) {
   shell.classList.remove('is-open');
   shell.classList.add('is-leaving');
 
-  const backdrop = shell.querySelector('.method-shell-backdrop');
+  const backdrop = shell.querySelector('.creator-shell-backdrop');
   let settled = false;
   const settle = () => {
     if (settled) return;
@@ -239,7 +290,15 @@ export function closeMethodSheet(opts = {}) {
   closeTimer = setTimeout(settle, OVERLAY_LEAVE_MS);
 }
 
-export const METHOD_SHEET = Object.freeze({
+/**
+ * Toggle from the brand badge.
+ */
+export function toggleCreatorSheet() {
+  if (open) closeCreatorSheet({ restoreFocus: false });
+  else openCreatorSheet();
+}
+
+export const CREATOR_SHEET = Object.freeze({
   overlayId: DIALOG_ID,
   rootId: OVERLAY_ID,
   triggerId: TRIGGER_ID,

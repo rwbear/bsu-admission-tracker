@@ -16,6 +16,9 @@ import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
   focusNoScroll,
+  restoreFocus as restoreFocusQuiet,
+  commitOverlayEnter,
+  afterOverlayPaint,
   OVERLAY_LEAVE_MS,
 } from './overlay-scroll-lock.js';
 
@@ -109,7 +112,7 @@ export function openUpdatesSheet(opts = {}) {
   backdrop.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    closeUpdatesSheet();
+    closeUpdatesSheet({ restoreFocus: false });
   });
 
   const dialog = el('div', {
@@ -135,7 +138,9 @@ export function openUpdatesSheet(opts = {}) {
         'aria-label': 'Закрыть',
         text: '×',
       });
-      close.addEventListener('click', () => closeUpdatesSheet());
+      close.addEventListener('click', () =>
+        closeUpdatesSheet({ restoreFocus: false }),
+      );
       return close;
     })(),
   );
@@ -165,26 +170,30 @@ export function openUpdatesSheet(opts = {}) {
   shell.append(backdrop, dialog);
   host.append(shell);
 
+  const settle = () => {
+    if (!shell.isConnected) return;
+    focusNoScroll(dialog);
+  };
+
+  const reveal = () => {
+    shell.classList.add('is-open');
+    afterOverlayPaint(settle);
+  };
+
   if (prefersReducedMotion()) {
     shell.classList.add('is-open');
-    focusNoScroll(dialog);
+    settle();
     return;
   }
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      if (!host.contains(shell)) return;
-      shell.classList.add('is-open');
-      focusNoScroll(dialog);
-    });
-  });
+  commitOverlayEnter(shell, reveal);
 }
 
 /**
  * @param {{ instant?: boolean, restoreFocus?: boolean }} [opts]
  */
 export function closeUpdatesSheet(opts = {}) {
-  const { instant = false, restoreFocus = true } = opts;
+  const { instant = false, restoreFocus = false } = opts;
   const host = overlayHost();
   const shell = host.querySelector('.updates-shell');
 
@@ -207,7 +216,7 @@ export function closeUpdatesSheet(opts = {}) {
 
     if (restoreFocus && focusId) {
       const trigger = document.getElementById(focusId);
-      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+      if (trigger instanceof HTMLElement) restoreFocusQuiet(trigger);
     }
   };
 
@@ -247,9 +256,10 @@ export function closeUpdatesSheet(opts = {}) {
 
 /**
  * Toggle open/close from the header trigger.
+ * Pointer closes never restore focus — that painted a ring on #update-status.
  */
 export function toggleUpdatesSheet() {
-  if (open) closeUpdatesSheet();
+  if (open) closeUpdatesSheet({ restoreFocus: false });
   else openUpdatesSheet();
 }
 

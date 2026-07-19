@@ -127,6 +127,7 @@ export function setScore(value) {
  * @param {string | null} id
  */
 export function setSelected(id) {
+  if (state.selectedId === id) return;
   state.selectedId = id;
   writePref('selected', id);
   emit();

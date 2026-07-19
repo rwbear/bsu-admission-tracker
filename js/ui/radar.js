@@ -18,6 +18,7 @@ import {
   closeMethodSheet,
   METHOD_SHEET,
 } from './method-sheet.js';
+import { onPrimaryActivate } from './pointer-activate.js';
 
 /**
  * @param {object} row
@@ -96,6 +97,7 @@ function buildOverviewList(rows, selectedId, onSelect) {
       el('span', { className: 'ov-delta', text: deltaText(row) }),
     );
 
+    // click (not pointerdown): overview can scroll — drag must not select.
     btn.addEventListener('click', () => onSelect(row.id));
     list.append(btn);
   });
@@ -342,7 +344,7 @@ function buildDetailInner(row, score, meta) {
     'aria-controls': METHOD_SHEET.overlayId,
     text: 'Как считается место',
   });
-  methodTrigger.addEventListener('click', () => {
+  onPrimaryActivate(methodTrigger, () => {
     openMethodSheet({ returnFocusId: METHOD_SHEET.triggerId });
   });
 

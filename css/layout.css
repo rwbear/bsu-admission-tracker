@@ -33,9 +33,25 @@ input {
   color: inherit;
 }
 
+/* Keyboard rings only. Pointer/touch must never paint a post-tap outline. */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 :focus-visible {
   outline: 1.5px solid var(--line-strong);
   outline-offset: 2px;
+}
+
+html[data-input='pointer'] :focus,
+html[data-input='pointer'] :focus-visible {
+  outline: none;
+}
+
+html[data-input='pointer'] .faculty-option:focus-visible,
+html[data-input='pointer'] .faculty-option.is-active:focus-visible,
+html[data-input='pointer'] .overview-row:focus-visible {
+  box-shadow: none;
 }
 
 .sr-only {
@@ -97,12 +113,41 @@ input {
 
 .command-brand {
   flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
   white-space: nowrap;
+  font: inherit;
   font-weight: 700;
   font-size: var(--text-md);
   letter-spacing: 0.02em;
   text-decoration: none;
   text-transform: none;
+  color: var(--ink);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .command-brand:hover {
+    color: var(--ink-dim);
+  }
+}
+
+.command-brand:focus {
+  outline: none;
+}
+
+.command-brand:focus-visible {
+  outline: none;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1px;
 }
 
 .command-meta {
@@ -110,9 +155,9 @@ input {
   align-items: center;
   gap: var(--space-2);
   margin: 0;
-  padding: 0.35rem 0.55rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  padding: 0.35rem 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
   font: inherit;
   font-size: var(--text-xs);
@@ -129,16 +174,27 @@ input {
   appearance: none;
   -webkit-appearance: none;
   text-align: end;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.command-meta:hover {
-  background: color-mix(in srgb, var(--ink) 4%, transparent);
-  border-color: color-mix(in srgb, var(--line) 70%, transparent);
+/* No hover pill — chrome stays bare text + live-dot. */
+@media (hover: hover) and (pointer: fine) {
+  .command-meta:hover {
+    color: var(--ink);
+  }
+}
+
+.command-meta:focus {
+  outline: none;
 }
 
 .command-meta:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: none;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
 }
 
 .command-meta-data,
@@ -207,7 +263,7 @@ input {
   width: min(100%, 28rem);
 }
 
-/* Quiet channel line above the faculty title */
+/* Quiet channel line above the faculty title — text + chevron, no soft pill. */
 .table-trigger {
   display: inline-flex;
   align-items: center;
@@ -217,7 +273,7 @@ input {
   margin: 0;
   padding: 0.2rem 0.65rem;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
   cursor: pointer;
   font-weight: 500;
@@ -227,18 +283,31 @@ input {
   color: var(--ink-faint);
   user-select: none;
   -webkit-user-select: none;
-  transition: color var(--transition), background var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition);
 }
 
-.table-trigger:hover,
+@media (hover: hover) and (pointer: fine) {
+  .table-trigger:hover {
+    color: var(--ink-dim);
+  }
+}
+
 .table-picker.is-open .table-trigger {
   color: var(--ink-dim);
-  background: var(--soft);
+}
+
+.table-trigger:focus {
+  outline: none;
 }
 
 .table-trigger:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: none;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
 }
 
 .table-trigger-label {
@@ -272,7 +341,8 @@ input {
 
 #table-overlay-root,
 #method-overlay-root,
-#updates-overlay-root {
+#updates-overlay-root,
+#creator-overlay-root {
   position: relative;
   z-index: 80;
 }
@@ -281,7 +351,7 @@ input {
   width: min(100%, 26rem);
 }
 
-/* Same visual as the old h1.hero-sub — just a button with ^ */
+/* Same visual as the old h1.hero-sub — text + chevron, no soft pill. */
 .faculty-trigger {
   display: inline-flex;
   align-items: center;
@@ -291,7 +361,7 @@ input {
   margin: 0;
   padding: 0.35rem 0.75rem;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: transparent;
   cursor: pointer;
   font-weight: 600;
@@ -301,18 +371,31 @@ input {
   color: var(--ink-dim);
   user-select: none;
   -webkit-user-select: none;
-  transition: color var(--transition), background var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color var(--transition);
 }
 
-.faculty-trigger:hover,
+@media (hover: hover) and (pointer: fine) {
+  .faculty-trigger:hover {
+    color: var(--ink);
+  }
+}
+
 .faculty-picker.is-open .faculty-trigger {
   color: var(--ink);
-  background: var(--soft);
+}
+
+.faculty-trigger:focus {
+  outline: none;
 }
 
 .faculty-trigger:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: 2px;
+  outline: none;
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 0.22em;
+  text-decoration-thickness: 1px;
 }
 
 .faculty-trigger-label {
@@ -344,7 +427,8 @@ input {
 html.faculty-overlay-open,
 html.table-overlay-open,
 html.method-overlay-open,
-html.updates-overlay-open {
+html.updates-overlay-open,
+html.creator-overlay-open {
   overscroll-behavior: none;
 }
 
@@ -401,7 +485,8 @@ html.updates-overlay-open {
 .faculty-overlay-shell.is-motion .faculty-overlay-backdrop {
   animation: none;
   opacity: 0;
-  transition: opacity 180ms ease;
+  /* Snappy dim — long fades read as blink after a tap. */
+  transition: opacity 120ms ease;
   cursor: pointer;
 }
 
@@ -411,7 +496,7 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.is-motion.is-leaving .faculty-overlay-backdrop {
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 160ms ease;
 }
 
 .faculty-overlay-shell.is-motion .faculty-overlay {
@@ -420,11 +505,11 @@ html.updates-overlay-open {
   height: min(70vh, 28rem);
   max-height: min(70vh, 28rem);
   opacity: 0;
-  /* Rise only — scale left a GPU flicker on close (same fix as method sheet). */
-  transform: translateY(0.4rem);
+  /* Short rise — less travel = less “flash then settle”. */
+  transform: translateY(0.18rem);
   transition:
-    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .faculty-overlay-shell.is-motion.is-open .faculty-overlay {
@@ -434,10 +519,10 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.is-motion.is-leaving .faculty-overlay {
   opacity: 0;
-  transform: translateY(0.2rem);
+  transform: translateY(0.12rem);
   transition:
-    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
-    transform 160ms cubic-bezier(0.55, 0, 1, 1);
+    opacity 120ms cubic-bezier(0.55, 0, 1, 1),
+    transform 120ms cubic-bezier(0.55, 0, 1, 1);
 }
 
 /*
@@ -455,7 +540,7 @@ html.updates-overlay-open {
 .faculty-overlay-shell.method-shell.is-motion .method-shell-backdrop {
   animation: none;
   opacity: 0;
-  transition: opacity 180ms ease;
+  transition: opacity 120ms ease;
   cursor: pointer;
 }
 
@@ -465,7 +550,7 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.method-shell.is-motion.is-leaving .method-shell-backdrop {
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 160ms ease;
 }
 
 .faculty-overlay-shell.method-shell.is-motion .faculty-overlay.method-overlay {
@@ -473,10 +558,10 @@ html.updates-overlay-open {
   height: auto;
   max-height: min(70vh, 28rem);
   opacity: 0;
-  transform: translateY(0.4rem);
+  transform: translateY(0.18rem);
   transition:
-    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .faculty-overlay-shell.method-shell.is-motion.is-open .faculty-overlay.method-overlay {
@@ -486,10 +571,10 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.method-shell.is-motion.is-leaving .faculty-overlay.method-overlay {
   opacity: 0;
-  transform: translateY(0.2rem);
+  transform: translateY(0.12rem);
   transition:
-    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
-    transform 160ms cubic-bezier(0.55, 0, 1, 1);
+    opacity 120ms cubic-bezier(0.55, 0, 1, 1),
+    transform 120ms cubic-bezier(0.55, 0, 1, 1);
 }
 
 .method-overlay-body {
@@ -517,7 +602,9 @@ html.updates-overlay-open {
   .faculty-overlay-shell.method-shell.is-motion .method-shell-backdrop,
   .faculty-overlay-shell.method-shell.is-motion .faculty-overlay.method-overlay,
   .faculty-overlay-shell.updates-shell.is-motion .updates-shell-backdrop,
-  .faculty-overlay-shell.updates-shell.is-motion .faculty-overlay.updates-overlay {
+  .faculty-overlay-shell.updates-shell.is-motion .faculty-overlay.updates-overlay,
+  .faculty-overlay-shell.creator-shell.is-motion .creator-shell-backdrop,
+  .faculty-overlay-shell.creator-shell.is-motion .faculty-overlay.creator-overlay {
     transition: none;
   }
 }
@@ -533,7 +620,7 @@ html.updates-overlay-open {
 .faculty-overlay-shell.updates-shell.is-motion .updates-shell-backdrop {
   animation: none;
   opacity: 0;
-  transition: opacity 180ms ease;
+  transition: opacity 120ms ease;
   cursor: pointer;
 }
 
@@ -543,7 +630,7 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.updates-shell.is-motion.is-leaving .updates-shell-backdrop {
   opacity: 0;
-  transition: opacity 200ms ease;
+  transition: opacity 160ms ease;
 }
 
 .faculty-overlay-shell.updates-shell.is-motion .faculty-overlay.updates-overlay {
@@ -551,10 +638,10 @@ html.updates-overlay-open {
   height: auto;
   max-height: min(70vh, 28rem);
   opacity: 0;
-  transform: translateY(0.4rem);
+  transform: translateY(0.18rem);
   transition:
-    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
-    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    opacity 140ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 140ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .faculty-overlay-shell.updates-shell.is-motion.is-open .faculty-overlay.updates-overlay {
@@ -564,10 +651,10 @@ html.updates-overlay-open {
 
 .faculty-overlay-shell.updates-shell.is-motion.is-leaving .faculty-overlay.updates-overlay {
   opacity: 0;
-  transform: translateY(0.2rem);
+  transform: translateY(0.12rem);
   transition:
-    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
-    transform 160ms cubic-bezier(0.55, 0, 1, 1);
+    opacity 120ms cubic-bezier(0.55, 0, 1, 1),
+    transform 120ms cubic-bezier(0.55, 0, 1, 1);
 }
 
 .updates-facts {
@@ -602,6 +689,110 @@ html.updates-overlay-open {
 
 .updates-foot {
   color: var(--ink-faint);
+}
+
+/* Creator sheet — same motion language as updates. */
+.faculty-overlay.creator-overlay {
+  grid-template-rows: auto minmax(0, 1fr);
+  height: auto;
+  max-height: min(78vh, 32rem);
+  animation: none;
+}
+
+.faculty-overlay-shell.creator-shell.is-motion .creator-shell-backdrop {
+  animation: none;
+  opacity: 0;
+  transition: opacity 180ms ease;
+  cursor: pointer;
+}
+
+.faculty-overlay-shell.creator-shell.is-motion.is-open .creator-shell-backdrop {
+  opacity: 1;
+}
+
+.faculty-overlay-shell.creator-shell.is-motion.is-leaving .creator-shell-backdrop {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.faculty-overlay-shell.creator-shell.is-motion .faculty-overlay.creator-overlay {
+  animation: none;
+  height: auto;
+  max-height: min(78vh, 32rem);
+  opacity: 0;
+  transform: translateY(0.4rem);
+  transition:
+    opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.faculty-overlay-shell.creator-shell.is-motion.is-open .faculty-overlay.creator-overlay {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.faculty-overlay-shell.creator-shell.is-motion.is-leaving .faculty-overlay.creator-overlay {
+  opacity: 0;
+  transform: translateY(0.2rem);
+  transition:
+    opacity 160ms cubic-bezier(0.55, 0, 1, 1),
+    transform 160ms cubic-bezier(0.55, 0, 1, 1);
+}
+
+.creator-greeting {
+  margin: 0;
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.creator-lede {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: 1.55;
+  color: var(--ink-dim);
+}
+
+.creator-contacts {
+  margin-top: var(--space-2);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.creator-contacts-title {
+  margin: 0;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--ink-faint);
+}
+
+.creator-contact-link {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  word-break: break-word;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .creator-contact-link:hover {
+    color: var(--ink-dim);
+  }
+}
+
+.creator-contact-link:focus {
+  outline: none;
+}
+
+.creator-contact-link:focus-visible {
+  outline: none;
+  text-decoration-thickness: 2px;
 }
 
 .faculty-overlay:focus {
@@ -691,6 +882,7 @@ html.updates-overlay-open {
   text-align: left;
   color: var(--ink);
   overflow: hidden;
+  touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   transition: background-color var(--select-ms) var(--select-ease);
 }
@@ -715,16 +907,20 @@ html.updates-overlay-open {
   outline: none;
 }
 
-.faculty-option:hover {
-  background-color: var(--soft);
+@media (hover: hover) and (pointer: fine) {
+  .faculty-option:hover {
+    background-color: var(--soft);
+  }
 }
 
+/* Selection press only — not a lingering soft fill. */
 .faculty-option:active {
   background-color: var(--select);
+  transition-duration: 0ms;
 }
 
 /* Keyboard only — never flash an inset ring on pointer click. */
-.faculty-option:focus-visible:not(.is-active) {
+html[data-input='keyboard'] .faculty-option:focus-visible:not(.is-active) {
   background-color: var(--soft);
   box-shadow: inset 0 0 0 1.5px var(--line-strong);
 }
@@ -738,14 +934,20 @@ html.updates-overlay-open {
   transition: opacity var(--select-ms) var(--select-ease);
 }
 
-.faculty-option.is-active:hover,
-.faculty-option.is-active:active,
-.faculty-option.is-active:focus-visible {
+.faculty-option.is-active:active {
   background-color: var(--select);
   box-shadow: none;
 }
 
-.faculty-option.is-active:focus-visible {
+@media (hover: hover) and (pointer: fine) {
+  .faculty-option.is-active:hover {
+    background-color: var(--select);
+    box-shadow: none;
+  }
+}
+
+html[data-input='keyboard'] .faculty-option.is-active:focus-visible {
+  background-color: var(--select);
   box-shadow: inset 0 0 0 1.5px var(--line-strong);
 }
 
@@ -850,15 +1052,20 @@ html.updates-overlay-open {
   text-transform: uppercase;
   font-size: var(--text-sm);
   cursor: pointer;
-  transition: opacity var(--transition), transform var(--transition);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity var(--transition);
 }
 
-.btn-apply:hover {
-  opacity: 0.92;
+@media (hover: hover) and (pointer: fine) {
+  .btn-apply:hover {
+    opacity: 0.92;
+  }
 }
 
 .btn-apply:active {
-  transform: translateY(1px);
+  opacity: 0.88;
+  transition-duration: 0ms;
 }
 
 .banner {
@@ -985,7 +1192,7 @@ html.updates-overlay-open {
   .command-meta {
     font-size: 0.625rem;
     letter-spacing: 0.02em;
-    padding-inline: 0.25rem;
+    padding-inline: 0;
     gap: 0.35rem;
     max-width: min(16rem, 64vw);
   }
