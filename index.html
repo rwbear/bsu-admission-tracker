@@ -34,14 +34,25 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./css/tokens.css?v=20260718lp" />
-  <link rel="stylesheet" href="./css/layout.css?v=20260718lp" />
+  <link rel="stylesheet" href="./css/layout.css?v=20260719creat2" />
   <link rel="stylesheet" href="./css/components.css?v=20260718px" />
 </head>
 <body>
   <div class="site">
     <header class="command" id="command">
       <div class="wrap command-inner">
-        <a class="command-brand" href="#top">r.w.b.&nbsp;|&nbsp;production</a>
+        <button
+          type="button"
+          class="command-brand"
+          id="creator-trigger"
+          aria-haspopup="dialog"
+          aria-controls="creator-overlay"
+          aria-expanded="false"
+          aria-label="О создателе — контакты r.w.b. | production"
+          title="О создателе"
+        >
+          r.w.b.&nbsp;|&nbsp;production
+        </button>
         <button
           type="button"
           class="command-meta"
@@ -127,6 +138,6 @@
     </footer>
   </div>
 
-  <script type="module" src="./js/main.js?v=20260718uc"></script>
+  <script type="module" src="./js/main.js?v=20260719creat2"></script>
 </body>
 </html>
