@@ -13,6 +13,14 @@
   gap: var(--space-3);
 }
 
+/* Own stacking context so Safari paints border/shadow on nested boxes. */
+.overview-stack > .panel {
+  position: relative;
+  isolation: isolate;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
 .overview-row--unified .ov-name {
   letter-spacing: 0.01em;
 }
