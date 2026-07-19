@@ -17,6 +17,9 @@ import {
   acquireOverlayScrollLock,
   releaseOverlayScrollLock,
   focusNoScroll,
+  restoreFocus as restoreFocusQuiet,
+  commitOverlayEnter,
+  afterOverlayPaint,
   OVERLAY_LEAVE_MS,
 } from './overlay-scroll-lock.js';
 
@@ -198,24 +201,25 @@ export function openCreatorSheet(opts = {}) {
   shell.append(backdrop, dialog);
   host.append(shell);
 
+  const settle = () => {
+    if (!shell.isConnected) return;
+    focusNoScroll(dialog);
+  };
+
   const reveal = () => {
-    if (!host.contains(shell)) return;
     shell.classList.add('is-open');
-    // Focus after paint — some mobile browsers still scroll on focus.
-    requestAnimationFrame(() => {
-      if (host.contains(shell)) focusNoScroll(dialog);
-    });
+    afterOverlayPaint(settle);
   };
 
   if (prefersReducedMotion()) {
-    reveal();
+    shell.classList.add('is-open');
+    settle();
     return;
   }
 
-  // Flush closed styles, then open in the same turn — double-rAF left the
-  // shell invisible and invited same-gesture backdrop closes.
-  void shell.offsetWidth;
-  reveal();
+  // Same-turn flush + .is-open — double-rAF left the shell invisible and
+  // invited same-gesture backdrop closes under the finger.
+  commitOverlayEnter(shell, reveal);
 }
 
 /**
@@ -248,7 +252,7 @@ export function closeCreatorSheet(opts = {}) {
 
     if (restoreFocus && focusId) {
       const trigger = document.getElementById(focusId);
-      if (trigger instanceof HTMLElement) focusNoScroll(trigger);
+      if (trigger instanceof HTMLElement) restoreFocusQuiet(trigger);
     }
   };
 
