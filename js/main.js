@@ -819,29 +819,33 @@ function bindPickerChrome() {
     beforeOpen: () => closeAllOverlaysExcept('creator'),
   });
 
-  const $creatorTrigger = /** @type {HTMLButtonElement} */ (
+  const $creatorTrigger = /** @type {HTMLButtonElement | null} */ (
     $('#creator-trigger')
   );
   const syncCreatorExpanded = () => {
+    if (!($creatorTrigger instanceof HTMLElement)) return;
     $creatorTrigger.setAttribute(
       'aria-expanded',
       isCreatorSheetOpen() ? 'true' : 'false',
     );
   };
+  // Brand must be a <button> — never <a href="#top"> (that scrolls <main id="top">).
   // pointerdown: kill focus only. Open on click — opening on pointerdown
   // mounted the backdrop under the finger and the same gesture closed it
   // (scroll-lock jump, no visible sheet).
-  $creatorTrigger.addEventListener('pointerdown', (e) => {
-    if (typeof e.button === 'number' && e.button !== 0) return;
-    if (e.isPrimary === false) return;
-    e.preventDefault();
-  });
-  $creatorTrigger.addEventListener('click', (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleCreatorSheet();
-    syncCreatorExpanded();
-  });
+  if ($creatorTrigger instanceof HTMLElement) {
+    $creatorTrigger.addEventListener('pointerdown', (e) => {
+      if (typeof e.button === 'number' && e.button !== 0) return;
+      if (e.isPrimary === false) return;
+      e.preventDefault();
+    });
+    $creatorTrigger.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleCreatorSheet();
+      syncCreatorExpanded();
+    });
+  }
 
   onPrimaryActivate($updateStatus, () => {
     toggleUpdatesSheet();
