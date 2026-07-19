@@ -54,6 +54,13 @@ import {
   UPDATES_SHEET,
 } from './ui/updates-sheet.js';
 import { UPDATES_ARIA_LABELS } from './ui/updates-copy.js';
+import {
+  armCreatorSheetChrome,
+  closeCreatorSheet,
+  isCreatorSheetOpen,
+  toggleCreatorSheet,
+  CREATOR_SHEET,
+} from './ui/creator-sheet.js';
 import { focusNoScroll } from './ui/overlay-scroll-lock.js';
 import {
   resolvePollMs,
@@ -168,6 +175,7 @@ function closeTableMenu() {
 
 function openTableMenu() {
   closeUpdatesSheet({ instant: true, restoreFocus: false });
+  closeCreatorSheet({ instant: true, restoreFocus: false });
   closeMethodSheet({ restoreFocus: false });
   closeFacultyMenu();
   tableMenuOpen = true;
@@ -256,6 +264,7 @@ function closeFacultyMenu() {
 
 function openFacultyMenu() {
   closeUpdatesSheet({ instant: true, restoreFocus: false });
+  closeCreatorSheet({ instant: true, restoreFocus: false });
   closeMethodSheet({ restoreFocus: false });
   closeTableMenu();
   facultyMenuOpen = true;
@@ -767,6 +776,9 @@ function closeAllOverlaysExcept(keep) {
   if (keep !== 'updates' && isUpdatesSheetOpen()) {
     closeUpdatesSheet({ instant: true, restoreFocus: false });
   }
+  if (keep !== 'creator' && isCreatorSheetOpen()) {
+    closeCreatorSheet({ instant: true, restoreFocus: false });
+  }
   if (keep !== 'method' && isMethodSheetOpen()) {
     closeMethodSheet({ instant: true, restoreFocus: false });
   }
@@ -792,6 +804,36 @@ function bindPickerChrome() {
   armUpdatesSheetChrome({
     beforeOpen: () => closeAllOverlaysExcept('updates'),
   });
+  armCreatorSheetChrome({
+    beforeOpen: () => closeAllOverlaysExcept('creator'),
+  });
+
+  const $creatorTrigger = /** @type {HTMLButtonElement} */ (
+    $('#creator-trigger')
+  );
+  const syncCreatorExpanded = () => {
+    $creatorTrigger.setAttribute(
+      'aria-expanded',
+      isCreatorSheetOpen() ? 'true' : 'false',
+    );
+  };
+  let ignoreBrandClickUntil = 0;
+  $creatorTrigger.addEventListener('pointerdown', (e) => {
+    if (typeof e.button === 'number' && e.button !== 0) return;
+    if (e.isPrimary === false) return;
+    e.preventDefault();
+    ignoreBrandClickUntil = performance.now() + 600;
+    toggleCreatorSheet();
+    syncCreatorExpanded();
+  });
+  $creatorTrigger.addEventListener('click', (e) => {
+    if (performance.now() < ignoreBrandClickUntil) {
+      e.preventDefault();
+      return;
+    }
+    toggleCreatorSheet();
+    syncCreatorExpanded();
+  });
 
   $updateStatus.addEventListener('click', () => {
     toggleUpdatesSheet();
@@ -799,9 +841,15 @@ function bindPickerChrome() {
   });
 
   document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isCreatorSheetOpen()) {
+      e.preventDefault();
+      closeCreatorSheet({ restoreFocus: true });
+      syncCreatorExpanded();
+      return;
+    }
     if (e.key === 'Escape' && isUpdatesSheetOpen()) {
       e.preventDefault();
-      closeUpdatesSheet();
+      closeUpdatesSheet({ restoreFocus: true });
       renderCommandMeta();
       return;
     }
@@ -821,15 +869,17 @@ function bindPickerChrome() {
       return;
     }
 
-    const overlayId = isUpdatesSheetOpen()
-      ? UPDATES_SHEET.overlayId
-      : isMethodSheetOpen()
-        ? METHOD_SHEET.overlayId
-        : facultyMenuOpen
-          ? 'faculty-overlay'
-          : tableMenuOpen
-            ? 'table-overlay'
-            : null;
+    const overlayId = isCreatorSheetOpen()
+      ? CREATOR_SHEET.overlayId
+      : isUpdatesSheetOpen()
+        ? UPDATES_SHEET.overlayId
+        : isMethodSheetOpen()
+          ? METHOD_SHEET.overlayId
+          : facultyMenuOpen
+            ? 'faculty-overlay'
+            : tableMenuOpen
+              ? 'table-overlay'
+              : null;
     if (!overlayId) return;
 
     // Soft Tab trap inside the open dialog (search + options + close).
