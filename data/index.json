@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-02T11:56:04.370Z",
+  "generatedAt": "2026-08-02T12:06:28.080Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
     "branch": "cursor/admission-tracker-rebuild-be86"
@@ -10,7 +10,7 @@
       "name": "БГУ",
       "fullName": "Белорусский государственный университет",
       "specialtyCount": 200,
-      "updatedAt": "2026-08-02T11:56:04.371Z",
+      "updatedAt": "2026-08-02T12:06:28.081Z",
       "available": true,
       "faculties": [
         {
