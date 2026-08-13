@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-13T05:53:12.978Z",
+  "generatedAt": "2026-08-13T06:22:55.552Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
     "branch": "cursor/admission-tracker-rebuild-be86"
@@ -9,8 +9,8 @@
       "id": "sb-bsu",
       "name": "БГУ",
       "fullName": "Белорусский государственный университет",
-      "specialtyCount": 200,
-      "updatedAt": "2026-08-13T05:53:12.979Z",
+      "specialtyCount": 190,
+      "updatedAt": "2026-08-13T06:22:55.552Z",
       "available": true,
       "faculties": [
         {
@@ -96,19 +96,19 @@
         {
           "id": "экономический-факультет",
           "name": "Экономический факультет",
-          "specialtyCount": 13
+          "specialtyCount": 6
         },
         {
           "id": "юридический-факультет",
           "name": "Юридический факультет",
-          "specialtyCount": 9
+          "specialtyCount": 6
         }
       ],
       "tables": [
         {
           "id": "32",
           "name": "Дневная форма. Бюджет",
-          "specialtyCount": 93,
+          "specialtyCount": 83,
           "trackId": "cert3"
         },
         {
