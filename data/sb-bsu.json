@@ -3,7 +3,7 @@
   "name": "БГУ",
   "fullName": "Белорусский государственный университет",
   "hubUrl": "https://abiturient.bsu.by/priemnaia-kampaniia/monitoring-podachi-zaiavlenii",
-  "updatedAt": "2026-08-20T22:38:51.871Z",
+  "updatedAt": "2026-08-20T23:02:41.793Z",
   "specialtyCount": 200,
   "faculties": [
     {
@@ -396,7 +396,7 @@
       ],
       "estimatedPassing": 271,
       "sourceUrl": "https://abit.bsu.by/formk1?id=2",
-      "updatedAt": "2026-08-20T22:38:51.871Z",
+      "updatedAt": "2026-08-20T23:02:41.793Z",
       "sectionTitle": "Биологический факультет",
       "trackId": "cert3",
       "trackName": "3 сертификата ЦТ или ЦЭ",
@@ -543,7 +543,7 @@
       ],
       "estimatedPassing": 261,
       "sourceUrl": "https://abit.bsu.by/formk1?id=2",
-      "updatedAt": "2026-08-20T22:38:51.871Z",
+      "updatedAt": "2026-08-20T23:02:41.793Z",
       "sectionTitle": "Биологический факультет",
       "trackId": "cert3",
       "trackName": "3 сертификата ЦТ или ЦЭ",
@@ -690,12 +690,60 @@
       ],
       "estimatedPassing": 236,
       "sourceUrl": "https://abit.bsu.by/formk1?id=2",
-      "updatedAt": "2026-08-20T22:38:51.871Z",
+      "updatedAt": "2026-08-20T23:02:41.793Z",
       "sectionTitle": "Биологический факультет",
       "trackId": "cert3",
       "trackName": "3 сертификата ЦТ или ЦЭ",
       "schedule": "zaoch",
       "finance": "budget"
+    },
+    {
+      "id": "sb-bsu:13:факультет-философии-и-социальных-наук:психология-отдельный-поток-на-базе-высшего-образ:25",
+      "universityId": "sb-bsu",
+      "facultyId": "факультет-философии-и-социальных-наук",
+      "facultyName": "Факультет философии и социальных наук",
+      "form": "13",
+      "formName": "Заочная платная форма получения второго высшего образования",
+      "groupName": "",
+      "specName": "психология (отдельный поток на базе высшего образования)",
+      "plan": 25,
+      "totalApps": 99,
+      "inCompetition": 99,
+      "ranges": [],
+      "buckets": [],
+      "estimatedPassing": null,
+      "sourceUrl": "https://abit.bsu.by/formk1?id=13",
+      "updatedAt": "2026-08-20T23:02:41.793Z",
+      "tableKind": "simple",
+      "sectionTitle": "Факультет философии и социальных наук",
+      "trackId": "nocert",
+      "trackName": "Без сертификатов ЦТ или ЦЭ",
+      "schedule": "zaoch",
+      "finance": "paid"
+    },
+    {
+      "id": "sb-bsu:13:юридический-факультет:правоведение-отдельный-поток-на-базе-высшего-обр:20",
+      "universityId": "sb-bsu",
+      "facultyId": "юридический-факультет",
+      "facultyName": "Юридический факультет",
+      "form": "13",
+      "formName": "Заочная платная форма получения второго высшего образования",
+      "groupName": "",
+      "specName": "правоведение (отдельный поток на базе высшего образования)",
+      "plan": 20,
+      "totalApps": 74,
+      "inCompetition": 74,
+      "ranges": [],
+      "buckets": [],
+      "estimatedPassing": null,
+      "sourceUrl": "https://abit.bsu.by/formk1?id=13",
+      "updatedAt": "2026-08-20T23:02:41.793Z",
+      "tableKind": "simple",
+      "sectionTitle": "Юридический факультет",
+      "trackId": "nocert",
+      "trackName": "Без сертификатов ЦТ или ЦЭ",
+      "schedule": "zaoch",
+      "finance": "paid"
     },
     {
       "id": "sb-bsu:22:факультет-социокультурных-коммуникаций:графический-дизайн-и-мультимедиадизайн:36",
@@ -2223,54 +2271,6 @@
       "estimatedPassing": 191,
       "sourceUrl": "https://abit.bsu.by/formk1?id=17",
       "updatedAt": "2026-08-20T22:38:51.871Z",
-      "sectionTitle": "Юридический факультет",
-      "trackId": "nocert",
-      "trackName": "Без сертификатов ЦТ или ЦЭ",
-      "schedule": "zaoch",
-      "finance": "paid"
-    },
-    {
-      "id": "sb-bsu:13:факультет-философии-и-социальных-наук:психология-отдельный-поток-на-базе-высшего-образ:25",
-      "universityId": "sb-bsu",
-      "facultyId": "факультет-философии-и-социальных-наук",
-      "facultyName": "Факультет философии и социальных наук",
-      "form": "13",
-      "formName": "Заочная платная форма получения второго высшего образования",
-      "groupName": "",
-      "specName": "психология (отдельный поток на базе высшего образования)",
-      "plan": 25,
-      "totalApps": 99,
-      "inCompetition": 99,
-      "ranges": [],
-      "buckets": [],
-      "estimatedPassing": null,
-      "sourceUrl": "https://abit.bsu.by/formk1?id=13",
-      "updatedAt": "2026-08-20T22:38:51.871Z",
-      "tableKind": "simple",
-      "sectionTitle": "Факультет философии и социальных наук",
-      "trackId": "nocert",
-      "trackName": "Без сертификатов ЦТ или ЦЭ",
-      "schedule": "zaoch",
-      "finance": "paid"
-    },
-    {
-      "id": "sb-bsu:13:юридический-факультет:правоведение-отдельный-поток-на-базе-высшего-обр:20",
-      "universityId": "sb-bsu",
-      "facultyId": "юридический-факультет",
-      "facultyName": "Юридический факультет",
-      "form": "13",
-      "formName": "Заочная платная форма получения второго высшего образования",
-      "groupName": "",
-      "specName": "правоведение (отдельный поток на базе высшего образования)",
-      "plan": 20,
-      "totalApps": 74,
-      "inCompetition": 74,
-      "ranges": [],
-      "buckets": [],
-      "estimatedPassing": null,
-      "sourceUrl": "https://abit.bsu.by/formk1?id=13",
-      "updatedAt": "2026-08-20T22:38:51.871Z",
-      "tableKind": "simple",
       "sectionTitle": "Юридический факультет",
       "trackId": "nocert",
       "trackName": "Без сертификатов ЦТ или ЦЭ",
@@ -29919,56 +29919,88 @@
       "formId": "32",
       "url": "https://abit.bsu.by/formk1?id=32",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 88.206.77.97 port 10818 after 8002 ms: Timeout was reached",
-      "via": "http://88.206.77.97:10818"
+      "message": "curl: (28) Failed to connect to 195.133.53.59 port 10818 after 8002 ms: Timeout was reached",
+      "via": "http://195.133.53.59:10818"
     },
     {
       "facultyId": "29",
       "formId": "29",
       "url": "https://abit.bsu.by/formk1?id=29",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 88.206.77.97 port 10818 after 8002 ms: Timeout was reached",
-      "via": "http://88.206.77.97:10818"
+      "message": "curl: (28) Failed to connect to 195.133.53.59 port 10818 after 8002 ms: Timeout was reached",
+      "via": "http://195.133.53.59:10818"
     },
     {
       "facultyId": "7",
       "formId": "7",
       "url": "https://abit.bsu.by/formk1?id=7",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 88.206.77.97 port 10818 after 8002 ms: Timeout was reached",
-      "via": "http://88.206.77.97:10818"
+      "message": "curl: (28) Failed to connect to 195.133.53.59 port 10818 after 8002 ms: Timeout was reached",
+      "via": "http://195.133.53.59:10818"
     },
     {
       "facultyId": "8",
       "formId": "8",
       "url": "https://abit.bsu.by/formk1?id=8",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 88.206.77.97 port 10818 after 8002 ms: Timeout was reached",
-      "via": "http://88.206.77.97:10818"
+      "message": "curl: (28) Failed to connect to 195.133.53.59 port 10818 after 8002 ms: Timeout was reached",
+      "via": "http://195.133.53.59:10818"
     },
     {
       "facultyId": "34",
       "formId": "34",
       "url": "https://abit.bsu.by/formk1?id=34",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 88.206.77.97 port 10818 after 8002 ms: Timeout was reached",
-      "via": "http://88.206.77.97:10818"
+      "message": "curl: (28) Failed to connect to 195.133.53.59 port 10818 after 8002 ms: Timeout was reached",
+      "via": "http://195.133.53.59:10818"
     },
     {
       "facultyId": "21",
       "formId": "21",
       "url": "https://abit.bsu.by/formk1?id=21",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 88.206.77.97 port 10818 after 8002 ms: Timeout was reached",
-      "via": "http://88.206.77.97:10818"
+      "message": "curl: (28) Failed to connect to 195.133.53.59 port 10818 after 8002 ms: Timeout was reached",
+      "via": "http://195.133.53.59:10818"
+    },
+    {
+      "facultyId": "22",
+      "formId": "22",
+      "url": "https://abit.bsu.by/formk1?id=22",
+      "status": 0,
+      "message": "curl: (28) Failed to connect to 195.133.53.59 port 10818 after 8002 ms: Timeout was reached",
+      "via": "http://195.133.53.59:10818"
+    },
+    {
+      "facultyId": "5",
+      "formId": "5",
+      "url": "https://abit.bsu.by/formk1?id=5",
+      "status": 0,
+      "message": "curl: (28) Failed to connect to 195.133.53.59 port 10818 after 8002 ms: Timeout was reached",
+      "via": "http://195.133.53.59:10818"
+    },
+    {
+      "facultyId": "6",
+      "formId": "6",
+      "url": "https://abit.bsu.by/formk1?id=6",
+      "status": 0,
+      "message": "curl: (28) Failed to connect to 195.133.53.59 port 10818 after 8002 ms: Timeout was reached",
+      "via": "http://195.133.53.59:10818"
     },
     {
       "facultyId": "16",
       "formId": "16",
       "url": "https://abit.bsu.by/formk1?id=16",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 88.206.77.97 port 10818 after 8002 ms: Timeout was reached",
-      "via": "http://88.206.77.97:10818"
+      "message": "curl: (28) Failed to connect to 195.133.53.59 port 10818 after 8002 ms: Timeout was reached",
+      "via": "http://195.133.53.59:10818"
+    },
+    {
+      "facultyId": "17",
+      "formId": "17",
+      "url": "https://abit.bsu.by/formk1?id=17",
+      "status": 0,
+      "message": "curl: (28) Failed to connect to 195.133.53.59 port 10818 after 8002 ms: Timeout was reached",
+      "via": "http://195.133.53.59:10818"
     }
   ],
   "scrapeMeta": {
@@ -29977,63 +30009,59 @@
     "fetchVia": [
       {
         "facultyId": "32",
-        "via": "http://88.206.77.97:10818"
+        "via": "http://195.133.53.59:10818"
       },
       {
         "facultyId": "29",
-        "via": "http://88.206.77.97:10818"
+        "via": "http://195.133.53.59:10818"
       },
       {
         "facultyId": "2",
-        "via": "http://109.94.1.23:4050"
+        "via": "http://93.188.85.150:8080"
       },
       {
         "facultyId": "7",
-        "via": "http://88.206.77.97:10818"
+        "via": "http://195.133.53.59:10818"
       },
       {
         "facultyId": "8",
-        "via": "http://88.206.77.97:10818"
+        "via": "http://195.133.53.59:10818"
       },
       {
         "facultyId": "34",
-        "via": "http://88.206.77.97:10818"
+        "via": "http://195.133.53.59:10818"
       },
       {
         "facultyId": "21",
-        "via": "http://88.206.77.97:10818"
+        "via": "http://195.133.53.59:10818"
       },
       {
         "facultyId": "22",
-        "via": "http://109.94.1.23:4050"
+        "via": "http://195.133.53.59:10818"
       },
       {
         "facultyId": "5",
-        "via": "http://109.94.1.23:4050"
+        "via": "http://195.133.53.59:10818"
       },
       {
         "facultyId": "6",
-        "via": "http://109.94.1.23:4050"
+        "via": "http://195.133.53.59:10818"
       },
       {
         "facultyId": "16",
-        "via": "http://88.206.77.97:10818"
+        "via": "http://195.133.53.59:10818"
       },
       {
         "facultyId": "17",
-        "via": "http://109.94.1.23:4050"
+        "via": "http://195.133.53.59:10818"
       },
       {
         "facultyId": "13",
-        "via": "http://109.94.1.23:4050"
+        "via": "http://93.188.85.150:8080"
       }
     ],
     "okFormIds": [
       "2",
-      "22",
-      "5",
-      "6",
-      "17",
       "13"
     ],
     "failedFormIds": [
@@ -30043,10 +30071,18 @@
       "8",
       "34",
       "21",
-      "16"
+      "22",
+      "5",
+      "6",
+      "16",
+      "17"
     ],
     "hubUrl": "https://abiturient.bsu.by/priemnaia-kampaniia/monitoring-podachi-zaiavlenii",
     "retainedFormIds": [
+      "22",
+      "5",
+      "6",
+      "17",
       "29",
       "8",
       "34",
