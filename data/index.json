@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-04T07:42:00.149Z",
+  "generatedAt": "2026-09-04T07:54:35.117Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
     "branch": "cursor/admission-tracker-rebuild-be86"
@@ -9,8 +9,8 @@
       "id": "sb-bsu",
       "name": "БГУ",
       "fullName": "Белорусский государственный университет",
-      "specialtyCount": 200,
-      "updatedAt": "2026-09-04T07:42:00.150Z",
+      "specialtyCount": 150,
+      "updatedAt": "2026-09-04T07:54:35.118Z",
       "available": true,
       "faculties": [
         {
@@ -41,7 +41,7 @@
         {
           "id": "мгэи-им-сахарова",
           "name": "МГЭИ им. Сахарова",
-          "specialtyCount": 21
+          "specialtyCount": 8
         },
         {
           "id": "мехмат-пми-си",
@@ -66,17 +66,17 @@
         {
           "id": "факультет-международных-отношений",
           "name": "Факультет международных отношений",
-          "specialtyCount": 17
+          "specialtyCount": 8
         },
         {
           "id": "факультет-социокультурных-коммуникаций",
           "name": "Факультет социокультурных коммуникаций",
-          "specialtyCount": 18
+          "specialtyCount": 14
         },
         {
           "id": "факультет-философии-и-социальных-наук",
           "name": "Факультет философии и социальных наук",
-          "specialtyCount": 9
+          "specialtyCount": 5
         },
         {
           "id": "физфак-рфкт-си",
@@ -86,29 +86,29 @@
         {
           "id": "филологический-факультет",
           "name": "Филологический факультет",
-          "specialtyCount": 14
+          "specialtyCount": 9
         },
         {
           "id": "химический-факультет",
           "name": "Химический факультет",
-          "specialtyCount": 7
+          "specialtyCount": 2
         },
         {
           "id": "экономический-факультет",
           "name": "Экономический факультет",
-          "specialtyCount": 13
+          "specialtyCount": 6
         },
         {
           "id": "юридический-факультет",
           "name": "Юридический факультет",
-          "specialtyCount": 9
+          "specialtyCount": 6
         }
       ],
       "tables": [
         {
           "id": "32",
           "name": "Дневная форма. Бюджет",
-          "specialtyCount": 93,
+          "specialtyCount": 43,
           "trackId": "cert3"
         },
         {
