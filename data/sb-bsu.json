@@ -3,7 +3,7 @@
   "name": "БГУ",
   "fullName": "Белорусский государственный университет",
   "hubUrl": "https://abiturient.bsu.by/priemnaia-kampaniia/monitoring-podachi-zaiavlenii",
-  "updatedAt": "2026-09-11T17:46:30.904Z",
+  "updatedAt": "2026-09-11T18:16:20.697Z",
   "specialtyCount": 200,
   "faculties": [
     {
@@ -396,7 +396,7 @@
       ],
       "estimatedPassing": 356,
       "sourceUrl": "https://abit.bsu.by/formk1?id=29",
-      "updatedAt": "2026-09-11T17:46:30.904Z",
+      "updatedAt": "2026-09-11T18:16:20.697Z",
       "sectionTitle": "Военный факультет",
       "trackId": "cert3",
       "trackName": "3 сертификата ЦТ или ЦЭ",
@@ -543,7 +543,7 @@
       ],
       "estimatedPassing": 321,
       "sourceUrl": "https://abit.bsu.by/formk1?id=29",
-      "updatedAt": "2026-09-11T17:46:30.904Z",
+      "updatedAt": "2026-09-11T18:16:20.697Z",
       "sectionTitle": "Военный факультет",
       "trackId": "cert3",
       "trackName": "3 сертификата ЦТ или ЦЭ",
@@ -690,7 +690,7 @@
       ],
       "estimatedPassing": 376,
       "sourceUrl": "https://abit.bsu.by/formk1?id=29",
-      "updatedAt": "2026-09-11T17:46:30.904Z",
+      "updatedAt": "2026-09-11T18:16:20.697Z",
       "sectionTitle": "Военный факультет",
       "trackId": "cert3",
       "trackName": "3 сертификата ЦТ или ЦЭ",
@@ -837,7 +837,7 @@
       ],
       "estimatedPassing": 386,
       "sourceUrl": "https://abit.bsu.by/formk1?id=29",
-      "updatedAt": "2026-09-11T17:46:30.904Z",
+      "updatedAt": "2026-09-11T18:16:20.697Z",
       "sectionTitle": "Военный факультет",
       "trackId": "cert3",
       "trackName": "3 сертификата ЦТ или ЦЭ",
@@ -984,7 +984,7 @@
       ],
       "estimatedPassing": 336,
       "sourceUrl": "https://abit.bsu.by/formk1?id=29",
-      "updatedAt": "2026-09-11T17:46:30.904Z",
+      "updatedAt": "2026-09-11T18:16:20.697Z",
       "sectionTitle": "Военный факультет",
       "trackId": "cert3",
       "trackName": "3 сертификата ЦТ или ЦЭ",
@@ -1131,7 +1131,7 @@
       ],
       "estimatedPassing": 351,
       "sourceUrl": "https://abit.bsu.by/formk1?id=29",
-      "updatedAt": "2026-09-11T17:46:30.904Z",
+      "updatedAt": "2026-09-11T18:16:20.697Z",
       "sectionTitle": "Военный факультет",
       "trackId": "cert3",
       "trackName": "3 сертификата ЦТ или ЦЭ",
@@ -1278,7 +1278,7 @@
       ],
       "estimatedPassing": 386,
       "sourceUrl": "https://abit.bsu.by/formk1?id=29",
-      "updatedAt": "2026-09-11T17:46:30.904Z",
+      "updatedAt": "2026-09-11T18:16:20.697Z",
       "sectionTitle": "Военный факультет",
       "trackId": "cert3",
       "trackName": "3 сертификата ЦТ или ЦЭ",
@@ -1425,7 +1425,7 @@
       ],
       "estimatedPassing": 236,
       "sourceUrl": "https://abit.bsu.by/formk1?id=29",
-      "updatedAt": "2026-09-11T17:46:30.904Z",
+      "updatedAt": "2026-09-11T18:16:20.697Z",
       "sectionTitle": "Военный факультет",
       "trackId": "cert3",
       "trackName": "3 сертификата ЦТ или ЦЭ",
@@ -29919,80 +29919,96 @@
       "formId": "32",
       "url": "https://abit.bsu.by/formk1?id=32",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 185.212.88.243 port 8080 after 8002 ms: Timeout was reached",
-      "via": "http://185.212.88.243:8080"
+      "message": "curl: (28) Failed to connect to 91.224.77.229 port 8090 after 8002 ms: Timeout was reached",
+      "via": "http://91.224.77.229:8090"
     },
     {
       "facultyId": "2",
       "formId": "2",
       "url": "https://abit.bsu.by/formk1?id=2",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 185.212.88.243 port 8080 after 8002 ms: Timeout was reached",
-      "via": "http://185.212.88.243:8080"
+      "message": "curl: (28) SSL connection timeout",
+      "via": "http://213.135.6.5:8080"
     },
     {
       "facultyId": "7",
       "formId": "7",
       "url": "https://abit.bsu.by/formk1?id=7",
-      "status": 200,
-      "message": "fetch failed",
-      "via": "http://185.212.88.243:8080"
+      "status": 0,
+      "message": "curl: (28) Failed to connect to 91.224.77.229 port 8090 after 8002 ms: Timeout was reached",
+      "via": "http://91.224.77.229:8090"
     },
     {
       "facultyId": "8",
       "formId": "8",
       "url": "https://abit.bsu.by/formk1?id=8",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 185.212.88.243 port 8080 after 8002 ms: Timeout was reached",
-      "via": "http://185.212.88.243:8080"
+      "message": "curl: (28) Failed to connect to 91.224.77.229 port 8090 after 8002 ms: Timeout was reached",
+      "via": "http://91.224.77.229:8090"
     },
     {
       "facultyId": "34",
       "formId": "34",
       "url": "https://abit.bsu.by/formk1?id=34",
       "status": 0,
-      "message": "curl: (28) Proxy CONNECT aborted due to timeout",
-      "via": "http://185.212.88.243:8080"
+      "message": "curl: (28) Failed to connect to 91.224.77.229 port 8090 after 8002 ms: Timeout was reached",
+      "via": "http://91.224.77.229:8090"
     },
     {
       "facultyId": "21",
       "formId": "21",
       "url": "https://abit.bsu.by/formk1?id=21",
       "status": 0,
-      "message": "curl: (28) Proxy CONNECT aborted due to timeout",
-      "via": "http://185.212.88.243:8080"
+      "message": "curl: (28) Failed to connect to 91.224.77.229 port 8090 after 8002 ms: Timeout was reached",
+      "via": "http://91.224.77.229:8090"
     },
     {
       "facultyId": "22",
       "formId": "22",
       "url": "https://abit.bsu.by/formk1?id=22",
       "status": 0,
+      "message": "curl: (28) Failed to connect to 91.224.77.229 port 8090 after 8002 ms: Timeout was reached",
+      "via": "http://91.224.77.229:8090"
+    },
+    {
+      "facultyId": "5",
+      "formId": "5",
+      "url": "https://abit.bsu.by/formk1?id=5",
+      "status": 0,
       "message": "curl: (28) Proxy CONNECT aborted due to timeout",
-      "via": "http://185.212.88.243:8080"
+      "via": "http://91.224.77.229:8090"
+    },
+    {
+      "facultyId": "6",
+      "formId": "6",
+      "url": "https://abit.bsu.by/formk1?id=6",
+      "status": 0,
+      "message": "curl: (28) Failed to connect to 91.224.77.229 port 8090 after 8002 ms: Timeout was reached",
+      "via": "http://91.224.77.229:8090"
     },
     {
       "facultyId": "16",
       "formId": "16",
       "url": "https://abit.bsu.by/formk1?id=16",
       "status": 0,
-      "message": "curl: (28) Proxy CONNECT aborted due to timeout",
-      "via": "http://178.251.111.24:8080"
+      "message": "curl: (28) Failed to connect to 91.224.77.229 port 8090 after 8002 ms: Timeout was reached",
+      "via": "http://91.224.77.229:8090"
     },
     {
       "facultyId": "17",
       "formId": "17",
       "url": "https://abit.bsu.by/formk1?id=17",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 185.212.88.243 port 8080 after 8002 ms: Timeout was reached",
-      "via": "http://185.212.88.243:8080"
+      "message": "curl: (28) Failed to connect to 91.224.77.229 port 8090 after 8002 ms: Timeout was reached",
+      "via": "http://91.224.77.229:8090"
     },
     {
       "facultyId": "13",
       "formId": "13",
       "url": "https://abit.bsu.by/formk1?id=13",
       "status": 0,
-      "message": "curl: (28) Failed to connect to 185.212.88.243 port 8080 after 8002 ms: Timeout was reached",
-      "via": "http://185.212.88.243:8080"
+      "message": "curl: (28) Failed to connect to 91.224.77.229 port 8090 after 8002 ms: Timeout was reached",
+      "via": "http://91.224.77.229:8090"
     }
   ],
   "scrapeMeta": {
@@ -30001,61 +30017,59 @@
     "fetchVia": [
       {
         "facultyId": "32",
-        "via": "http://185.212.88.243:8080"
+        "via": "http://91.224.77.229:8090"
       },
       {
         "facultyId": "29",
-        "via": "http://217.76.46.230:8080"
+        "via": "http://91.224.77.229:8090"
       },
       {
         "facultyId": "2",
-        "via": "http://185.212.88.243:8080"
+        "via": "http://213.135.6.5:8080"
       },
       {
         "facultyId": "7",
-        "via": "http://185.212.88.243:8080"
+        "via": "http://91.224.77.229:8090"
       },
       {
         "facultyId": "8",
-        "via": "http://185.212.88.243:8080"
+        "via": "http://91.224.77.229:8090"
       },
       {
         "facultyId": "34",
-        "via": "http://185.212.88.243:8080"
+        "via": "http://91.224.77.229:8090"
       },
       {
         "facultyId": "21",
-        "via": "http://185.212.88.243:8080"
+        "via": "http://91.224.77.229:8090"
       },
       {
         "facultyId": "22",
-        "via": "http://185.212.88.243:8080"
+        "via": "http://91.224.77.229:8090"
       },
       {
         "facultyId": "5",
-        "via": "http://89.179.119.212:8080"
+        "via": "http://91.224.77.229:8090"
       },
       {
         "facultyId": "6",
-        "via": "http://185.212.88.243:8080"
+        "via": "http://91.224.77.229:8090"
       },
       {
         "facultyId": "16",
-        "via": "http://178.251.111.24:8080"
+        "via": "http://91.224.77.229:8090"
       },
       {
         "facultyId": "17",
-        "via": "http://185.212.88.243:8080"
+        "via": "http://91.224.77.229:8090"
       },
       {
         "facultyId": "13",
-        "via": "http://185.212.88.243:8080"
+        "via": "http://91.224.77.229:8090"
       }
     ],
     "okFormIds": [
-      "29",
-      "5",
-      "6"
+      "29"
     ],
     "failedFormIds": [
       "32",
@@ -30065,12 +30079,16 @@
       "34",
       "21",
       "22",
+      "5",
+      "6",
       "16",
       "17",
       "13"
     ],
     "hubUrl": "https://abiturient.bsu.by/priemnaia-kampaniia/monitoring-podachi-zaiavlenii",
     "retainedFormIds": [
+      "5",
+      "6",
       "32",
       "8",
       "34",
