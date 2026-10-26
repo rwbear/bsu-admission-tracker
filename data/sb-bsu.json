@@ -3,7 +3,7 @@
   "name": "БГУ",
   "fullName": "Белорусский государственный университет",
   "hubUrl": "https://abiturient.bsu.by/priemnaia-kampaniia/monitoring-podachi-zaiavlenii",
-  "updatedAt": "2026-10-26T02:05:23.258Z",
+  "updatedAt": "2026-10-26T02:19:56.626Z",
   "specialtyCount": 200,
   "faculties": [
     {
@@ -416,7 +416,7 @@
       ],
       "estimatedPassing": 241,
       "sourceUrl": "https://abit.bsu.by/formk1?id=5",
-      "updatedAt": "2026-10-26T02:05:23.258Z",
+      "updatedAt": "2026-10-26T02:19:56.626Z",
       "sectionTitle": "Факультет социокультурных коммуникаций",
       "trackId": "nocert",
       "trackName": "Без сертификатов ЦТ или ЦЭ",
@@ -29919,96 +29919,96 @@
       "formId": "32",
       "url": "https://abit.bsu.by/formk1?id=32",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8002 milliseconds",
+      "via": "http://176.105.199.153:8010"
     },
     {
       "facultyId": "29",
       "formId": "29",
       "url": "https://abit.bsu.by/formk1?id=29",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8002 milliseconds",
+      "via": "http://176.105.199.153:8010"
     },
     {
       "facultyId": "2",
       "formId": "2",
       "url": "https://abit.bsu.by/formk1?id=2",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8002 milliseconds",
+      "via": "http://176.105.199.153:8010"
     },
     {
       "facultyId": "7",
       "formId": "7",
       "url": "https://abit.bsu.by/formk1?id=7",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8002 milliseconds",
+      "via": "http://176.105.199.153:8010"
     },
     {
       "facultyId": "8",
       "formId": "8",
       "url": "https://abit.bsu.by/formk1?id=8",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8001 milliseconds",
+      "via": "http://176.105.199.153:8010"
     },
     {
       "facultyId": "34",
       "formId": "34",
       "url": "https://abit.bsu.by/formk1?id=34",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8002 milliseconds",
+      "via": "http://176.105.199.153:8010"
     },
     {
       "facultyId": "21",
       "formId": "21",
       "url": "https://abit.bsu.by/formk1?id=21",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8002 milliseconds",
+      "via": "http://176.105.199.153:8010"
     },
     {
       "facultyId": "22",
       "formId": "22",
       "url": "https://abit.bsu.by/formk1?id=22",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8002 milliseconds",
+      "via": "http://176.105.199.153:8010"
     },
     {
       "facultyId": "6",
       "formId": "6",
       "url": "https://abit.bsu.by/formk1?id=6",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8002 milliseconds",
+      "via": "http://176.105.199.153:8010"
     },
     {
       "facultyId": "16",
       "formId": "16",
       "url": "https://abit.bsu.by/formk1?id=16",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8001 milliseconds",
+      "via": "http://176.105.199.153:8010"
     },
     {
       "facultyId": "17",
       "formId": "17",
       "url": "https://abit.bsu.by/formk1?id=17",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8002 milliseconds",
+      "via": "http://176.105.199.153:8010"
     },
     {
       "facultyId": "13",
       "formId": "13",
       "url": "https://abit.bsu.by/formk1?id=13",
       "status": 0,
-      "message": "curl: (7) CONNECT tunnel failed, response 400",
-      "via": "http://37.110.145.57:8081"
+      "message": "curl: (28) Connection timed out after 8002 milliseconds",
+      "via": "http://176.105.199.153:8010"
     }
   ],
   "scrapeMeta": {
@@ -30017,55 +30017,55 @@
     "fetchVia": [
       {
         "facultyId": "32",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       },
       {
         "facultyId": "29",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       },
       {
         "facultyId": "2",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       },
       {
         "facultyId": "7",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       },
       {
         "facultyId": "8",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       },
       {
         "facultyId": "34",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       },
       {
         "facultyId": "21",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       },
       {
         "facultyId": "22",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       },
       {
         "facultyId": "5",
-        "via": "http://109.225.40.145:58080"
+        "via": "http://92.39.129.50:1256"
       },
       {
         "facultyId": "6",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       },
       {
         "facultyId": "16",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       },
       {
         "facultyId": "17",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       },
       {
         "facultyId": "13",
-        "via": "http://37.110.145.57:8081"
+        "via": "http://176.105.199.153:8010"
       }
     ],
     "okFormIds": [
