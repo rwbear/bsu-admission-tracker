@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-06T13:33:14.977Z",
+  "generatedAt": "2026-11-06T13:52:40.508Z",
   "origin": {
     "repo": "rwbear/bsu-admission-tracker",
     "branch": "cursor/admission-tracker-rebuild-be86"
@@ -7,10 +7,8 @@
   "universities": [
     {
       "id": "sb-bsu",
-      "updatedAt": "2026-11-06T13:33:14.978Z",
+      "updatedAt": "2026-11-06T13:52:40.508Z",
       "specialtyCount": 200
     }
-  ],
-  "commitSha": "3645500c60f40c4c00302db592f9d511ca6ef63b",
-  "publishedAt": "2026-11-06T13:49:16.756Z"
+  ]
 }
